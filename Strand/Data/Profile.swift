@@ -199,8 +199,8 @@ final class ProfileStore: ObservableObject {
     /// therefore did nothing until the day stopped being today. Both views now read this, so the live
     /// value and the stored day are scored against one number.
     var effortHRmax: Double? {
-        if hrMaxOverride > 0 { return Double(hrMaxOverride) }
-        return age > 0 ? StrainScorer.tanakaHRmax(age: Double(age)) : nil
+        StrainScorer.effortHRmax(override: hrMaxOverride > 0 ? Double(hrMaxOverride) : nil,
+                                 age: Double(age)).hrmax
     }
 
     /// Tanaka estimate unless overridden.
