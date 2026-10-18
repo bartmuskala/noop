@@ -215,8 +215,7 @@ internal object PhysiologicalStepCycleEngine {
             // DAO ranges are inclusive. Keep adjacent physiological cycles disjoint.
             val restingHr = scoredNights.firstOrNull { it.daily.day == wakeDay }?.daily?.restingHr?.toDouble()
                 ?: StrainScorer.defaultRestingHR
-            val effectiveMaxHr = maxHROverride
-                ?: profile.age.takeIf { it > 0 }?.let { StrainScorer.tanakaHRmax(it.toDouble()) }
+            val effectiveMaxHr = StrainScorer.effortHRmax(maxHROverride, profile.age).first
             val loadKey = loadCacheKey(
                 window.onset, window.endExclusive,
                 repo.hrUnionFingerprint(fallbackOwner, window.onset, window.endExclusive - 1L),

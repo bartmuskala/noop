@@ -153,6 +153,22 @@ public enum StrainScorer {
     /// Tanaka (2001): HRmax = 208 − 0.7 × age (gender-independent).
     public static func tanakaHRmax(age: Double) -> Double { 208.0 - 0.7 * age }
 
+    /// The HRmax a day's Effort is scored against, and where it came from (#2438).
+    ///
+    /// The one resolver for that question. It used to be written out by hand at each call site, and
+    /// two of those copies had already dropped the override (#2460). #2438 step 0 changes what the
+    /// effective HRmax means, so every reader has to change together, which is only safe if there is
+    /// one place to change.
+    ///
+    /// A manual override wins, as the exact bpm set. Otherwise Tanaka from age. Otherwise nil, which
+    /// `strain` replaces with `defaultMaxHR()`. `source` is `override`, `tanaka` or `default`, the
+    /// vocabulary of the `effort calib` line. Callers pass nil for "no override", never 0.
+    public static func effortHRmax(override manual: Double?, age: Double) -> (hrmax: Double?, source: String) {
+        if let manual { return (manual, "override") }
+        if age > 0 { return (tanakaHRmax(age: age), "tanaka") }
+        return (nil, "default")
+    }
+
     /// Classic 220 − age. Last-resort fallback only.
     public static func defaultMaxHR(age: Int = defaultAge) -> Int { 220 - age }
 

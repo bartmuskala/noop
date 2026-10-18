@@ -180,6 +180,25 @@ object StrainScorer {
     /** Tanaka (2001): HRmax = 208 − 0.7 × age (gender-independent). */
     fun tanakaHRmax(age: Double): Double = 208.0 - 0.7 * age
 
+    /**
+     * The HRmax a day's Effort is scored against, and where it came from (#2438). Twin of the Swift
+     * `StrainScorer.effortHRmax(override:age:)`.
+     *
+     * The one resolver for that question. It used to be written out by hand at each call site, and two
+     * of those copies had already dropped the override (#2460). #2438 step 0 changes what the effective
+     * HRmax means, so every reader has to change together, which is only safe if there is one place to
+     * change.
+     *
+     * A manual override wins, as the exact bpm set. Otherwise Tanaka from age. Otherwise null, which
+     * [strain] replaces with [defaultMaxHR]. The source is `override`, `tanaka` or `default`, the
+     * vocabulary of the `effort calib` line. Callers pass null for "no override", never 0.
+     */
+    fun effortHRmax(override: Double?, age: Double): Pair<Double?, String> = when {
+        override != null -> override to "override"
+        age > 0 -> tanakaHRmax(age) to "tanaka"
+        else -> null to "default"
+    }
+
     /** Classic 220 − age. Last-resort fallback only. */
     fun defaultMaxHR(age: Int = defaultAge): Int = 220 - age
 
