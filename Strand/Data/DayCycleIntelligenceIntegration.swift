@@ -200,7 +200,7 @@ import WhoopStore
             }
             let restingHR = nights.first(where: { $0.daily.day == day })?.daily.restingHr.map(Double.init)
                 ?? StrainScorer.defaultRestingHR
-            let effectiveMaxHR = maxHROverride ?? (profile.age > 0 ? StrainScorer.tanakaHRmax(age: profile.age) : nil)
+            let effectiveMaxHR = StrainScorer.effortHRmax(override: maxHROverride, age: profile.age).hrmax
             // Every pass re-read each cycle's full day of 1 Hz heart rate from every owner and re-scored it,
             // for all 21 cycles, although only the open one gains samples between syncs. On a replayed
             // phone database this was the costliest step of a pass in which every night was otherwise
