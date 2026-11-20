@@ -24,6 +24,7 @@ import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Alarm
 import androidx.compose.material.icons.filled.Bedtime
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -437,7 +438,7 @@ private fun WxTonightCard(bedtime: String, need: String, alarm: String?, onAlarm
 /** A small round avatar slot; the initials are not known to this screen, so it shows a person glyph. */
 @Composable
 private fun ProfileAvatarOrInitials() {
-    Icon(androidx.compose.material.icons.Icons.Filled.Person, contentDescription = uiString(R.string.nav_settings),
+    Icon(Icons.Filled.Person, contentDescription = uiString(R.string.nav_settings),
         tint = Wx.textSoft, modifier = Modifier.size(22.dp))
 }
 
