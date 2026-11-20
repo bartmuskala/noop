@@ -1213,6 +1213,28 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                     preserveUnscoredHistory = true,
                 )
             }.onFailure { if (it is kotlin.coroutines.cancellation.CancellationException) throw it }
+            // Fork: one full-history pass onto the fitted Effort curve, so past days share today's scale.
+            // The flag is set only after the pass returns, so a cancelled pass retries next launch.
+            if (NoopPrefs.fittedEffort(appContext) && !NoopPrefs.fittedRescoreDone(appContext)) {
+                runCatching {
+                    IntelligenceEngine.analyzeRecent(
+                        repo = repository,
+                        profile = currentProfile(),
+                        maxDays = IntelligenceEngine.EFFORT_RESCORE_HISTORY_DAYS,
+                        importedDeviceId = deviceId,
+                        maxHROverride = profileStore.hrMaxOverride.takeIf { it > 0 }?.toDouble(),
+                        ownerSource = RegistryDayOwnerSource(noopApp.deviceRegistry),
+                        preserveUnscoredHistory = true,
+                        baselineEpoch = NoopPrefs.of(appContext)
+                            .getLong(Baselines.hrvBaselineEpochKey, 0L).toDouble(),
+                        recoveryEpoch = NoopPrefs.of(appContext)
+                            .getLong(Baselines.recoveryBaselineEpochKey, 0L).toDouble(),
+                        effortMethod = NoopPrefs.effortMethod(appContext),
+                        dayCycleMode = NoopPrefs.dayCycleMode(appContext),
+                    )
+                }.onSuccess { NoopPrefs.setFittedRescoreDone(appContext) }
+                    .onFailure { if (it is kotlin.coroutines.cancellation.CancellationException) throw it }
+            }
             while (isActive) {
                 // #547 RE-POLLUTION: a sync since the last tick may have flagged a re-heal (its ingest gate
                 // dropped bad-clock records). Re-run the purge BEFORE this tick's rescore so the affected days

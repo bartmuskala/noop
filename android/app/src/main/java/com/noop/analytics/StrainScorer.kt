@@ -146,7 +146,7 @@ object StrainScorer {
      * theoretical maximum day maps to exactly [maxStrain] under either method.
      */
     fun logMapDenominator(method: Method, sex: String): Double = when (method) {
-        Method.EDWARDS -> strainDenominator
+        Method.EDWARDS, Method.FITTED -> strainDenominator
         Method.BANISTER -> {
             val c = banisterCoefficients(sex.lowercase().startsWith("f"))
             // Ceiling MINUS a full day of sedentary baseline, matching what is subtracted from the day
@@ -227,7 +227,50 @@ object StrainScorer {
     )
 
     /** TRIMP accumulation method. */
-    enum class Method { EDWARDS, BANISTER }
+    enum class Method { EDWARDS, BANISTER, FITTED }
+
+    // ---- Fitted Effort curve (ryanbr/noop#2438 step 1, fork) ----
+    //
+    // One exponential weight per minute, e^(beta·(x − 55)/10) at intensity x in %HRR, with nothing counted
+    // below a floor, mapped through a soft-capped log curve on the 0–21 axis:
+    //     b = a · ln(1 + load / k)
+    //     effort21 = 21 · b / (b^p + 21^p)^(1/p)
+    // a, k and beta are fitted so the curve reproduces the example days published with the proposal
+    // (30-min brisk walk 6.7, 1 h zone 3 15.1, 1 h zone 4 17.5, 90 min intervals 18.2, marathon 3:30
+    // 20.4, 10 h ultra 20.6) to within 0.05; p = 8 is the proposal's fixed cap exponent. Light work stays
+    // low, hard work reaches the high teens and approaches 21 without reaching it.
+    //
+    // The floor here is 50 %HRR, Edwards' zone-1 edge, applied to the whole day: the proposal's 20 % floor
+    // was fitted on workouts only and would credit hours of daily life as training.
+    const val fittedA: Double = 5.48
+    const val fittedK: Double = 12.5
+    const val fittedBeta: Double = 0.57
+    const val fittedCapP: Double = 8.0
+    const val fittedFloorHrr: Double = 50.0
+
+    /** Weight of one minute at [pct] %HRR under the fitted curve; zero below [fittedFloorHrr]. */
+    fun fittedWeight(pct: Double): Double =
+        if (pct < fittedFloorHrr) 0.0 else kotlin.math.exp(fittedBeta * (pct - 55.0) / 10.0)
+
+    /** Sum of weighted minutes over a sample stream, the fitted curve's load. */
+    fun fittedLoad(hr: List<HrSample>, restingHR: Double, hrReserve: Double, durations: List<Double>): Double {
+        var acc = 0.0
+        for (i in hr.indices) acc += fittedWeight(pctHRR(hr[i].bpm.toDouble(), restingHR, hrReserve)) * durations[i]
+        return acc
+    }
+
+    /** The fitted curve on the 0–21 axis. Below 21 for every finite load. */
+    fun fittedCurve21(load: Double): Double {
+        val b = fittedA * kotlin.math.ln(1.0 + kotlin.math.max(0.0, load) / fittedK)
+        if (b <= 0.0) return 0.0
+        val m = kotlin.math.max(b, whoopMaxStrain)
+        val v = whoopMaxStrain * b / (m * Math.pow(Math.pow(b / m, fittedCapP) + Math.pow(whoopMaxStrain / m, fittedCapP), 1.0 / fittedCapP))
+        return kotlin.math.min(v, Math.nextDown(whoopMaxStrain))
+    }
+
+    /** The fitted curve on NOOP's stored 0–100 axis, 2 dp like [trimpToStrain]. */
+    fun fittedEffort(load: Double): Double =
+        kotlin.math.round(effortValueFromWhoopStrain(fittedCurve21(load)) * 100.0) / 100.0
 
     /** Strain calibration / fit errors. Mirrors Swift `StrainError`. */
     enum class StrainError { TOO_FEW_PAIRS, DEGENERATE }
@@ -756,8 +799,9 @@ object StrainScorer {
             Method.EDWARDS -> {
                 edwardsTRIMP(hr, restingHR, hrReserve, durations)
             }
+            Method.FITTED -> fittedLoad(hr, restingHR, hrReserve, durations)
         }
-        val scored = trimpToStrain(trimp, resolvedDenominator)
+        val scored = if (method == Method.FITTED) fittedEffort(trimp) else trimpToStrain(trimp, resolvedDenominator)
         diag?.let {
             // Walked only inside this let, so a normal scoring pass never pays for a diagnostic nobody
             // is reading: it is a second O(n) pass and analyzeRecent's prep is already the expensive

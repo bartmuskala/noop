@@ -320,9 +320,30 @@ object NoopPrefs {
     fun banisterEffort(context: Context): Boolean = of(context).getBoolean(KEY_BANISTER_EFFORT, false)
 
     /** The TRIMP recipe every Effort computation on this device should use. */
-    fun effortMethod(context: Context): com.noop.analytics.StrainScorer.Method =
-        if (banisterEffort(context)) com.noop.analytics.StrainScorer.Method.BANISTER
-        else com.noop.analytics.StrainScorer.Method.EDWARDS
+    fun effortMethod(context: Context): com.noop.analytics.StrainScorer.Method = when {
+        fittedEffort(context) -> com.noop.analytics.StrainScorer.Method.FITTED
+        banisterEffort(context) -> com.noop.analytics.StrainScorer.Method.BANISTER
+        else -> com.noop.analytics.StrainScorer.Method.EDWARDS
+    }
+
+    /** Fork: score Effort with the fitted curve (#2438 step 1). Default ON in this fork; OFF falls back to
+     *  the Banister/Edwards choice above. */
+    const val KEY_FITTED_EFFORT = "noop.fittedEffort"
+
+    fun fittedEffort(context: Context): Boolean = of(context).getBoolean(KEY_FITTED_EFFORT, true)
+
+    fun setFittedEffort(context: Context, enabled: Boolean) {
+        of(context).edit().putBoolean(KEY_FITTED_EFFORT, enabled).apply()
+    }
+
+    /** Whether the one-shot full-history rescore onto the fitted Effort curve has run. */
+    const val KEY_FITTED_RESCORE_DONE = "noop.effortRescore.fitted.v1.done"
+
+    fun fittedRescoreDone(context: Context): Boolean = of(context).getBoolean(KEY_FITTED_RESCORE_DONE, false)
+
+    fun setFittedRescoreDone(context: Context) {
+        of(context).edit().putBoolean(KEY_FITTED_RESCORE_DONE, true).apply()
+    }
 
     /** The calendar day (yyyy-MM-dd) on which the morning-journal nudge was last shown, keeps the
      *  Sleep screen's "Good morning" sheet to at most once per day. */
