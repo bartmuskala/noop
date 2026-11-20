@@ -36,6 +36,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -72,6 +75,14 @@ internal fun WxScoreScreen(vm: AppViewModel, initial: WxScoreTab, onBack: () -> 
     val profile = remember { ProfileStore.from(context) }
     var tab by remember { mutableStateOf(initial) }
     LaunchedEffect(Unit) { vm.loadWorkouts() }
+    // Last night's stage timeline: the longest session that ended in the last 36 hours.
+    var stages by remember { mutableStateOf<List<com.noop.analytics.StageSegment>>(emptyList()) }
+    LaunchedEffect(Unit) {
+        val now = System.currentTimeMillis() / 1000L
+        val sessions = runCatching { vm.repo.sleepSessionsUnion(vm.activeStrapId, now - 36 * 3600L, now) }.getOrDefault(emptyList())
+        val night = sessions.filter { it.endTs > now - 36 * 3600L }.maxByOrNull { it.endTs - it.startTs }
+        stages = com.noop.analytics.AnalyticsEngine.decodeStages(night?.stagesJSON)
+    }
 
     val todayKey = LocalDate.now().toString()
     val row = days.lastOrNull { it.day == todayKey } ?: days.lastOrNull()
@@ -119,7 +130,7 @@ internal fun WxScoreScreen(vm: AppViewModel, initial: WxScoreTab, onBack: () -> 
         when (tab) {
             WxScoreTab.Recovery -> WxRecoveryTab(row, baseline, days)
             WxScoreTab.Effort -> WxEffortTab(row, workouts, effortScale, profile, onOpenWorkouts, onOpenProfile)
-            WxScoreTab.Sleep -> WxSleepTab(row, days)
+            WxScoreTab.Sleep -> WxSleepTab(row, days, stages)
         }
     }
 }
@@ -358,7 +369,7 @@ private fun WxEffortTab(
 // MARK: Sleep
 
 @Composable
-private fun WxSleepTab(row: DailyMetric?, days: List<DailyMetric>) {
+private fun WxSleepTab(row: DailyMetric?, days: List<DailyMetric>, stages: List<com.noop.analytics.StageSegment>) {
     val perf = row?.let { RestScorer.restFromDaily(it) }
     val needMin = sleepNeedForDay(row, days.takeLast(30), emptyMap())
     val slept = row?.totalSleepMin
@@ -380,8 +391,16 @@ private fun WxSleepTab(row: DailyMetric?, days: List<DailyMetric>) {
     )
     WxCards {
         WxCard {
-            WxLabel(uiString(R.string.wx_stages))
+            WxCardHeader(uiString(R.string.wx_stages), stages.takeIf { it.isNotEmpty() }?.let {
+                val z = ZoneId.systemDefault()
+                fun c(ts: Long) = Instant.ofEpochSecond(ts).atZone(z).let { t -> String.format(Locale.US, "%02d:%02d", t.hour, t.minute) }
+                "${c(it.first().start)} – ${c(it.last().end)}"
+            })
             Spacer(Modifier.height(14.dp))
+            if (stages.isNotEmpty()) {
+                WxHypnogram(stages, uiString(R.string.wx_hypnogram_a11y))
+                Spacer(Modifier.height(16.dp))
+            }
             val light = row?.lightMin ?: 0.0
             val deep = row?.deepMin ?: 0.0
             val rem = row?.remMin ?: 0.0
@@ -433,3 +452,46 @@ private fun WxSmallStat(label: String, value: String, caption: String, modifier:
         Text(caption, style = WxType.caption, color = Wx.textMuted)
     }
 }
+
+
+/** Rows top to bottom: awake, REM, light, deep. Each segment is a rounded bar on its row. */
+@Composable
+private fun WxHypnogram(stages: List<com.noop.analytics.StageSegment>, description: String) {
+    val measurer = androidx.compose.ui.text.rememberTextMeasurer()
+    val rows = listOf("wake" to Wx.stageAwake, "rem" to Wx.stageRem, "light" to Wx.stageLight, "deep" to Wx.stageDeep)
+    val labels = listOf(uiString(R.string.wx_awake), uiString(R.string.wx_rem_sleep), uiString(R.string.wx_light_sleep), uiString(R.string.wx_deep_sleep))
+    val start = stages.first().start
+    val end = stages.maxOf { it.end }.coerceAtLeast(start + 1)
+    androidx.compose.foundation.Canvas(
+        Modifier.fillMaxWidth().height(150.dp)
+            .semantics { contentDescription = description },
+    ) {
+        val labelW = 46.dp.toPx()
+        val rowH = 26.dp.toPx()
+        val barH = 14.dp.toPx()
+        val plotW = size.width - labelW
+        labels.forEachIndexed { i, l ->
+            val t = measurer.measure(l, androidx.compose.ui.text.TextStyle(fontSize = 10.sp, color = Wx.textDim))
+            drawText(t, topLeft = androidx.compose.ui.geometry.Offset(0f, i * rowH + (barH - t.size.height) / 2 + 4))
+        }
+        stages.forEach { seg ->
+            val r = rows.indexOfFirst { it.first == seg.stage }.takeIf { it >= 0 } ?: return@forEach
+            val x0 = labelW + plotW * ((seg.start - start).toFloat() / (end - start))
+            val x1 = labelW + plotW * ((seg.end - start).toFloat() / (end - start))
+            drawRoundRect(rows[r].second, androidx.compose.ui.geometry.Offset(x0, r * rowH + 4),
+                androidx.compose.ui.geometry.Size((x1 - x0).coerceAtLeast(2f), barH),
+                androidx.compose.ui.geometry.CornerRadius(3.dp.toPx()))
+        }
+        val z = ZoneId.systemDefault()
+        val ticks = 4
+        for (k in 0..ticks) {
+            val ts = start + (end - start) * k / ticks
+            val t = Instant.ofEpochSecond(ts).atZone(z)
+            val lay = measurer.measure(String.format(Locale.US, "%02d:%02d", t.hour, t.minute),
+                androidx.compose.ui.text.TextStyle(fontSize = 10.sp, color = Wx.textDim))
+            val x = (labelW + plotW * k / ticks - lay.size.width / 2f).coerceIn(labelW, size.width - lay.size.width)
+            drawText(lay, topLeft = androidx.compose.ui.geometry.Offset(x, size.height - lay.size.height))
+        }
+    }
+}
+

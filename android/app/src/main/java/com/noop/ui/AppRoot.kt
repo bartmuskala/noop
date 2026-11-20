@@ -699,9 +699,10 @@ fun AppRoot(viewModel: AppViewModel = viewModel()) {
 
                 // --- Placeholder routes (later waves fill these in) ---
                 composable(Destination.Stress.route) {
-                    StressScreen(
+                    WxStressScreen(
                         vm = viewModel,
-                        onBreathe = { nav.navigateTopLevel(Destination.Breathe.route) },
+                        onBack = { nav.popBackStack() },
+                        onBreathe = { nav.navigate(Destination.Breathe.route) },
                     )
                 }
                 composable(Destination.Trends.route) { WxTrendsScreen(viewModel) }

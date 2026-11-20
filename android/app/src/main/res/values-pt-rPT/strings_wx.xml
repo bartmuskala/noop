@@ -8,9 +8,13 @@
     <string name="wx_all_out">No máximo</string>
     <string name="wx_average_over">Média %1$s · %2$s</string>
     <string name="wx_avg_pct">média %1$d%%</string>
+    <string name="wx_avg_value">média %1$s</string>
+    <string name="wx_awake">Acordado</string>
     <string name="wx_back">Voltar</string>
     <string name="wx_bars_a11y">%1$s por período em barras</string>
     <string name="wx_best_day">Melhor: %1$s</string>
+    <string name="wx_breathe_body">Respiração lenta guiada para o baixar</string>
+    <string name="wx_breathe_title">Respira 2 minutos</string>
     <string name="wx_by_day">Por dia</string>
     <string name="wx_by_month">Por mês</string>
     <string name="wx_by_week">Por semana</string>
@@ -38,8 +42,10 @@
     <string name="wx_high">Alto</string>
     <string name="wx_hours">Horas</string>
     <string name="wx_hours_of_sleep">Sono</string>
+    <string name="wx_hours_short">%1$d h</string>
     <string name="wx_hrv">VFC</string>
     <string name="wx_hrv_long">Variabilidade da frequência cardíaca</string>
+    <string name="wx_hypnogram_a11y">Fases do sono ao longo da noite</string>
     <string name="wx_journal_week_a11y">Diário registado em %1$d dos últimos 7 dias</string>
     <string name="wx_last_30_days">Últimos 30 dias</string>
     <string name="wx_last_7_days">Últimos 7 dias</string>
@@ -61,6 +67,7 @@
     <string name="wx_no_alarm">Sem alarme para amanhã</string>
     <string name="wx_no_data">Sem dados</string>
     <string name="wx_no_workouts">Sem treinos neste dia.</string>
+    <string name="wx_not_enough_today">Ainda não há dados de frequência cardíaca suficientes hoje.</string>
     <string name="wx_of_three">de 3,0</string>
     <string name="wx_off">Desligado</string>
     <string name="wx_ok">ok</string>
@@ -71,6 +78,7 @@
     <string name="wx_period_week">semana</string>
     <string name="wx_period_year">ano</string>
     <string name="wx_prev_day">Dia anterior</string>
+    <string name="wx_reading_today">A ler hoje…</string>
     <string name="wx_recommended_bedtime">Hora de deitar recomendada</string>
     <string name="wx_recovered">Recuperado</string>
     <string name="wx_recovery">Recuperação</string>
@@ -87,6 +95,7 @@
     <string name="wx_restorative">Reparador</string>
     <string name="wx_rhr">FCR</string>
     <string name="wx_rhr_long">Frequência cardíaca em repouso</string>
+    <string name="wx_right_now">agora</string>
     <string name="wx_set_alarm">Definir alarme</string>
     <string name="wx_skin_temp">Temp. pele</string>
     <string name="wx_sleep">Sono</string>
@@ -99,11 +108,14 @@
     <string name="wx_steps">Passos</string>
     <string name="wx_strap_status_hint">Pulseira, bateria e sincronização</string>
     <string name="wx_strenuous">Exigente</string>
+    <string name="wx_stress_curve_a11y">Nível de stress ao longo do dia</string>
     <string name="wx_stress_monitor">Monitor de stress</string>
+    <string name="wx_stress_week_a11y">Nível de stress diário dos últimos sete dias</string>
     <string name="wx_sync_failed">Falha na sincronização com o Health Connect.</string>
     <string name="wx_sync_health_connect">Sincronizar do Health Connect</string>
     <string name="wx_syncing">A sincronizar…</string>
     <string name="wx_target">Objetivo</string>
+    <string name="wx_time_in_level">Tempo em cada nível</string>
     <string name="wx_todays_activities">Atividades de hoje</string>
     <string name="wx_tonights_sleep">Sono desta noite</string>
     <string name="wx_vs_baseline">vs referência</string>
