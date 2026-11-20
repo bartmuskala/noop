@@ -36,11 +36,11 @@ class MoreNavigationContractTest {
 
         assertTrue(
             "More destinations must be pushed so Back returns to More",
-            source.contains("MoreScreen(onNavigate = { nav.navigate(it) })"),
+            source.contains("WxMoreScreen(viewModel, onNavigate = { nav.navigate(it) })"),
         )
         assertFalse(
             "More destinations must not clear the stack through navigateTopLevel",
-            source.contains("MoreScreen(onNavigate = { nav.navigateTopLevel(it) })"),
+            source.contains("MoreScreen(viewModel, onNavigate = { nav.navigateTopLevel(it) })"),
         )
         assertTrue(
             "Every generated More row must keep using the shared navigation callback",
