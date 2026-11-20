@@ -667,7 +667,7 @@ private fun rememberFitnessReadiness(days: List<DailyMetric>, profile: ProfileSt
 }
 
 @Composable
-private fun FitnessAgeSection(vm: AppViewModel, days: List<DailyMetric>, profile: ProfileStore, onOpenSettings: () -> Unit = {}) {
+internal fun FitnessAgeSection(vm: AppViewModel, days: List<DailyMetric>, profile: ProfileStore, onOpenSettings: () -> Unit = {}) {
     val context = LocalContext.current
     // Latest weekly value + its optional VO₂max companion, read once (metricSeries has no Flow, so we
     // re-read whenever the merged history changes — a fresh sync/import is what moves these).

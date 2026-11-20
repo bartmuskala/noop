@@ -661,7 +661,7 @@ internal fun strainBandWord(fraction: Double): String = when {
  * The night's need (minutes): the imported per-day figure when the export carried one, else the shared
  * >= 7.5h personal-mean floor (matches SleepScreen needMin / SleepView.sleepNeedMin).
  */
-private fun sleepNeedForDay(day: DailyMetric?, days: List<DailyMetric>, importedNeed: Map<String, Double>): Double {
+internal fun sleepNeedForDay(day: DailyMetric?, days: List<DailyMetric>, importedNeed: Map<String, Double>): Double {
     day?.day?.let { key -> importedNeed[key]?.takeIf { it > 0 }?.let { return it } }
     val banked = days.mapNotNull { it.totalSleepMin }.filter { it > 0 }
     val mean = if (banked.isEmpty()) null else banked.sum() / banked.size

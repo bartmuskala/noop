@@ -182,6 +182,8 @@ fun InsightsScreen(vm: AppViewModel, onOpenInsightsHub: () -> Unit = {}) {
     var journalLoaded by remember { mutableStateOf(false) }
     var journalSeq by remember { mutableStateOf(0) }
     var dayOffset by remember { mutableStateOf(0L) }
+    // Days with at least one native journal answer, for the seven-day strip at the top.
+    var loggedDays by remember { mutableStateOf<Set<String>>(emptySet()) }
     // #656: honour a day the Today journal widget deep-linked to (tapping a bar opens the journal at THAT
     // day). Consumed once on arrival, then cleared so it doesn't re-apply on the next recomposition.
     val pendingJournalDay by vm.pendingJournalDayOffset.collectAsStateWithLifecycle()
@@ -223,6 +225,7 @@ fun InsightsScreen(vm: AppViewModel, onOpenInsightsHub: () -> Unit = {}) {
         val imported = vm.repo.journal("my-whoop", "0000-01-01", "9999-12-31")
         val native = vm.repo.journal(JOURNAL_DEVICE_ID, "0000-01-01", "9999-12-31")
         val entries = mergeJournalEntries(imported, native)
+        loggedDays = native.map { it.day }.toSet()
         val byBehaviour = mutableMapOf<String, MutableSet<String>>()
         val controlsByBehaviour = mutableMapOf<String, MutableSet<String>>()
         // #322: a numeric log writes answeredYes=true too, so a numeric item lands in the with/without
@@ -333,6 +336,21 @@ fun InsightsScreen(vm: AppViewModel, onOpenInsightsHub: () -> Unit = {}) {
         // --- "What moves you" deep-link into the v5 Insights Hub (ranked, lag-aware ranked-effect feed +
         //     personal alcohol/caffeine dose-response). The honest in-Insights entry point; the hub is its
         //     own destination too. Mirrors the Swift InsightsView.whatMovesYouLink. ---
+        item {
+            // The seven days ending today; a tap picks that day for the log below (today .. 6 days back).
+            val today = LocalDate.now()
+            val week = (6 downTo 0).map { today.minusDays(it.toLong()) }.map {
+                WxJournalDay(wxWeekdayShort(it), it.dayOfMonth, it.toString() in loggedDays,
+                    it == today.minusDays(dayOffset))
+            }
+            val logged = week.count { it.logged }
+            WxCard {
+                WxCardHeader(uiString(R.string.today_section_journal), uiString(R.string.wx_days_logged, logged))
+                Spacer(Modifier.height(14.dp))
+                WxJournalWeek(week, uiString(R.string.wx_journal_week_a11y, logged), dot = 40.dp,
+                    onSelect = { index -> dayOffset = (6 - index).toLong() })
+            }
+        }
         item { WhatMovesYouLink(onOpen = onOpenInsightsHub) }
 
         item { Spacer(Modifier.height(Metrics.sectionGap - 20.dp)) }
@@ -479,36 +497,6 @@ fun InsightsScreen(vm: AppViewModel, onOpenInsightsHub: () -> Unit = {}) {
                         }
                     }
                 },
-            )
-        }
-        }
-
-        item { Spacer(Modifier.height(Metrics.sectionGap - 20.dp)) }
-
-        // --- Behaviour effects -------------------------------------------------
-        // (Always emits one of three branches → one unconditional item, never empty.)
-        item {
-        if (!journalLoaded) {
-            NoopCard {
-                Text(
-                    uiString(R.string.l10n_insights_screen_reading_your_journal_and_outcomes_4a59af69),
-                    style = NoopType.subhead,
-                    color = Palette.textTertiary,
-                )
-            }
-        } else if (behaviours.isEmpty()) {
-            // No journal yet, explain, without dead-ending on a paid export.
-            DataPendingNote(
-                title = uiString(R.string.l10n_insights_screen_insights_read_your_journal_and_outcomes_6ec8aaf9),
-                body = "Log behaviours above. After a few days of answers, NOOP ranks how each " +
-                    "one moves your recovery, HRV and sleep. Importing a WHOOP export (which " +
-                    "includes its journal) backfills history instantly.",
-            )
-        } else {
-            BehaviourSection(
-                outcome = outcome,
-                onOutcome = { outcome = it },
-                ranked = ranked,
             )
         }
         }

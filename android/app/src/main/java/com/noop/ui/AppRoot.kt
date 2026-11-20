@@ -45,6 +45,8 @@ import androidx.compose.material.icons.filled.Hexagon
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Insights
 import androidx.compose.material.icons.filled.MonitorHeart
+import androidx.compose.material.icons.filled.Cake
+import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.filled.MoreHoriz
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Psychology
@@ -201,6 +203,12 @@ internal enum class Destination(
     TestCentre("test_centre", R.string.nav_test_centre, Icons.Filled.BugReport),
     GroundTruthCollector("ground_truth_collector", R.string.ground_truth_title, Icons.Filled.Sensors),
 
+    // Wx redesign: the three-tab score detail a Today dial opens, Trends opened on one metric, and the
+    // Fitness Age page. Contextual pushes, so none of them sits in a More group.
+    Score("score/{tab}", R.string.wx_recovery, Icons.Filled.MonitorHeart),
+    TrendsMetric("trends_metric/{metric}", R.string.nav_trends, Icons.AutoMirrored.Filled.TrendingUp),
+    FitnessAge("fitness_age", R.string.today_card_fitness_age, Icons.Filled.Cake),
+
     // The "More" tab: its own navigated page (mirroring the iOS More tab) that hosts the full
     // grouped destination list. It is NOT itself in any [DrawerGroup] — it's the door to them.
     More("more", R.string.nav_more, Icons.Filled.MoreHoriz);
@@ -233,27 +241,16 @@ internal data class DrawerGroup(
 // are NOT listed (they're bottom-bar tabs, exactly as on iOS). Android-only screens (Vital Signs, Wake
 // Window, Notifications, Devices) are slotted into the matching iOS group.
 internal val drawerGroups: List<DrawerGroup> = listOf(
-    DrawerGroup("Insights", R.string.more_group_insights, listOf(
-        // Coach is a bottom-bar tab now and is deliberately absent here, matching iOS: "K3: Coach
-        // promoted to a top-level tab — no longer listed under More." Leaving it would have put the
-        // same destination in two places at once, which is the duplication the note above says this
-        // list exists to avoid. (#2218)
-        Destination.InsightsHub, Destination.Intelligence,
-        Destination.Insights, Destination.Explore, Destination.Compare,
-    ), defaultExpanded = true),
+    // The fork keeps only the screens it uses; the Wx More page lists exactly these (see wxMoreItems).
     DrawerGroup("Body", R.string.more_group_body, listOf(
-        Destination.Live, Destination.Workouts, Destination.Health, Destination.VitalSigns,
-        Destination.LabBook, Destination.Stress, Destination.Breathe, Destination.Intervals,
-        Destination.Rhythm,
+        Destination.Workouts, Destination.Stress, Destination.InsightsHub, Destination.FitnessAge,
     ), defaultExpanded = true),
     DrawerGroup("Data", R.string.more_group_data, listOf(
-        Destination.FusedRecord, Destination.AppleHealth, Destination.DataSources,
-        Destination.BackupSync, Destination.Devices, Destination.NoopLimitations,
-    ), defaultExpanded = false),
+        Destination.Devices, Destination.DataSources, Destination.BackupSync,
+    ), defaultExpanded = true),
     DrawerGroup("App", R.string.more_group_app, listOf(
-        Destination.Automations, Destination.SmartAlarm, Destination.Notifications,
-        Destination.TestCentre, Destination.PowerSaving, Destination.Settings,
-    ), defaultExpanded = false),
+        Destination.SmartAlarm, Destination.Notifications, Destination.Settings,
+    ), defaultExpanded = true),
 )
 
 /** The headers open by default at first run, derived from [drawerGroups.defaultExpanded] (Insights +
@@ -627,50 +624,33 @@ fun AppRoot(viewModel: AppViewModel = viewModel()) {
             ) {
                 // --- Live, working screens (existing waves) ---
                 composable(Destination.Today.route) {
-                    TodayScreen(
-                        viewModel = viewModel,
-                        // The quick-action "+" lives in the Today header's top-right now (off the
-                        // bottom bar) — it opens the same quick-action sheet the bar used to.
-                        onQuickActions = { showQuickActions = true },
-                        // The Updates "ringer" — the bell sits before the +, and opens the inbox
-                        // sheet AppRoot presents (it owns the nav for deep-links).
-                        updateStore = updateStore,
-                        onOpenUpdates = { showUpdatesInbox = true },
-                        // The leading profile avatar opens Settings (where the photo is set/changed),
-                        // mirroring iOS's avatar-leading Today header. The drawer hamburger is unchanged.
-                        onOpenSettings = { nav.navigateTopLevel(Destination.Settings.route) },
-                        // The opt-in Hydration card (only shown when Hydration tracking is on) pushes its
-                        // detail. A normal push so the back-stack returns to Today.
-                        onOpenHydration = { nav.navigate(Destination.Hydration.route) },
-                        // #706/#684: the dashboard cards draw a tappable chevron; wire each to its detail,
-                        // matching iOS. Stress + the vitals are pushes; Sleep is a top-level tab switch.
-                        onOpenStress = { nav.navigate(Destination.Stress.route) },
-                        onOpenHealth = { nav.navigate(Destination.Health.route) },
-                        // Every metric/vital card opens its OWN focused detail trend (vital_detail/<key>),
-                        // not the shared Health hub (2026-07-03). Mirrors the iOS liquidCard metricDetail.
-                        onOpenMetric = { key -> nav.navigate("vital_detail/$key") },
-                        // A blank, uncalibrated WHOOP 4.0 Steps tile opens the same calibration screen as
-                        // Settings. A normal push returns Back to Today (#1515).
-                        onOpenStepsCalibration = { nav.navigate(Destination.StepsCalibration.route) },
-                        onOpenSleep = { nav.navigateTopLevel(Destination.Sleep.route) },
-                        // Optional Coupled view card (task #43): a normal push so back returns to Today.
-                        onOpenCoupled = { nav.navigate(Destination.CoupledView.route) },
-                        // #1862: the Coach launcher hands off here. Without this the sheet's buttons
-                        // would fall back to the parameter's no-op default and silently do nothing.
-                        onOpenCoach = { nav.navigateTopLevel(Destination.Coach.route) },
-                        // The "workout in progress" indicator: raise the one-shot the Live screen consumes to
-                        // re-open the in-exercise overlay, then route to Live. One tap from Today (iOS parity).
-                        onOpenActiveWorkout = {
-                            viewModel.openActiveWorkout()
-                            nav.navigate(Destination.Live.route)
-                        },
-                        // The liquid header's strap battery ring taps through to Devices (iOS parity: the
-                        // battery ring → router.openDevices()).
-                        onOpenDevices = { nav.navigateTopLevel(Destination.Devices.route) },
-                        // #627: the journal-reminder card opens the journal (hosted in Insights), same
-                        // destination the Sleep screen's morning sheet uses.
-                        onOpenJournal = { nav.navigateTopLevel(Destination.Insights.route) },
+                    WxTodayScreen(viewModel) { target ->
+                        when (target) {
+                            is WxTodayTarget.Score -> nav.navigate("score/${target.tab.route}")
+                            is WxTodayTarget.Trend -> nav.navigate("trends_metric/${target.metric.route}")
+                            WxTodayTarget.Alarms -> nav.navigate(Destination.SmartAlarm.route)
+                            WxTodayTarget.Journal -> nav.navigateTopLevel(Destination.Insights.route)
+                            WxTodayTarget.Workouts -> nav.navigate(Destination.Workouts.route)
+                            WxTodayTarget.Stress -> nav.navigate(Destination.Stress.route)
+                            WxTodayTarget.DataSources -> nav.navigate(Destination.DataSources.route)
+                            WxTodayTarget.Settings -> nav.navigate(Destination.Settings.route)
+                        }
+                    }
+                }
+                composable(Destination.Score.route) { entry ->
+                    WxScoreScreen(
+                        vm = viewModel,
+                        initial = WxScoreTab.fromRoute(entry.arguments?.getString("tab")),
+                        onBack = { nav.popBackStack() },
+                        onOpenWorkouts = { nav.navigate(Destination.Workouts.route) },
+                        onOpenProfile = { nav.navigate(Destination.Settings.route) },
                     )
+                }
+                composable(Destination.TrendsMetric.route) { entry ->
+                    WxTrendsScreen(viewModel, WxTrendMetric.fromRoute(entry.arguments?.getString("metric")))
+                }
+                composable(Destination.FitnessAge.route) {
+                    WxFitnessAgeScreen(viewModel, onOpenSettings = { nav.navigate(Destination.Settings.route) })
                 }
                 composable(Destination.Live.route) {
                     LiveScreen(
@@ -724,7 +704,7 @@ fun AppRoot(viewModel: AppViewModel = viewModel()) {
                         onBreathe = { nav.navigateTopLevel(Destination.Breathe.route) },
                     )
                 }
-                composable(Destination.Trends.route) { TrendsScreen(viewModel) }
+                composable(Destination.Trends.route) { WxTrendsScreen(viewModel) }
                 composable(Destination.Insights.route) { InsightsScreen(viewModel, onOpenInsightsHub = { nav.navigateTopLevel(Destination.InsightsHub.route) }) }
                 composable(Destination.Compare.route) { CompareScreen(viewModel) }
                 composable(Destination.Health.route) {
@@ -801,7 +781,7 @@ fun AppRoot(viewModel: AppViewModel = viewModel()) {
                 // full grouped destination list (was a pull-up sheet). A row pushes its destination so
                 // Android Back returns to More instead of skipping straight to Today.
                 composable(Destination.More.route) {
-                    MoreScreen(onNavigate = { nav.navigate(it) })
+                    WxMoreScreen(viewModel, onNavigate = { nav.navigate(it) })
                 }
             }
         }
@@ -1117,12 +1097,13 @@ internal val barLeadingTabs = listOf(
  * conditional, so this list is the full set rather than the visible one.
  */
 internal val barTrailingTabs = listOf(
-    BarTab(Destination.Sleep, Icons.Filled.Bedtime, R.string.nav_sleep),
     // #2218: Coach was promoted to a top-level tab on iOS and this side did not follow, so it sat in
     // the More list while the comment above claimed the two bars matched. AutoAwesome is the sparkles
     // glyph iOS uses, and the same one the More row already shows, so the entry a wearer has learned
     // keeps its face when it moves up.
     BarTab(Destination.Coach, Icons.Filled.AutoAwesome, R.string.nav_coach),
+    // The journal (hosted in Insights) is a tab of its own in the fork.
+    BarTab(Destination.Insights, Icons.AutoMirrored.Filled.MenuBook, R.string.today_section_journal),
 )
 
 /**
