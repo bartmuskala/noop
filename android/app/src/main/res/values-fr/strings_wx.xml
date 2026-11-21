@@ -111,6 +111,7 @@
     <string name="wx_rhr_long">Fréquence cardiaque au repos</string>
     <string name="wx_right_now">maintenant</string>
     <string name="wx_set_alarm">Régler l’alarme</string>
+    <string name="wx_showing_earlier_night">Nuit dernière pas encore calculée · nuit jusqu\'au %1$s affichée</string>
     <string name="wx_skin_temp">Temp. peau</string>
     <string name="wx_sleep">Sommeil</string>
     <string name="wx_sleep_efficiency">%1$d%% d’efficacité</string>

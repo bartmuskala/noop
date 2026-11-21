@@ -266,6 +266,15 @@ internal fun WxTodayScreen(vm: AppViewModel, onOpen: (WxTodayTarget) -> Unit) {
             )
         }
 
+        // When the night shown is an earlier one (tonight's not scored yet), say so plainly.
+        if (night != null && row?.recovery == null && night.day != selectedKey) {
+            Text(
+                uiString(R.string.wx_showing_earlier_night, wxShortDate(LocalDate.parse(night.day))),
+                style = WxType.caption, color = Wx.recoveryMid,
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 4.dp),
+            )
+        }
         Column(
             Modifier.fillMaxWidth().padding(horizontal = Wx.gutter, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(Wx.gap),
