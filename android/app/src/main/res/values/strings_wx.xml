@@ -11,6 +11,7 @@
     <string name="wx_avg_value">avg %1$s</string>
     <string name="wx_awake">Awake</string>
     <string name="wx_back">Back</string>
+    <string name="wx_bars">Bars</string>
     <string name="wx_bars_a11y">%1$s per period as bars</string>
     <string name="wx_best_day">Best: %1$s</string>
     <string name="wx_breathe_body">Guided slow breathing to bring it down</string>
@@ -25,6 +26,7 @@
     <string name="wx_compared_to_previous">Compared to previous %1$s</string>
     <string name="wx_connect">Connect</string>
     <string name="wx_daily_level">Daily level</string>
+    <string name="wx_day">Day</string>
     <string name="wx_days_logged">%1$d of 7 days logged</string>
     <string name="wx_deep_plus_rem">deep + REM</string>
     <string name="wx_deep_sleep">Deep</string>
@@ -54,6 +56,7 @@
     <string name="wx_last_night">last night</string>
     <string name="wx_light">Light</string>
     <string name="wx_light_sleep">Light</string>
+    <string name="wx_line">Line</string>
     <string name="wx_live">Live</string>
     <string name="wx_log_today">Log today · 30 sec</string>
     <string name="wx_low">Low</string>
@@ -64,6 +67,7 @@
     <string name="wx_max_hr_value">Max HR %1$d bpm</string>
     <string name="wx_medium">Medium</string>
     <string name="wx_moderate">Moderate</string>
+    <string name="wx_month">Month</string>
     <string name="wx_n_day_avg">%1$d-day avg</string>
     <string name="wx_needed">Needed</string>
     <string name="wx_next_day">Next day</string>
@@ -75,6 +79,7 @@
     <string name="wx_off">Off</string>
     <string name="wx_ok">ok</string>
     <string name="wx_on_device_note">All data stays on this phone. No account, no cloud.</string>
+    <string name="wx_over_time">Over time</string>
     <string name="wx_period_3_months">3 months</string>
     <string name="wx_period_6_months">6 months</string>
     <string name="wx_period_month">month</string>
@@ -125,6 +130,7 @@
     <string name="wx_tonights_sleep">Tonight\'s sleep</string>
     <string name="wx_vs_baseline">vs baseline</string>
     <string name="wx_vs_previous">vs previous</string>
+    <string name="wx_week">Week</string>
     <string name="wx_weekday_a11y">%1$s average per weekday</string>
     <string name="wx_what_drove_it">What drove it · vs 30-day avg</string>
     <string name="wx_workouts">Workouts</string>

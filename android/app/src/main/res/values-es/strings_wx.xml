@@ -11,6 +11,7 @@
     <string name="wx_avg_value">media %1$s</string>
     <string name="wx_awake">Despierto</string>
     <string name="wx_back">Atrás</string>
+    <string name="wx_bars">Barras</string>
     <string name="wx_bars_a11y">%1$s por periodo en barras</string>
     <string name="wx_best_day">Mejor: %1$s</string>
     <string name="wx_breathe_body">Respiración lenta guiada para bajarlo</string>
@@ -25,6 +26,7 @@
     <string name="wx_compared_to_previous">Comparado con el periodo anterior (%1$s)</string>
     <string name="wx_connect">Conectar</string>
     <string name="wx_daily_level">Nivel diario</string>
+    <string name="wx_day">Día</string>
     <string name="wx_days_logged">%1$d de 7 días registrados</string>
     <string name="wx_deep_plus_rem">profundo + REM</string>
     <string name="wx_deep_sleep">Profundo</string>
@@ -54,6 +56,7 @@
     <string name="wx_last_night">anoche</string>
     <string name="wx_light">Ligero</string>
     <string name="wx_light_sleep">Ligero</string>
+    <string name="wx_line">Línea</string>
     <string name="wx_live">En vivo</string>
     <string name="wx_log_today">Registrar hoy · 30 s</string>
     <string name="wx_low">Bajo</string>
@@ -64,6 +67,7 @@
     <string name="wx_max_hr_value">FC máx. %1$d lpm</string>
     <string name="wx_medium">Medio</string>
     <string name="wx_moderate">Moderado</string>
+    <string name="wx_month">Mes</string>
     <string name="wx_n_day_avg">media %1$d días</string>
     <string name="wx_needed">Necesario</string>
     <string name="wx_next_day">Día siguiente</string>
@@ -75,6 +79,7 @@
     <string name="wx_off">Apagada</string>
     <string name="wx_ok">ok</string>
     <string name="wx_on_device_note">Todos los datos se quedan en este teléfono. Sin cuenta, sin nube.</string>
+    <string name="wx_over_time">A lo largo del tiempo</string>
     <string name="wx_period_3_months">3 meses</string>
     <string name="wx_period_6_months">6 meses</string>
     <string name="wx_period_month">mes</string>
@@ -125,6 +130,7 @@
     <string name="wx_tonights_sleep">Sueño de esta noche</string>
     <string name="wx_vs_baseline">vs. referencia</string>
     <string name="wx_vs_previous">vs. anterior</string>
+    <string name="wx_week">Semana</string>
     <string name="wx_weekday_a11y">Media de %1$s por día de la semana</string>
     <string name="wx_what_drove_it">Qué influyó · vs. media 30 días</string>
     <string name="wx_workouts">Entrenos</string>

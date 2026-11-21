@@ -205,7 +205,7 @@ internal enum class Destination(
 
     // Wx redesign: the three-tab score detail a Today dial opens, Trends opened on one metric, and the
     // Fitness Age page. Contextual pushes, so none of them sits in a More group.
-    Score("score/{tab}", R.string.wx_recovery, Icons.Filled.MonitorHeart),
+    Score("score/{tab}/{off}", R.string.wx_recovery, Icons.Filled.MonitorHeart),
     TrendsMetric("trends_metric/{metric}", R.string.nav_trends, Icons.AutoMirrored.Filled.TrendingUp),
     FitnessAge("fitness_age", R.string.today_card_fitness_age, Icons.Filled.Cake),
 
@@ -626,7 +626,7 @@ fun AppRoot(viewModel: AppViewModel = viewModel()) {
                 composable(Destination.Today.route) {
                     WxTodayScreen(viewModel) { target ->
                         when (target) {
-                            is WxTodayTarget.Score -> nav.navigate("score/${target.tab.route}")
+                            is WxTodayTarget.Score -> nav.navigate("score/${target.tab.route}/${target.dayOffset}")
                             is WxTodayTarget.Trend -> nav.navigate("trends_metric/${target.metric.route}")
                             WxTodayTarget.Alarms -> nav.navigate(Destination.SmartAlarm.route)
                             WxTodayTarget.Journal -> nav.navigateTopLevel(Destination.Insights.route)
@@ -643,6 +643,7 @@ fun AppRoot(viewModel: AppViewModel = viewModel()) {
                     WxScoreScreen(
                         vm = viewModel,
                         initial = WxScoreTab.fromRoute(entry.arguments?.getString("tab")),
+                        initialOffset = entry.arguments?.getString("off")?.toLongOrNull() ?: 0L,
                         onBack = { nav.popBackStack() },
                         onOpenWorkouts = { nav.navigate(Destination.Workouts.route) },
                         onOpenProfile = { nav.navigate(Destination.Settings.route) },

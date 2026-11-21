@@ -66,6 +66,11 @@ internal fun WxTrendsScreen(vm: AppViewModel, initial: WxTrendMetric = WxTrendMe
     val scale = remember { UnitPrefs.effortScale(context) }
     var metric by remember { mutableStateOf(initial) }
     var periodIx by remember { mutableStateOf(1) }
+    // 0 = per day, 1 = per week, 2 = per month. Follows the period until the user picks one.
+    var grain by remember { mutableStateOf(0) }
+    androidx.compose.runtime.LaunchedEffect(periodIx) { grain = when (periodIx) { 0, 1 -> 0; 2 -> 1; else -> 2 } }
+    // 0 = line, 1 = bars; remembered across visits.
+    var chartType by remember { mutableStateOf(WxTrendPrefs.readChart(context)) }
     val period = WX_PERIODS[periodIx]
 
     val today = LocalDate.now()
@@ -152,21 +157,21 @@ internal fun WxTrendsScreen(vm: AppViewModel, initial: WxTrendMetric = WxTrendMe
                 }
             }
 
-            // By week (or month for long periods, or by day for one week).
-            val buckets: List<Pair<String, Double?>> = when {
-                period <= 7 -> (0 until 7).map { i ->
-                    val d = start.plusDays(i.toLong())
-                    wxWeekdayShort(d) to byDay[d.toString()]?.let { valueOf(metric, it) }
-                }
-                period <= 90 -> {
+            // Over time: per day, week or month (chosen independently of the period), as a line or bars.
+            val dayFmt = DateTimeFormatter.ofPattern("d MMM", Locale.getDefault())
+            val buckets: List<Pair<String, Double?>> = when (grain) {
+                0 -> generateSequence(start) { it.plusDays(1) }.takeWhile { !it.isAfter(today) }.map { d ->
+                    (if (period <= 7) wxWeekdayShort(d) else d.format(dayFmt)) to byDay[d.toString()]?.let { valueOf(metric, it) }
+                }.toList()
+                1 -> {
                     val weekStart = start.with(DayOfWeek.MONDAY)
                     val weeks = (ChronoUnit.WEEKS.between(weekStart, today) + 1).toInt()
                     (0 until weeks).map { w ->
                         val ws = weekStart.plusWeeks(w.toLong())
-                        ws.format(DateTimeFormatter.ofPattern("d MMM", Locale.getDefault())) to
+                        ws.format(dayFmt) to
                             current.filter { !it.first.isBefore(ws) && it.first.isBefore(ws.plusWeeks(1)) }
                                 .map { it.second }.takeIf { it.isNotEmpty() }?.average()
-                    }.takeLast(13)
+                    }
                 }
                 else -> {
                     val ms = start.withDayOfMonth(1)
@@ -179,20 +184,41 @@ internal fun WxTrendsScreen(vm: AppViewModel, initial: WxTrendMetric = WxTrendMe
                     }
                 }
             }
-            val maxV = wxMetricMax(metric, scale, (buckets.mapNotNull { it.second } + listOfNotNull(avg)).maxOrNull())
+            val observed = buckets.mapNotNull { it.second } + listOfNotNull(avg)
+            val maxV = wxMetricMax(metric, scale, observed.maxOrNull())
+            val minV = when (metric) {
+                WxTrendMetric.Recovery, WxTrendMetric.Effort -> 0.0
+                else -> observed.minOrNull()?.let { lo -> lo - (maxV - lo) * 0.15 } ?: 0.0
+            }
             WxCard {
-                WxLabel(uiString(when {
-                    period <= 7 -> R.string.wx_by_day
-                    period <= 90 -> R.string.wx_by_week
-                    else -> R.string.wx_by_month
-                }))
-                Spacer(Modifier.height(12.dp))
-                WxBars(
-                    values = buckets.map { it.second }, labels = buckets.map { it.first },
-                    colorFor = { wxMetricColor(metric, it) }, format = { wxMetricFormat(metric, it, scale) },
-                    max = maxV, averageLine = avg,
-                    description = uiString(R.string.wx_bars_a11y, wxMetricName(metric)), height = 160.dp,
-                )
+                WxLabel(uiString(R.string.wx_over_time))
+                Spacer(Modifier.height(10.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Box(Modifier.weight(3f)) {
+                        WxSegmented(listOf(uiString(R.string.wx_day), uiString(R.string.wx_week), uiString(R.string.wx_month)), grain, { grain = it })
+                    }
+                    Box(Modifier.weight(2f)) {
+                        WxSegmented(listOf(uiString(R.string.wx_line), uiString(R.string.wx_bars)), chartType, {
+                            chartType = it; WxTrendPrefs.writeChart(context, it)
+                        })
+                    }
+                }
+                Spacer(Modifier.height(14.dp))
+                if (chartType == 0) {
+                    WxLineChart(
+                        values = buckets.map { it.second }, labels = buckets.map { it.first },
+                        colorFor = { wxMetricColor(metric, it) }, format = { wxMetricFormat(metric, it, scale) },
+                        min = minV, max = maxV, averageLine = avg,
+                        description = uiString(R.string.wx_bars_a11y, wxMetricName(metric)), height = 180.dp,
+                    )
+                } else {
+                    WxBars(
+                        values = buckets.map { it.second }, labels = buckets.map { it.first },
+                        colorFor = { wxMetricColor(metric, it) }, format = { wxMetricFormat(metric, it, scale) },
+                        max = maxV, averageLine = avg,
+                        description = uiString(R.string.wx_bars_a11y, wxMetricName(metric)), height = 180.dp,
+                    )
+                }
             }
 
             // By weekday.
@@ -315,3 +341,11 @@ private fun wxPeriodName(days: Int): String = uiString(when (days) {
     180 -> R.string.wx_period_6_months
     else -> R.string.wx_period_year
 })
+
+
+/** The Trends chart style, kept per install. */
+internal object WxTrendPrefs {
+    private const val KEY = "wx.trends.chart"
+    fun readChart(ctx: android.content.Context): Int = NoopPrefs.of(ctx).getInt(KEY, 0).coerceIn(0, 1)
+    fun writeChart(ctx: android.content.Context, v: Int) { NoopPrefs.of(ctx).edit().putInt(KEY, v).apply() }
+}

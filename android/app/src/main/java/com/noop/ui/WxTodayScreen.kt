@@ -81,7 +81,7 @@ import kotlin.math.roundToInt
 
 /** Where a Wx Today tap goes; the shell maps each to a route. */
 internal sealed interface WxTodayTarget {
-    data class Score(val tab: WxScoreTab) : WxTodayTarget
+    data class Score(val tab: WxScoreTab, val dayOffset: Long = 0L) : WxTodayTarget
     data class Trend(val metric: WxTrendMetric) : WxTodayTarget
     data object Alarms : WxTodayTarget
     data object Journal : WxTodayTarget
@@ -231,7 +231,7 @@ internal fun WxTodayScreen(vm: AppViewModel, onOpen: (WxTodayTarget) -> Unit) {
                 value = recovery?.let { "${it.roundToInt()}" } ?: "–",
                 unit = if (recovery != null) "%" else null,
                 modifier = Modifier.weight(1f),
-                onClick = { onOpen(WxTodayTarget.Score(WxScoreTab.Recovery)) },
+                onClick = { onOpen(WxTodayTarget.Score(WxScoreTab.Recovery, dayOffset)) },
             )
             WxDial(
                 label = uiString(R.string.wx_effort),
@@ -240,7 +240,7 @@ internal fun WxTodayScreen(vm: AppViewModel, onOpen: (WxTodayTarget) -> Unit) {
                 value = effortStored?.let { UnitFormatter.effortDisplay(it, effortScale) } ?: "–",
                 unit = null,
                 modifier = Modifier.weight(1f),
-                onClick = { onOpen(WxTodayTarget.Score(WxScoreTab.Effort)) },
+                onClick = { onOpen(WxTodayTarget.Score(WxScoreTab.Effort, dayOffset)) },
             )
             WxDial(
                 label = uiString(R.string.wx_sleep),
@@ -249,7 +249,7 @@ internal fun WxTodayScreen(vm: AppViewModel, onOpen: (WxTodayTarget) -> Unit) {
                 value = sleepPerf?.let { "${it.roundToInt()}" } ?: "–",
                 unit = if (sleepPerf != null) "%" else null,
                 modifier = Modifier.weight(1f),
-                onClick = { onOpen(WxTodayTarget.Score(WxScoreTab.Sleep)) },
+                onClick = { onOpen(WxTodayTarget.Score(WxScoreTab.Sleep, dayOffset)) },
             )
         }
 
@@ -283,14 +283,15 @@ internal fun WxTodayScreen(vm: AppViewModel, onOpen: (WxTodayTarget) -> Unit) {
                 WxCardHeader(uiString(R.string.wx_effort_and_recovery), uiString(R.string.wx_last_7_days))
                 Spacer(Modifier.height(10.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                    WxLegend(Wx.recoveryHigh, uiString(R.string.wx_recovery), recovery?.let { "${it.roundToInt()}%" } ?: "–")
+                    WxLegend(Wx.recoveryColor(recovery), uiString(R.string.wx_recovery), recovery?.let { "${it.roundToInt()}%" } ?: "–")
                     WxLegend(Wx.effort, uiString(R.string.wx_effort),
                         effortStored?.let { UnitFormatter.effortDisplay(it, effortScale) } ?: "–")
                 }
                 Spacer(Modifier.height(12.dp))
                 WxTwoLineChart(
-                    a = WxSeries(recSeries, Wx.recoveryHigh, 0.0, 100.0) { "${it.roundToInt()}" },
-                    b = WxSeries(effSeries, Wx.effort, 0.0, effMax) { String.format(Locale.US, "%.1f", it) },
+                    a = WxSeries(recSeries, Wx.recoveryHigh, 0.0, 100.0, format = { "${it.roundToInt()}" },
+                        pointColor = { Wx.recoveryColor(it) }),
+                    b = WxSeries(effSeries, Wx.effort, 0.0, effMax, format = { String.format(Locale.US, "%.1f", it) }),
                     dayLabels = week.map { wxWeekdayShort(it) },
                     description = uiString(R.string.wx_effort_and_recovery_a11y),
                 )
@@ -308,7 +309,7 @@ internal fun WxTodayScreen(vm: AppViewModel, onOpen: (WxTodayTarget) -> Unit) {
                         title = uiString(R.string.wx_sleep),
                         subtitle = uiString(R.string.wx_sleep_efficiency, row.efficiency?.roundToInt() ?: 0),
                         trailing = wxHoursMinutes(mins),
-                        onClick = { onOpen(WxTodayTarget.Score(WxScoreTab.Sleep)) },
+                        onClick = { onOpen(WxTodayTarget.Score(WxScoreTab.Sleep, dayOffset)) },
                     )
                 }
                 dayWorkouts.forEach { w ->

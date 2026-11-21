@@ -204,7 +204,7 @@ internal fun WxActivityRow(
 
 /** One plotted line: values may be null (a missing day breaks the line). */
 internal data class WxSeries(val values: List<Double?>, val color: Color, val min: Double, val max: Double,
-                            val format: (Double) -> String)
+                            val format: (Double) -> String, val pointColor: ((Double) -> Color)? = null)
 
 /**
  * Two lines over the same days in a squared, gridded box, each point labelled with its value. The
@@ -246,29 +246,42 @@ internal fun WxTwoLineChart(
         }
         for (i in 1 until n) drawLine(Wx.line.copy(alpha = 0.5f), Offset(step * i, 0f), Offset(step * i, plotH), 1f)
         listOf(a, b).forEach { s ->
-            val path = Path()
-            var started = false
-            s.values.forEachIndexed { i, v ->
-                if (v == null) { started = false; return@forEachIndexed }
-                if (!started) path.moveTo(x(i), y(v, s)) else path.lineTo(x(i), y(v, s))
-                started = true
+            val pc = s.pointColor
+            if (pc == null) {
+                val path = Path()
+                var started = false
+                s.values.forEachIndexed { i, v ->
+                    if (v == null) { started = false; return@forEachIndexed }
+                    if (!started) path.moveTo(x(i), y(v, s)) else path.lineTo(x(i), y(v, s))
+                    started = true
+                }
+                drawPath(path, s.color, style = Stroke(2.5.dp.toPx(), cap = StrokeCap.Round))
+            } else {
+                // Each segment fades from the colour of its start point to the colour of its end point.
+                for (i in 1 until s.values.size) {
+                    val v0 = s.values[i - 1] ?: continue
+                    val v1 = s.values[i] ?: continue
+                    val p0 = Offset(x(i - 1), y(v0, s)); val p1 = Offset(x(i), y(v1, s))
+                    drawLine(androidx.compose.ui.graphics.Brush.linearGradient(listOf(pc(v0), pc(v1)), p0, p1), p0, p1,
+                        2.5.dp.toPx(), StrokeCap.Round)
+                }
             }
-            drawPath(path, s.color, style = Stroke(2.5.dp.toPx(), cap = StrokeCap.Round))
         }
         val last = n - 1
         listOf(a to b, b to a).forEach { (s, other) ->
             s.values.forEachIndexed { i, v ->
                 if (v == null) return@forEachIndexed
                 val px = x(i); val py = y(v, s)
+                val c = s.pointColor?.invoke(v) ?: s.color
                 if (i == last) {
                     drawCircle(Wx.inset, 5.dp.toPx(), Offset(px, py))
-                    drawCircle(s.color, 5.dp.toPx(), Offset(px, py), style = Stroke(2.5.dp.toPx()))
+                    drawCircle(c, 5.dp.toPx(), Offset(px, py), style = Stroke(2.5.dp.toPx()))
                 } else {
-                    drawCircle(s.color, 3.5.dp.toPx(), Offset(px, py))
+                    drawCircle(c, 3.5.dp.toPx(), Offset(px, py))
                 }
                 val ov = other.values.getOrNull(i)
                 val above = ov == null || py <= y(ov, other)
-                val layout = measurer.measure(s.format(v), valueStyle.copy(color = s.color))
+                val layout = measurer.measure(s.format(v), valueStyle.copy(color = c))
                 val ty = if (above) py - 8.dp.toPx() - layout.size.height else py + 8.dp.toPx()
                 drawText(layout, topLeft = Offset(px - layout.size.width / 2f, ty))
             }
@@ -393,17 +406,96 @@ internal fun WxBars(
             drawLine(Wx.textMuted, Offset(0f, ay), Offset(size.width, ay), 1f,
                 pathEffect = PathEffect.dashPathEffect(floatArrayOf(6f, 8f)))
         }
+        val showValues = n <= 14
+        val labelEvery = wxLabelStride(n)
         values.forEachIndexed { i, v ->
             val cx = slot * i + slot / 2
             if (v != null && max > 0) {
                 val h = (v / max * plotH).toFloat().coerceAtLeast(2f)
                 drawRoundRect(colorFor(v), Offset(cx - barW / 2, topPad + plotH - h), Size(barW, h),
-                    androidx.compose.ui.geometry.CornerRadius(6.dp.toPx()))
-                val t = measurer.measure(format(v), TextStyle(fontSize = 14.sp, color = Wx.text, fontFeatureSettings = "tnum"))
-                drawText(t, topLeft = Offset(cx - t.size.width / 2f, topPad + plotH - h - t.size.height - 2.dp.toPx()))
+                    androidx.compose.ui.geometry.CornerRadius(if (n > 30) 1.dp.toPx() else 6.dp.toPx()))
+                if (showValues) {
+                    val t = measurer.measure(format(v), TextStyle(fontSize = 14.sp, color = Wx.text, fontFeatureSettings = "tnum"))
+                    drawText(t, topLeft = Offset(cx - t.size.width / 2f, topPad + plotH - h - t.size.height - 2.dp.toPx()))
+                }
             }
-            val l = measurer.measure(labels.getOrElse(i) { "" }, TextStyle(fontSize = 11.sp, color = Wx.textMuted))
-            drawText(l, topLeft = Offset(cx - l.size.width / 2f, size.height - l.size.height))
+            if (i % labelEvery == 0) {
+                val l = measurer.measure(labels.getOrElse(i) { "" }, TextStyle(fontSize = 11.sp, color = Wx.textMuted))
+                drawText(l, topLeft = Offset((cx - l.size.width / 2f).coerceIn(0f, size.width - l.size.width), size.height - l.size.height))
+            }
+        }
+    }
+}
+
+
+/** Keep roughly seven axis labels whatever the number of points. */
+internal fun wxLabelStride(n: Int): Int = if (n <= 8) 1 else (n + 6) / 7
+
+/**
+ * One metric as a line: each segment fades between its two points' colours, a dot per point (dropped
+ * above 45 points), the average as a dashed line, values printed only when there are few points, and
+ * about seven axis labels. A missing day breaks the line.
+ */
+@Composable
+internal fun WxLineChart(
+    values: List<Double?>,
+    labels: List<String>,
+    colorFor: (Double) -> Color,
+    format: (Double) -> String,
+    min: Double,
+    max: Double,
+    description: String,
+    modifier: Modifier = Modifier,
+    height: Dp = 170.dp,
+    averageLine: Double? = null,
+) {
+    val measurer = rememberTextMeasurer()
+    Canvas(modifier.fillMaxWidth().height(height).semantics { contentDescription = description }) {
+        val n = values.size.coerceAtLeast(1)
+        val labelH = 18.dp.toPx()
+        val padY = 18.dp.toPx()
+        val plotH = size.height - labelH
+        val step = if (n > 1) size.width / (n - 1) else size.width
+        val inset = 6.dp.toPx()
+        fun x(i: Int) = if (n > 1) inset + (size.width - inset * 2) * i / (n - 1) else size.width / 2
+        fun y(v: Double): Float {
+            val t = if (max > min) ((v - min) / (max - min)).coerceIn(0.0, 1.0) else 0.5
+            return (plotH - padY / 2 - t * (plotH - padY * 1.5)).toFloat()
+        }
+        for (k in 0..2) {
+            val gy = padY + (plotH - padY * 1.5f) * k / 2f
+            drawLine(Wx.line, Offset(0f, gy), Offset(size.width, gy), 1f)
+        }
+        if (averageLine != null) {
+            val ay = y(averageLine)
+            drawLine(Wx.textMuted, Offset(0f, ay), Offset(size.width, ay), 1f,
+                pathEffect = PathEffect.dashPathEffect(floatArrayOf(6f, 8f)))
+        }
+        for (i in 1 until values.size) {
+            val v0 = values[i - 1] ?: continue
+            val v1 = values[i] ?: continue
+            val p0 = Offset(x(i - 1), y(v0)); val p1 = Offset(x(i), y(v1))
+            drawLine(androidx.compose.ui.graphics.Brush.linearGradient(listOf(colorFor(v0), colorFor(v1)), p0, p1), p0, p1,
+                2.5.dp.toPx(), StrokeCap.Round)
+        }
+        val showDots = n <= 45
+        val showValues = n <= 10
+        values.forEachIndexed { i, v ->
+            if (v == null) return@forEachIndexed
+            val p = Offset(x(i), y(v))
+            // A lone point between gaps still needs a dot to be visible.
+            val lonely = (values.getOrNull(i - 1) == null) && (values.getOrNull(i + 1) == null)
+            if (showDots || lonely) drawCircle(colorFor(v), (if (n > 20) 2.5 else 3.5).dp.toPx(), p)
+            if (showValues) {
+                val t = measurer.measure(format(v), TextStyle(fontSize = 12.sp, color = colorFor(v), fontFeatureSettings = "tnum"))
+                drawText(t, topLeft = Offset((p.x - t.size.width / 2f).coerceIn(0f, size.width - t.size.width), p.y - t.size.height - 4.dp.toPx()))
+            }
+        }
+        val every = wxLabelStride(n)
+        labels.forEachIndexed { i, l ->
+            if (i % every != 0) return@forEachIndexed
+            val t = measurer.measure(l, TextStyle(fontSize = 11.sp, color = Wx.textMuted))
+            drawText(t, topLeft = Offset((x(i) - t.size.width / 2f).coerceIn(0f, size.width - t.size.width), size.height - t.size.height))
         }
     }
 }

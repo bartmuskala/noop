@@ -20,6 +20,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -66,7 +67,7 @@ internal enum class WxScoreTab(val route: String) {
 }
 
 @Composable
-internal fun WxScoreScreen(vm: AppViewModel, initial: WxScoreTab, onBack: () -> Unit, onOpenWorkouts: () -> Unit,
+internal fun WxScoreScreen(vm: AppViewModel, initial: WxScoreTab, initialOffset: Long = 0L, onBack: () -> Unit, onOpenWorkouts: () -> Unit,
                            onOpenProfile: () -> Unit) {
     val context = LocalContext.current
     val days by vm.recentDays.collectAsStateWithLifecycle()
@@ -74,19 +75,26 @@ internal fun WxScoreScreen(vm: AppViewModel, initial: WxScoreTab, onBack: () -> 
     val effortScale = remember { UnitPrefs.effortScale(context) }
     val profile = remember { ProfileStore.from(context) }
     var tab by remember { mutableStateOf(initial) }
+    // The day shown: 0 = today, 1 = yesterday, ... Starts on the day Today had selected.
+    var dayOffset by remember { mutableStateOf(initialOffset.coerceAtLeast(0L)) }
+    val date = LocalDate.now().minusDays(dayOffset)
     LaunchedEffect(Unit) { vm.loadWorkouts() }
-    // Last night's stage timeline: the longest session that ended in the last 36 hours.
+    // The night that belongs to the shown day: the longest session ending between noon the day before
+    // and 14:00 on the day itself.
     var stages by remember { mutableStateOf<List<com.noop.analytics.StageSegment>>(emptyList()) }
-    LaunchedEffect(Unit) {
-        val now = System.currentTimeMillis() / 1000L
-        val sessions = runCatching { vm.repo.sleepSessionsUnion(vm.activeStrapId, now - 36 * 3600L, now) }.getOrDefault(emptyList())
-        val night = sessions.filter { it.endTs > now - 36 * 3600L }.maxByOrNull { it.endTs - it.startTs }
+    LaunchedEffect(date) {
+        val zone = ZoneId.systemDefault()
+        val to = date.atTime(14, 0).atZone(zone).toEpochSecond()
+        val from = date.minusDays(1).atTime(12, 0).atZone(zone).toEpochSecond()
+        val sessions = runCatching { vm.repo.sleepSessionsUnion(vm.activeStrapId, from - 24 * 3600L, to) }.getOrDefault(emptyList())
+        val night = sessions.filter { it.endTs in from..to }.maxByOrNull { it.endTs - it.startTs }
         stages = com.noop.analytics.AnalyticsEngine.decodeStages(night?.stagesJSON)
     }
 
-    val todayKey = LocalDate.now().toString()
-    val row = days.lastOrNull { it.day == todayKey } ?: days.lastOrNull()
-    val baseline = days.filter { it.day < (row?.day ?: todayKey) }.takeLast(30)
+    val dateKey = date.toString()
+    val row = days.lastOrNull { it.day == dateKey }
+    val upToDate = days.filter { it.day <= dateKey }
+    val baseline = days.filter { it.day < dateKey }.takeLast(30)
 
     Column(
         Modifier
@@ -100,11 +108,20 @@ internal fun WxScoreScreen(vm: AppViewModel, initial: WxScoreTab, onBack: () -> 
             IconButton(onClick = onBack) {
                 Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, uiString(R.string.wx_back), tint = Wx.text)
             }
+            Spacer(Modifier.weight(1f))
+            IconButton(onClick = { dayOffset += 1 }) {
+                Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, uiString(R.string.wx_prev_day), tint = Wx.textMuted)
+            }
             Text(
-                row?.day?.let { wxShortDate(LocalDate.parse(it)) } ?: "",
-                style = WxType.caption, color = Wx.textMuted, textAlign = TextAlign.Center,
-                modifier = Modifier.weight(1f),
+                if (dayOffset == 0L) uiString(R.string.nav_today) else wxShortDate(date),
+                style = WxType.bodyStrong.copy(fontSize = 14.sp), color = Wx.text, textAlign = TextAlign.Center,
+                modifier = Modifier.width(120.dp),
             )
+            IconButton(onClick = { if (dayOffset > 0) dayOffset -= 1 }, enabled = dayOffset > 0) {
+                Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, uiString(R.string.wx_next_day),
+                    tint = if (dayOffset > 0) Wx.textMuted else Wx.lineStrong)
+            }
+            Spacer(Modifier.weight(1f))
             Spacer(Modifier.width(48.dp))
         }
         // Tabs.
@@ -128,9 +145,9 @@ internal fun WxScoreScreen(vm: AppViewModel, initial: WxScoreTab, onBack: () -> 
         }
 
         when (tab) {
-            WxScoreTab.Recovery -> WxRecoveryTab(row, baseline, days)
-            WxScoreTab.Effort -> WxEffortTab(row, workouts, effortScale, profile, onOpenWorkouts, onOpenProfile)
-            WxScoreTab.Sleep -> WxSleepTab(row, days, stages)
+            WxScoreTab.Recovery -> WxRecoveryTab(row, baseline, upToDate)
+            WxScoreTab.Effort -> WxEffortTab(row, date, workouts, effortScale, profile, onOpenWorkouts, onOpenProfile)
+            WxScoreTab.Sleep -> WxSleepTab(row, upToDate, stages)
         }
     }
 }
@@ -286,6 +303,7 @@ private fun WxContributor(
 @Composable
 private fun WxEffortTab(
     row: DailyMetric?,
+    dayDate: LocalDate,
     workouts: List<com.noop.data.WorkoutRow>,
     scale: EffortScale,
     profile: ProfileStore,
@@ -294,7 +312,6 @@ private fun WxEffortTab(
 ) {
     val effort = row?.strain
     val range = optimalStrainRange(row?.recovery)
-    val dayDate = row?.day?.let { LocalDate.parse(it) } ?: LocalDate.now()
     val dayWorkouts = workouts.filter {
         Instant.ofEpochSecond(it.startTs).atZone(ZoneId.systemDefault()).toLocalDate() == dayDate
     }.sortedBy { it.startTs }

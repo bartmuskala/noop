@@ -11,6 +11,7 @@
     <string name="wx_avg_value">Ø %1$s</string>
     <string name="wx_awake">Wach</string>
     <string name="wx_back">Zurück</string>
+    <string name="wx_bars">Balken</string>
     <string name="wx_bars_a11y">%1$s pro Zeitraum als Balken</string>
     <string name="wx_best_day">Bester: %1$s</string>
     <string name="wx_breathe_body">Geführtes langsames Atmen zum Runterkommen</string>
@@ -25,6 +26,7 @@
     <string name="wx_compared_to_previous">Verglichen mit vorheriger Periode (%1$s)</string>
     <string name="wx_connect">Verbinden</string>
     <string name="wx_daily_level">Tageswert</string>
+    <string name="wx_day">Tag</string>
     <string name="wx_days_logged">%1$d von 7 Tagen erfasst</string>
     <string name="wx_deep_plus_rem">Tief + REM</string>
     <string name="wx_deep_sleep">Tief</string>
@@ -54,6 +56,7 @@
     <string name="wx_last_night">letzte Nacht</string>
     <string name="wx_light">Leicht</string>
     <string name="wx_light_sleep">Leicht</string>
+    <string name="wx_line">Linie</string>
     <string name="wx_live">Live</string>
     <string name="wx_log_today">Heute eintragen · 30 s</string>
     <string name="wx_low">Niedrig</string>
@@ -64,6 +67,7 @@
     <string name="wx_max_hr_value">Max. HF %1$d bpm</string>
     <string name="wx_medium">Mittel</string>
     <string name="wx_moderate">Moderat</string>
+    <string name="wx_month">Monat</string>
     <string name="wx_n_day_avg">%1$d-Tage-Ø</string>
     <string name="wx_needed">Bedarf</string>
     <string name="wx_next_day">Nächster Tag</string>
@@ -75,6 +79,7 @@
     <string name="wx_off">Aus</string>
     <string name="wx_ok">ok</string>
     <string name="wx_on_device_note">Alle Daten bleiben auf diesem Telefon. Kein Konto, keine Cloud.</string>
+    <string name="wx_over_time">Im Verlauf</string>
     <string name="wx_period_3_months">3 Monate</string>
     <string name="wx_period_6_months">6 Monate</string>
     <string name="wx_period_month">Monat</string>
@@ -125,6 +130,7 @@
     <string name="wx_tonights_sleep">Schlaf heute Nacht</string>
     <string name="wx_vs_baseline">vs. Basis</string>
     <string name="wx_vs_previous">vs. vorher</string>
+    <string name="wx_week">Woche</string>
     <string name="wx_weekday_a11y">%1$s-Durchschnitt pro Wochentag</string>
     <string name="wx_what_drove_it">Was es bestimmt hat · vs. 30-Tage-Ø</string>
     <string name="wx_workouts">Workouts</string>
