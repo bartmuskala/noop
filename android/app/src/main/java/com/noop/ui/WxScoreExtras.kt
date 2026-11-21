@@ -336,9 +336,7 @@ internal fun WxWeekLine(title: String, values: List<Double?>, labels: List<Strin
         if (present.isEmpty()) {
             Text(uiString(R.string.wx_no_data), style = WxType.caption, color = Wx.textMuted)
         } else {
-            val lo = present.minOrNull()!!; val hi = present.maxOrNull()!!
-            val pad = ((hi - lo) * 0.3).coerceAtLeast(1.0)
-            WxLineChart(values, labels, { color }, format, lo - pad, hi + pad, title, height = 160.dp)
+            WxTrendChart(values, labels, color, format, typical = null, description = title, height = 200.dp)
         }
     }
 }

@@ -45,12 +45,13 @@ internal fun WxPage(
     onBack: (() -> Unit)?,
     subtitle: String? = null,
     action: (@Composable () -> Unit)? = null,
+    background: Color = Wx.canvas,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     Column(
         Modifier
             .fillMaxSize()
-            .background(Wx.canvas)
+            .background(background)
             .verticalScroll(rememberScrollState())
             .statusBarsPadding()
             .padding(bottom = BottomBarStyleStore.barHeightForContent() + 24.dp),

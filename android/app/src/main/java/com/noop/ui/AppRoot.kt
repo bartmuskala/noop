@@ -214,6 +214,7 @@ internal enum class Destination(
     InsightsHubClassic("insights_hub_classic", R.string.nav_insights_hub, Icons.Filled.Insights),
     WorkoutsClassic("workouts_classic", R.string.nav_workouts, Icons.Filled.FitnessCenter),
     SmartAlarmClassic("smart_alarm_classic", R.string.nav_alarms, Icons.Filled.Alarm),
+    FitnessAgeClassic("fitness_age_classic", R.string.today_card_fitness_age, Icons.Filled.Cake),
 
     // The "More" tab: its own navigated page (mirroring the iOS More tab) that hosts the full
     // grouped destination list. It is NOT itself in any [DrawerGroup] — it's the door to them.
@@ -661,7 +662,11 @@ fun AppRoot(viewModel: AppViewModel = viewModel()) {
                     WxTrendsScreen(viewModel, WxTrendMetric.fromRoute(entry.arguments?.getString("metric")))
                 }
                 composable(Destination.FitnessAge.route) {
-                    WxFitnessAgeScreen(viewModel, onOpenSettings = { nav.navigate(Destination.Settings.route) })
+                    WxFitnessAgeScreen(viewModel, onBack = { nav.popBackStack() },
+                        onOpenDetails = { nav.navigate(Destination.FitnessAgeClassic.route) })
+                }
+                composable(Destination.FitnessAgeClassic.route) {
+                    WxFitnessAgeDetailsScreen(viewModel, onOpenSettings = { nav.navigate(Destination.Settings.route) })
                 }
                 composable(Destination.Live.route) {
                     LiveScreen(

@@ -113,9 +113,9 @@ private fun WxMoreRow(icon: ImageVector, title: String, accent: Color, showDivid
     }
 }
 
-/** The Fitness Age page: the existing weekly Fitness Age section, on its own page. */
+/** The full classic Fitness Age section (readiness, inputs, explanation), behind the Wx page. */
 @Composable
-internal fun WxFitnessAgeScreen(vm: AppViewModel, onOpenSettings: () -> Unit) {
+internal fun WxFitnessAgeDetailsScreen(vm: AppViewModel, onOpenSettings: () -> Unit) {
     val context = LocalContext.current
     val days by vm.recentDays.collectAsStateWithLifecycle()
     val profile = remember { ProfileStore.from(context) }

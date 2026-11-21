@@ -42,6 +42,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
@@ -330,6 +331,10 @@ private fun WxRoundButton(label: String, onClick: () -> Unit) {
 }
 
 // MARK: - What moves you
+//
+// One card per behaviour with a centred impact bar: the change runs right in green when the outcome is
+// better on "yes" days, left in orange when it is worse, both scaled to the largest effect shown. The
+// figures are the shared EffectRanker's, so they match the classic analysis screen.
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -344,27 +349,43 @@ internal fun WxMovesScreen(vm: AppViewModel, onBack: () -> Unit, onOpenMore: () 
     val labels = listOf(uiString(R.string.wx_recovery), uiString(R.string.wx_sleep), uiString(R.string.wx_hrv))
     val h = history
     val ranked = remember(h, days, outcome) { if (h == null) emptyList() else wxRankEffects(h, days, outcome) }
-    val readable = ranked.filter { it.readable() }
-    val helps = readable.filter { (it.pctChange ?: 0.0) > 0.0 }.sortedByDescending { it.pctChange }
-    val hurts = readable.filter { (it.pctChange ?: 0.0) < 0.0 }.sortedBy { it.pctChange }
+    val readable = ranked.filter { it.readable() }.sortedByDescending { it.pctChange ?: 0.0 }
     val learning = ranked.filterNot { it.readable() }.sortedByDescending { it.nWith }
     val loggedDays = h?.let { (it.behaviours.values.flatten() + it.controls.values.flatten()).toSet().size } ?: 0
+    val scaleMax = (readable.maxOfOrNull { abs(it.pctChange ?: 0.0) } ?: 0.0).coerceAtLeast(10.0)
 
     WxPage(title = uiString(R.string.wx_what_moves_you), onBack = onBack) {
-        WxSegmented(labels, sel, { sel = it }, selectedColor = outcome.color)
+        Text(uiString(R.string.wx_moves_heading), style = WxType.title.copy(fontSize = 26.sp, lineHeight = 30.sp),
+            color = Wx.text, modifier = Modifier.padding(top = 12.dp, start = 4.dp, end = 4.dp))
         Text(
             uiString(R.string.wx_moves_intro, labels[sel], loggedDays),
-            style = WxType.caption.copy(fontSize = 13.sp, lineHeight = 19.sp), color = Wx.textMuted,
+            style = WxType.body.copy(fontSize = 15.sp, lineHeight = 21.sp), color = Wx.textMuted,
             modifier = Modifier.padding(horizontal = 4.dp),
         )
+        Spacer(Modifier.height(4.dp))
+        WxSegmented(labels, sel, { sel = it }, selectedColor = outcome.color)
+
+        Row(Modifier.fillMaxWidth().padding(top = 16.dp, start = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+            Text(uiString(R.string.wx_your_behaviours).uppercase(), style = WxType.label, color = Wx.textMuted)
+            Spacer(Modifier.width(12.dp))
+            Box(Modifier.weight(1f).height(1.dp).background(Wx.lineStrong))
+        }
+
         when {
             h == null -> Text(uiString(R.string.wx_reading_today), style = WxType.caption, color = Wx.textMuted)
-            readable.isEmpty() -> WxCard {
-                Text(uiString(R.string.wx_keep_logging), style = WxType.body, color = Wx.textSoft)
+            readable.isEmpty() -> WxCard { Text(uiString(R.string.wx_keep_logging), style = WxType.body, color = Wx.textSoft) }
+            else -> WxCard(padding = 12.dp) {
+                Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text("▼ " + uiString(R.string.wx_hurts).uppercase(), style = WxType.label, color = Wx.recoveryMid)
+                    Text(uiString(R.string.wx_pct_impact).uppercase(), style = WxType.label, color = Wx.text,
+                        textAlign = TextAlign.Center, modifier = Modifier.weight(1f))
+                    Text(uiString(R.string.wx_helps).uppercase() + " ▲", style = WxType.label, color = Wx.recoveryHigh)
+                }
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.padding(top = 6.dp)) {
+                    readable.forEach { e -> WxImpactCard(e, journalDisplayName(catalog, e.behavior), scaleMax) }
+                }
             }
         }
-        if (helps.isNotEmpty()) WxEffectCard(uiString(R.string.wx_helps), Wx.recoveryHigh, helps, catalog, alignEnd = false)
-        if (hurts.isNotEmpty()) WxEffectCard(uiString(R.string.wx_hurts), Wx.recoveryLow, hurts, catalog, alignEnd = true)
         if (learning.isNotEmpty()) {
             WxCard {
                 WxLabel(uiString(R.string.wx_still_learning))
@@ -386,39 +407,46 @@ internal fun WxMovesScreen(vm: AppViewModel, onBack: () -> Unit, onOpenMore: () 
 }
 
 @Composable
-private fun WxEffectCard(
-    label: String,
-    color: Color,
-    effects: List<BehaviorEffect>,
-    catalog: List<JournalCatalogItem>,
-    alignEnd: Boolean,
-) {
-    WxCard {
-        WxLabel(label, color = color)
-        effects.forEach { e ->
-            val pct = e.pctChange ?: 0.0
-            Row(Modifier.fillMaxWidth().padding(top = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f)) {
-                    Text(journalDisplayName(catalog, e.behavior), style = WxType.bodyStrong.copy(fontSize = 14.sp), color = Wx.text)
-                    Text(
-                        uiString(R.string.wx_yes_no_counts, e.nWith, e.nWithout) +
-                            if (e.significant) " · " + uiString(R.string.wx_consistent) else "",
-                        style = WxType.caption.copy(fontSize = 11.sp), color = Wx.textDim,
-                    )
+private fun WxImpactCard(e: BehaviorEffect, name: String, scaleMax: Double) {
+    val pct = e.pctChange ?: 0.0
+    val color = if (pct >= 0) Wx.recoveryHigh else Wx.recoveryMid
+    Column(
+        Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(Wx.cardRaised).padding(14.dp),
+    ) {
+        Text(name, style = WxType.bodyStrong.copy(fontSize = 16.sp), color = Wx.text)
+        Text(
+            uiString(R.string.wx_yes_no_counts, e.nWith, e.nWithout) + if (e.significant) " · " + uiString(R.string.wx_consistent) else "",
+            style = WxType.caption.copy(fontSize = 13.sp), color = Wx.textMuted,
+        )
+        Spacer(Modifier.height(12.dp))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            androidx.compose.foundation.Canvas(Modifier.weight(1f).height(14.dp)) {
+                val h = size.height
+                val trackH = 8.dp.toPx()
+                val top = (h - trackH) / 2
+                val r = androidx.compose.ui.geometry.CornerRadius(trackH / 2)
+                // Hatched track.
+                drawRoundRect(Wx.inset, androidx.compose.ui.geometry.Offset(0f, top), androidx.compose.ui.geometry.Size(size.width, trackH), r)
+                clipRect(top = top, bottom = top + trackH) {
+                    var x = -trackH
+                    while (x < size.width) {
+                        drawLine(Wx.lineStrong, androidx.compose.ui.geometry.Offset(x, top + trackH),
+                            androidx.compose.ui.geometry.Offset(x + trackH, top), 1.5f)
+                        x += 6.dp.toPx()
+                    }
                 }
-                Spacer(Modifier.width(10.dp))
-                Box(
-                    Modifier.size(110.dp, 10.dp).clip(RoundedCornerShape(5.dp)).background(Wx.cardRaised),
-                    contentAlignment = if (alignEnd) Alignment.CenterEnd else Alignment.CenterStart,
-                ) {
-                    Box(
-                        Modifier.fillMaxHeight().fillMaxWidth((abs(pct) / 15.0).coerceIn(0.04, 1.0).toFloat())
-                            .clip(RoundedCornerShape(5.dp)).background(if (e.significant) color else color.copy(alpha = 0.55f)),
-                    )
-                }
-                Text(wxSignedPct(pct), style = WxType.numberSmall.copy(fontSize = 18.sp), color = color,
-                    textAlign = TextAlign.End, modifier = Modifier.width(52.dp))
+                val mid = size.width / 2
+                val len = (abs(pct) / scaleMax).coerceIn(0.03, 1.0).toFloat() * mid
+                val x0 = if (pct >= 0) mid else mid - len
+                drawRoundRect(if (e.significant) color else color.copy(alpha = 0.6f),
+                    androidx.compose.ui.geometry.Offset(x0, top), androidx.compose.ui.geometry.Size(len, trackH), r)
+                drawCircle(Wx.canvas, h / 2, androidx.compose.ui.geometry.Offset(mid, h / 2))
+                drawCircle(Wx.text, h / 2 - 2.dp.toPx(), androidx.compose.ui.geometry.Offset(mid, h / 2),
+                    style = androidx.compose.ui.graphics.drawscope.Stroke(2.dp.toPx()))
+                drawCircle(Wx.text, 2.dp.toPx(), androidx.compose.ui.geometry.Offset(mid, h / 2))
             }
+            Text(wxSignedPct(pct), style = WxType.numberSmall.copy(fontSize = 20.sp), color = color,
+                textAlign = TextAlign.End, modifier = Modifier.width(64.dp))
         }
     }
 }

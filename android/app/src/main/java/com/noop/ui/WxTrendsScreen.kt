@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -73,7 +74,9 @@ internal fun WxTrendsScreen(vm: AppViewModel, initial: WxTrendMetric = WxTrendMe
     var chartType by remember { mutableStateOf(WxTrendPrefs.readChart(context)) }
     val period = WX_PERIODS[periodIx]
 
-    val today = LocalDate.now()
+    // Paging back in time, one period per step; 0 = the period ending today.
+    var page by remember(periodIx) { mutableStateOf(0) }
+    val today = LocalDate.now().minusDays(page.toLong() * period)
     val start = today.minusDays(period.toLong() - 1)
     val prevStart = start.minusDays(period.toLong())
     val byDay = days.associateBy { it.day }
@@ -121,22 +124,71 @@ internal fun WxTrendsScreen(vm: AppViewModel, initial: WxTrendMetric = WxTrendMe
         }
 
         Column(Modifier.padding(horizontal = Wx.gutter), verticalArrangement = Arrangement.spacedBy(Wx.gap)) {
-            // Headline.
+            // Headline: the period average, its change against the period before, the dates (with paging)
+            // and one sentence placing the average against the typical range or the previous period.
+            val typical = wxTypicalRange(windowValues(metric, start.minusDays(30), start.minusDays(1)).map { it.second })
             WxCard {
-                WxLabel(uiString(R.string.wx_average_over, wxMetricName(metric), wxPeriodName(period)))
-                Row(verticalAlignment = Alignment.Bottom, modifier = Modifier.padding(top = 4.dp)) {
-                    Text(avg?.let { wxMetricFormat(metric, it, scale) } ?: "–", style = WxType.hero.copy(fontSize = 56.sp), color = Wx.text)
-                    wxMetricUnit(metric)?.let { Text(" $it", style = WxType.numberSmall, color = Wx.textMuted, modifier = Modifier.padding(bottom = 10.dp)) }
-                    Spacer(Modifier.width(10.dp))
-                    if (avg != null && prevAvg != null) {
-                        val d = avg - prevAvg
-                        val good = wxHigherIsBetter(metric)?.let { hb -> if (abs(d) < 1e-6) null else (d > 0) == hb }
-                        Text(
-                            (if (d >= 0) "▲ " else "▼ ") + wxMetricFormat(metric, abs(d), scale) + " " + uiString(R.string.wx_vs_previous),
-                            style = WxType.bodyStrong.copy(fontSize = 14.sp),
-                            color = when (good) { true -> Wx.recoveryHigh; false -> Wx.recoveryMid; null -> Wx.textMuted },
-                            modifier = Modifier.padding(bottom = 12.dp),
-                        )
+                Row(verticalAlignment = Alignment.Top) {
+                    Column(Modifier.weight(1f)) {
+                        WxLabel(uiString(R.string.wx_average))
+                        Row(verticalAlignment = Alignment.Bottom) {
+                            Text(avg?.let { wxMetricFormat(metric, it, scale) } ?: "–", style = WxType.hero.copy(fontSize = 52.sp), color = Wx.text)
+                            wxMetricUnit(metric)?.let { Text(" $it", style = WxType.numberSmall, color = Wx.textSoft, modifier = Modifier.padding(bottom = 8.dp)) }
+                        }
+                        if (avg != null && prevAvg != null && prevAvg != 0.0) {
+                            val pct = (avg - prevAvg) / abs(prevAvg) * 100
+                            val good = wxHigherIsBetter(metric)?.let { hb -> if (abs(pct) < 1) null else (pct > 0) == hb }
+                            val c = when (good) { true -> Wx.recoveryHigh; false -> Wx.recoveryMid; null -> Wx.textSoft }
+                            Text(
+                                (if (abs(pct) < 1) "● " else if (pct > 0) "▲ " else "▼ ") +
+                                    uiString(R.string.wx_pct_vs_prior, "${abs(pct).roundToInt()}%", wxPeriodName(period)),
+                                style = WxType.bodyStrong.copy(fontSize = 13.sp), color = c,
+                                modifier = Modifier.clip(RoundedCornerShape(6.dp)).background(c.copy(alpha = 0.14f))
+                                    .padding(horizontal = 8.dp, vertical = 3.dp),
+                            )
+                        }
+                    }
+                    Column(horizontalAlignment = Alignment.End) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            androidx.compose.material3.IconButton(onClick = { page += 1 }) {
+                                androidx.compose.material3.Icon(androidx.compose.material.icons.Icons.AutoMirrored.Filled.KeyboardArrowLeft,
+                                    uiString(R.string.wx_prev_day), tint = Wx.text)
+                            }
+                            val rf = DateTimeFormatter.ofPattern("d MMM", Locale.getDefault())
+                            Text("${start.format(rf)} – ${today.format(rf)}".uppercase(), style = WxType.label, color = Wx.text)
+                            androidx.compose.material3.IconButton(onClick = { if (page > 0) page -= 1 }, enabled = page > 0) {
+                                androidx.compose.material3.Icon(androidx.compose.material.icons.Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                                    uiString(R.string.wx_next_day), tint = if (page > 0) Wx.text else Wx.lineStrong)
+                            }
+                        }
+                    }
+                }
+                if (avg != null) {
+                    val name = wxMetricName(metric)
+                    val a = wxMetricFormat(metric, avg, scale)
+                    val sentence = when {
+                        period <= 7 && typical != null -> {
+                            val lo = wxMetricFormat(metric, typical.first, scale); val hi = wxMetricFormat(metric, typical.second, scale)
+                            uiString(when {
+                                avg > typical.second -> R.string.wx_trend_above_range
+                                avg < typical.first -> R.string.wx_trend_below_range
+                                else -> R.string.wx_trend_within_range
+                            }, name, a, lo, hi)
+                        }
+                        prevAvg != null -> {
+                            val p = wxMetricFormat(metric, prevAvg, scale)
+                            val pct = if (prevAvg != 0.0) (avg - prevAvg) / abs(prevAvg) * 100 else 0.0
+                            uiString(when {
+                                abs(pct) < 1 -> R.string.wx_trend_same_prev
+                                avg > prevAvg -> R.string.wx_trend_above_prev
+                                else -> R.string.wx_trend_below_prev
+                            }, name, a, wxPeriodName(period), p)
+                        }
+                        else -> null
+                    }
+                    if (sentence != null) {
+                        Text(sentence, style = WxType.body.copy(fontSize = 16.sp, lineHeight = 23.sp), color = Wx.text,
+                            modifier = Modifier.padding(top = 14.dp))
                     }
                 }
                 if (metric == WxTrendMetric.Recovery && current.isNotEmpty()) {
@@ -205,12 +257,42 @@ internal fun WxTrendsScreen(vm: AppViewModel, initial: WxTrendMetric = WxTrendMe
                 }
                 Spacer(Modifier.height(14.dp))
                 if (chartType == 0) {
-                    WxLineChart(
+                    if (typical != null) {
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End, verticalAlignment = Alignment.CenterVertically) {
+                            Box(Modifier.size(14.dp).background(Wx.cardRaised))
+                            Spacer(Modifier.width(8.dp))
+                            Text(uiString(R.string.wx_typical_range).uppercase(), style = WxType.label, color = Wx.text)
+                        }
+                        Spacer(Modifier.height(6.dp))
+                    }
+                    // Long periods per day: a faint daily line with each month's average as a flat segment.
+                    val segments = if (grain == 0 && period >= 90) {
+                        val dates = generateSequence(start) { it.plusDays(1) }.takeWhile { !it.isAfter(today) }.toList()
+                        val out = ArrayList<WxTrendSegment>()
+                        var prevMonth: Double? = null
+                        dates.groupBy { it.year * 12 + it.monthValue }.toSortedMap().forEach { (_, ds) ->
+                            val vals = ds.mapNotNull { d -> byDay[d.toString()]?.let { valueOf(metric, it) } }
+                            if (vals.isNotEmpty()) {
+                                val m = vals.average()
+                                val ch = prevMonth?.takeIf { it != 0.0 }?.let { (m - it) / abs(it) * 100 }
+                                out += WxTrendSegment(dates.indexOf(ds.first()), dates.indexOf(ds.last()), m, ch)
+                                prevMonth = m
+                            }
+                        }
+                        out
+                    } else emptyList()
+                    WxTrendChart(
                         values = buckets.map { it.second }, labels = buckets.map { it.first },
-                        colorFor = { wxMetricColor(metric, it) }, format = { wxMetricFormat(metric, it, scale) },
-                        min = minV, max = maxV, averageLine = avg,
-                        description = uiString(R.string.wx_bars_a11y, wxMetricName(metric)), height = 180.dp,
+                        color = wxMetricColor(metric, avg), format = { wxMetricFormat(metric, it, scale) },
+                        typical = typical, segments = segments, higherIsBetter = wxHigherIsBetter(metric),
+                        description = uiString(R.string.wx_bars_a11y, wxMetricName(metric)), height = 280.dp,
+                        fixedMin = if (metric == WxTrendMetric.Recovery) 0.0 else null,
+                        fixedMax = if (metric == WxTrendMetric.Recovery) 100.0 else null,
                     )
+                    if (typical != null) {
+                        Text(uiString(R.string.wx_typical_range_note), style = WxType.caption, color = Wx.textDim,
+                            modifier = Modifier.padding(top = 6.dp))
+                    }
                 } else {
                     WxBars(
                         values = buckets.map { it.second }, labels = buckets.map { it.first },
