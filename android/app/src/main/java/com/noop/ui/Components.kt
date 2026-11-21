@@ -152,7 +152,7 @@ fun Modifier.frostedCardSurface(
                 // NEUTRAL card (iOS FrostedCardSurface tint == nil): a FLAT raised surface — no vertical
                 // bevel gradient, no accent wash, and a PLAIN hairline border (no accent bias).
                 drawRoundRect(color = fill, cornerRadius = corner)
-                drawRoundRect(color = border, cornerRadius = corner, style = Stroke(width = 1.dp.toPx()))
+                if (Palette.isLight) drawRoundRect(color = border, cornerRadius = corner, style = Stroke(width = 1.dp.toPx()))
             } else {
                 // TINTED card (iOS parity, 2026-06-23 "synthesis has the old blue style"): a FLAT raised
                 // surface — the SAME WHOOP grey as the neutral card, NO navy bevel gradient — carrying only
@@ -173,7 +173,7 @@ fun Modifier.frostedCardSurface(
                     cornerRadius = corner,
                 )
                 // 3) Plain 1px hairline (no accent bias) — matches the neutral card.
-                drawRoundRect(color = border, cornerRadius = corner, style = Stroke(width = 1.dp.toPx()))
+                if (Palette.isLight) drawRoundRect(color = border, cornerRadius = corner, style = Stroke(width = 1.dp.toPx()))
             }
         }
 }
@@ -290,7 +290,7 @@ fun SectionHeader(
                 }
             }
         }
-        Text(title, style = NoopType.title2, color = Palette.textPrimary)
+        Text(title.uppercase(), style = WxType.title, color = Palette.textPrimary)
     }
 }
 
@@ -1308,8 +1308,8 @@ fun ScreenScaffold(
                 // backdrop paints behind and around the glass, while the scrolling content still stops
                 // clear of the bar. Zero when the overlay is off, so the slot layout is untouched.
                 .padding(
-                    start = 28.dp,
-                    end = 28.dp,
+                    start = Wx.gutter,
+                    end = Wx.gutter,
                     top = topPadding,
                     bottom = 28.dp + BottomBarStyleStore.barHeightForContent(),
                 ),
@@ -1334,10 +1334,10 @@ fun ScreenScaffold(
                         verticalArrangement = Arrangement.spacedBy(2.dp),
                     ) {
                         if (title != null) {
-                            Text(title, style = NoopType.title1, color = Palette.textPrimary)
+                            Text(title.uppercase(), style = WxType.title.copy(fontSize = 28.sp), color = Palette.textPrimary)
                         }
                         if (subtitle != null) {
-                            Text(subtitle, style = NoopType.subhead, color = Palette.textSecondary)
+                            Text(subtitle, style = WxType.caption, color = Wx.textMuted)
                         }
                     }
                     if (trailing != null) trailing()
@@ -1447,10 +1447,10 @@ fun LazyScreenScaffold(
                         verticalArrangement = Arrangement.spacedBy(2.dp),
                     ) {
                         if (title != null) {
-                            Text(title, style = NoopType.title1, color = Palette.textPrimary)
+                            Text(title.uppercase(), style = WxType.title.copy(fontSize = 28.sp), color = Palette.textPrimary)
                         }
                         if (subtitle != null) {
-                            Text(subtitle, style = NoopType.subhead, color = Palette.textSecondary)
+                            Text(subtitle, style = WxType.caption, color = Wx.textMuted)
                         }
                     }
                     if (trailing != null) trailing()
@@ -1474,7 +1474,7 @@ fun LazyScreenScaffold(
         LazyColumn(
             modifier = listModifier,
             state = listState,
-            contentPadding = PaddingValues(start = 28.dp, top = topPadding, end = 28.dp, bottom = 28.dp),
+            contentPadding = PaddingValues(start = Wx.gutter, top = topPadding, end = Wx.gutter, bottom = 28.dp),
             // #765: the shared inter-card spacing token by default (Today/Explore + the eager screens share
             // one uniform card rhythm); a caller may pass a tighter [rowSpacing] (the liquid Today does, for
             // the iOS-compact section rhythm).
