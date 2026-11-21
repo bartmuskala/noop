@@ -149,9 +149,18 @@ internal fun WxTodayScreen(vm: AppViewModel, onOpen: (WxTodayTarget) -> Unit) {
         stressWeek = (10 downTo 0).map { byDay[selectedDate.minusDays(it.toLong()).toString()] }
     }
 
-    val recovery = row?.recovery
+    // The night's scores (recovery, sleep, HRV, RHR, breathing, skin temp) can be keyed to the previous
+    // day; on Today, carry that last-scored night exactly as the old Today does. Effort, steps and
+    // calories always come from the selected day itself.
+    val carried = if (dayOffset == 0L) lastScoredRecoveryDay(
+        days = days, selectedDayKey = selectedKey, isToday = true,
+        todayScored = row?.recovery != null, isCalibrating = false,
+        today = maxOf(selectedDate.toString(), LocalDate.now().toString()),
+    ) else null
+    val night = if (row?.recovery == null && carried != null) carried else row
+    val recovery = night?.recovery
     val effortStored = row?.strain
-    val sleepPerf = row?.let { RestScorer.restFromDaily(it) }
+    val sleepPerf = night?.let { RestScorer.restFromDaily(it) }
 
     // Strap link: battery, connection, live HR and history sync, from the one LiveState the BLE client
     // publishes. Pull down (or tap the sync badge) to ask for a sync; the same gate the old Today used.
@@ -307,11 +316,11 @@ internal fun WxTodayScreen(vm: AppViewModel, onOpen: (WxTodayTarget) -> Unit) {
             }.sortedBy { it.startTs }
             WxCard(padding = 16.dp) {
                 WxLabel(uiString(R.string.wx_todays_activities), Modifier.padding(bottom = 6.dp))
-                row?.totalSleepMin?.let { mins ->
+                night?.totalSleepMin?.let { mins ->
                     WxActivityRow(
                         accent = Wx.sleep,
                         title = uiString(R.string.wx_sleep),
-                        subtitle = uiString(R.string.wx_sleep_efficiency, row.efficiency?.roundToInt() ?: 0),
+                        subtitle = uiString(R.string.wx_sleep_efficiency, night.efficiency?.roundToInt() ?: 0),
                         trailing = wxHoursMinutes(mins),
                         onClick = { onOpen(WxTodayTarget.Score(WxScoreTab.Sleep, dayOffset)) },
                     )
@@ -382,7 +391,7 @@ internal fun WxTodayScreen(vm: AppViewModel, onOpen: (WxTodayTarget) -> Unit) {
             // Metric tiles: today's value, change vs the N-day average, and the average itself.
             val window = history.takeLast(avgDays)
             val avgLabel = uiString(R.string.wx_n_day_avg, avgDays)
-            val tiles = wxTiles(row, window, avgLabel)
+            val tiles = wxTiles(row, night, window, avgLabel)
             tiles.chunked(2).forEach { pair ->
                 Row(horizontalArrangement = Arrangement.spacedBy(Wx.gap)) {
                     pair.forEach { t ->
@@ -623,7 +632,7 @@ internal data class WxTile(
  * way, muted when it did not move, amber otherwise.
  */
 @Composable
-private fun wxTiles(row: DailyMetric?, window: List<DailyMetric>, avgLabel: String): List<WxTile> {
+private fun wxTiles(row: DailyMetric?, night: DailyMetric?, window: List<DailyMetric>, avgLabel: String): List<WxTile> {
     fun avg(sel: (DailyMetric) -> Double?): Double? {
         val xs = window.mapNotNull(sel)
         return if (xs.isEmpty()) null else xs.sum() / xs.size
@@ -648,11 +657,11 @@ private fun wxTiles(row: DailyMetric?, window: List<DailyMetric>, avgLabel: Stri
     val one: (Double) -> String = { String.format(Locale.US, "%.1f", it) }
     val thousands: (Double) -> String = { String.format(Locale.US, "%,d", it.roundToInt()) }
     return listOf(
-        tile(WxTrendMetric.Hrv, uiString(R.string.wx_hrv), "ms", row?.avgHrv, avg { it.avgHrv }, true, int0),
-        tile(WxTrendMetric.RestingHr, uiString(R.string.wx_resting_hr), "bpm", row?.restingHr?.toDouble(),
+        tile(WxTrendMetric.Hrv, uiString(R.string.wx_hrv), "ms", night?.avgHrv, avg { it.avgHrv }, true, int0),
+        tile(WxTrendMetric.RestingHr, uiString(R.string.wx_resting_hr), "bpm", night?.restingHr?.toDouble(),
             avg { it.restingHr?.toDouble() }, false, int0),
-        tile(WxTrendMetric.Respiratory, uiString(R.string.wx_resp_rate), "rpm", row?.respRateBpm, avg { it.respRateBpm }, null, one),
-        tile(WxTrendMetric.SkinTemp, uiString(R.string.wx_skin_temp), "°C", row?.skinTempDevC, avg { it.skinTempDevC }, null) {
+        tile(WxTrendMetric.Respiratory, uiString(R.string.wx_resp_rate), "rpm", night?.respRateBpm, avg { it.respRateBpm }, null, one),
+        tile(WxTrendMetric.SkinTemp, uiString(R.string.wx_skin_temp), "°C", night?.skinTempDevC, avg { it.skinTempDevC }, null) {
             (if (it >= 0) "+" else "") + String.format(Locale.US, "%.1f", it)
         },
         tile(WxTrendMetric.Steps, uiString(R.string.wx_steps), null, row?.steps?.toDouble(), avg { it.steps?.toDouble() }, true, thousands),

@@ -96,6 +96,15 @@ internal fun WxScoreScreen(vm: AppViewModel, initial: WxScoreTab, initialOffset:
     val row = if (dayOffset == 0L) todayResolved ?: days.lastOrNull { it.day == dateKey }
               else days.lastOrNull { it.day == dateKey }
     val upToDate = days.filter { it.day <= dateKey }
+    // Recovery and Sleep describe the night, which can be keyed to the previous day: carry it on Today,
+    // exactly as the old Today does. Effort stays on the shown day.
+    val carried = if (dayOffset == 0L) lastScoredRecoveryDay(
+        days = days, selectedDayKey = dateKey, isToday = true,
+        todayScored = row?.recovery != null, isCalibrating = false,
+        today = maxOf(date.toString(), LocalDate.now().toString()),
+    ) else null
+    val night = if (row?.recovery == null && carried != null) carried else row
+    val nightBaseline = days.filter { it.day < (night?.day ?: dateKey) }.takeLast(30)
     val baseline = days.filter { it.day < dateKey }.takeLast(30)
 
     Column(
@@ -147,9 +156,9 @@ internal fun WxScoreScreen(vm: AppViewModel, initial: WxScoreTab, initialOffset:
         }
 
         when (tab) {
-            WxScoreTab.Recovery -> WxRecoveryTab(row, baseline, upToDate)
+            WxScoreTab.Recovery -> WxRecoveryTab(night, nightBaseline, upToDate)
             WxScoreTab.Effort -> WxEffortTab(row, date, workouts, effortScale, profile, onOpenWorkouts, onOpenProfile)
-            WxScoreTab.Sleep -> WxSleepTab(row, upToDate, stages)
+            WxScoreTab.Sleep -> WxSleepTab(night, upToDate, stages)
         }
     }
 }
