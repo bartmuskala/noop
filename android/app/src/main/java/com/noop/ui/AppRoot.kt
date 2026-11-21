@@ -243,7 +243,7 @@ internal data class DrawerGroup(
 internal val drawerGroups: List<DrawerGroup> = listOf(
     // The fork keeps only the screens it uses; the Wx More page lists exactly these (see wxMoreItems).
     DrawerGroup("Body", R.string.more_group_body, listOf(
-        Destination.Workouts, Destination.Stress, Destination.InsightsHub, Destination.FitnessAge,
+        Destination.Live, Destination.Workouts, Destination.Stress, Destination.InsightsHub, Destination.FitnessAge,
     ), defaultExpanded = true),
     DrawerGroup("Data", R.string.more_group_data, listOf(
         Destination.Devices, Destination.DataSources, Destination.BackupSync,
@@ -634,6 +634,8 @@ fun AppRoot(viewModel: AppViewModel = viewModel()) {
                             WxTodayTarget.Stress -> nav.navigate(Destination.Stress.route)
                             WxTodayTarget.DataSources -> nav.navigate(Destination.DataSources.route)
                             WxTodayTarget.Settings -> nav.navigate(Destination.Settings.route)
+                            WxTodayTarget.Live -> nav.navigate(Destination.Live.route)
+                            WxTodayTarget.Devices -> nav.navigate(Destination.Devices.route)
                         }
                     }
                 }

@@ -26,7 +26,17 @@ import androidx.compose.material.icons.filled.Alarm
 import androidx.compose.material.icons.filled.Bedtime
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Sync
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.pulltorefresh.PullToRefreshContainer
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.BatteryChargingFull
+import androidx.compose.material.icons.filled.BluetoothDisabled
+import androidx.compose.material.icons.filled.CloudDone
+import androidx.compose.material.icons.filled.ErrorOutline
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -79,6 +89,8 @@ internal sealed interface WxTodayTarget {
     data object Stress : WxTodayTarget
     data object DataSources : WxTodayTarget
     data object Settings : WxTodayTarget
+    data object Live : WxTodayTarget
+    data object Devices : WxTodayTarget
 }
 
 /** The day window every Today average uses, persisted per install. */
@@ -92,6 +104,7 @@ internal object WxAveragePrefs {
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun WxTodayScreen(vm: AppViewModel, onOpen: (WxTodayTarget) -> Unit) {
     val context = LocalContext.current
@@ -136,6 +149,28 @@ internal fun WxTodayScreen(vm: AppViewModel, onOpen: (WxTodayTarget) -> Unit) {
     val effortStored = row?.strain
     val sleepPerf = row?.let { RestScorer.restFromDaily(it) }
 
+    // Strap link: battery, connection, live HR and history sync, from the one LiveState the BLE client
+    // publishes. Pull down (or tap the sync badge) to ask for a sync; the same gate the old Today used.
+    val live by vm.live.collectAsStateWithLifecycle()
+    val canSync = todayPullToSyncEnabled(live.connected, live.bonded, live.backfilling, live.historyReady)
+    val requestScan = rememberRequestScan { vm.connect() }
+    val pullState = rememberPullToRefreshState(enabled = {
+        todayPullToSyncEnabled(vm.live.value.connected, vm.live.value.bonded, vm.live.value.backfilling, vm.live.value.historyReady)
+    })
+    LaunchedEffect(pullState.isRefreshing) {
+        if (pullState.isRefreshing) {
+            if (canSync) vm.syncNow()
+            pullState.endRefresh()
+        }
+    }
+    val onSyncTap: () -> Unit = {
+        when {
+            !live.connected -> requestScan()
+            canSync -> vm.syncNow()
+            else -> Unit
+        }
+    }
+    Box(Modifier.fillMaxSize().background(Wx.canvas).nestedScroll(pullState.nestedScrollConnection)) {
     Column(
         Modifier
             .fillMaxSize()
@@ -144,7 +179,7 @@ internal fun WxTodayScreen(vm: AppViewModel, onOpen: (WxTodayTarget) -> Unit) {
             .statusBarsPadding()
             .padding(bottom = BottomBarStyleStore.barHeightForContent() + 24.dp),
     ) {
-        // Header: avatar → Settings, day navigation, nothing else.
+        // Header: avatar → Settings on the left; live HR, sync and battery on the right.
         Row(
             Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -157,10 +192,24 @@ internal fun WxTodayScreen(vm: AppViewModel, onOpen: (WxTodayTarget) -> Unit) {
                 ProfileAvatarOrInitials()
             }
             Spacer(Modifier.weight(1f))
+            WxStrapStatus(
+                live = live,
+                is24h = is24h,
+                onLive = { onOpen(WxTodayTarget.Live) },
+                onSync = onSyncTap,
+                onBattery = { onOpen(WxTodayTarget.Devices) },
+            )
+        }
+        // Day navigation.
+        Row(
+            Modifier.fillMaxWidth().padding(horizontal = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center,
+        ) {
             IconButton(onClick = { dayOffset += 1 }) {
                 Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, uiString(R.string.wx_prev_day), tint = Wx.textMuted)
             }
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(horizontal = 12.dp)) {
                 Text(
                     (if (dayOffset == 0L) uiString(R.string.nav_today) else wxWeekdayLong(selectedDate)).uppercase(),
                     style = WxType.title, color = Wx.text,
@@ -171,8 +220,6 @@ internal fun WxTodayScreen(vm: AppViewModel, onOpen: (WxTodayTarget) -> Unit) {
                 Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, uiString(R.string.wx_next_day),
                     tint = if (dayOffset > 0) Wx.textMuted else Wx.lineStrong)
             }
-            Spacer(Modifier.weight(1f))
-            Spacer(Modifier.width(40.dp))
         }
 
         // The three dials.
@@ -363,6 +410,105 @@ internal fun WxTodayScreen(vm: AppViewModel, onOpen: (WxTodayTarget) -> Unit) {
                 }
             }
         }
+    }
+        if (pullState.progress > 0f || pullState.isRefreshing) {
+            PullToRefreshContainer(state = pullState, modifier = Modifier.align(Alignment.TopCenter))
+        }
+    }
+}
+
+/**
+ * The strap at a glance: a live heart-rate pill (opens Live), the history-sync badge (spinner while
+ * offloading, a check with the last sync time otherwise, a warning on an error, a crossed-out link when
+ * disconnected; tap to sync or reconnect) and the battery (opens Devices).
+ */
+@Composable
+private fun WxStrapStatus(
+    live: com.noop.ble.LiveState,
+    is24h: Boolean,
+    onLive: () -> Unit,
+    onSync: () -> Unit,
+    onBattery: () -> Unit,
+) {
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        // Live HR.
+        Row(
+            Modifier.height(32.dp).clip(RoundedCornerShape(16.dp)).background(Wx.cardRaised).clickable(onClick = onLive)
+                .padding(horizontal = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(Icons.Filled.Favorite, contentDescription = uiString(R.string.wx_live), tint = Wx.heart, modifier = Modifier.size(14.dp))
+            Spacer(Modifier.width(5.dp))
+            Text(live.heartRate?.takeIf { live.connected }?.toString() ?: uiString(R.string.wx_live),
+                style = WxType.caption.copy(fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold), color = Wx.text)
+        }
+        // Sync.
+        val syncing = live.backfilling || live.analyzingHistory
+        Row(
+            Modifier.height(32.dp).clip(RoundedCornerShape(16.dp)).background(Wx.cardRaised).clickable(onClick = onSync)
+                .padding(horizontal = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            when {
+                !live.connected -> {
+                    Icon(Icons.Filled.BluetoothDisabled, contentDescription = null, tint = Wx.textMuted, modifier = Modifier.size(14.dp))
+                    Spacer(Modifier.width(5.dp))
+                    Text(uiString(R.string.wx_connect), style = WxType.caption, color = Wx.textSoft)
+                }
+                syncing -> {
+                    CircularProgressIndicator(Modifier.size(12.dp), color = Wx.effort, strokeWidth = 2.dp)
+                    Spacer(Modifier.width(6.dp))
+                    Text(uiString(R.string.wx_syncing), style = WxType.caption, color = Wx.textSoft)
+                }
+                live.lastSyncError != null -> {
+                    Icon(Icons.Filled.ErrorOutline, contentDescription = null, tint = Wx.recoveryMid, modifier = Modifier.size(14.dp))
+                    Spacer(Modifier.width(5.dp))
+                    Text(uiString(R.string.wx_sync_retry), style = WxType.caption, color = Wx.textSoft)
+                }
+                else -> {
+                    Icon(Icons.Filled.CloudDone, contentDescription = null, tint = Wx.recoveryHigh, modifier = Modifier.size(14.dp))
+                    Spacer(Modifier.width(5.dp))
+                    val at = live.lastSyncAt?.let {
+                        val t = Instant.ofEpochSecond(if (it > 10_000_000_000L) it / 1000 else it).atZone(ZoneId.systemDefault())
+                        wxClock(t.hour * 60 + t.minute, is24h)
+                    }
+                    Text(at ?: uiString(R.string.wx_sync_now), style = WxType.caption, color = Wx.textSoft)
+                }
+            }
+        }
+        // Battery.
+        Row(
+            Modifier.height(32.dp).clip(RoundedCornerShape(16.dp)).background(Wx.cardRaised).clickable(onClick = onBattery)
+                .padding(horizontal = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            val pct = live.batteryPct?.takeIf { live.connected }
+            if (live.charging == true) {
+                Icon(Icons.Filled.BatteryChargingFull, contentDescription = null, tint = Wx.recoveryHigh, modifier = Modifier.size(14.dp))
+                Spacer(Modifier.width(3.dp))
+            } else {
+                WxBatteryGlyph(pct)
+                Spacer(Modifier.width(5.dp))
+            }
+            Text(pct?.let { "${it.roundToInt()}%" } ?: "–", style = WxType.caption, color = Wx.textSoft)
+        }
+    }
+}
+
+@Composable
+private fun WxBatteryGlyph(pct: Double?) {
+    val fill = ((pct ?: 0.0) / 100.0).toFloat().coerceIn(0f, 1f)
+    val color = when {
+        pct == null -> Wx.textDim
+        pct < 20 -> Wx.recoveryLow
+        pct < 40 -> Wx.recoveryMid
+        else -> Wx.recoveryHigh
+    }
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Box(Modifier.size(18.dp, 10.dp).clip(RoundedCornerShape(2.dp)).background(Wx.lineStrong).padding(1.5.dp)) {
+            Box(Modifier.fillMaxHeight().fillMaxWidth(fill).clip(RoundedCornerShape(1.dp)).background(color))
+        }
+        Box(Modifier.size(2.dp, 4.dp).background(Wx.lineStrong))
     }
 }
 

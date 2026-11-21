@@ -22,6 +22,7 @@
     <string name="wx_calories">Calorías</string>
     <string name="wx_change_alarm">Cambiar alarma</string>
     <string name="wx_compared_to_previous">Comparado con el periodo anterior (%1$s)</string>
+    <string name="wx_connect">Conectar</string>
     <string name="wx_daily_level">Nivel diario</string>
     <string name="wx_days_logged">%1$d de 7 días registrados</string>
     <string name="wx_deep_plus_rem">profundo + REM</string>
@@ -52,6 +53,7 @@
     <string name="wx_last_night">anoche</string>
     <string name="wx_light">Ligero</string>
     <string name="wx_light_sleep">Ligero</string>
+    <string name="wx_live">En vivo</string>
     <string name="wx_log_today">Registrar hoy · 30 s</string>
     <string name="wx_low">Bajo</string>
     <string name="wx_maintaining">Estable</string>
@@ -113,6 +115,8 @@
     <string name="wx_stress_week_a11y">Nivel de estrés diario de los últimos siete días</string>
     <string name="wx_sync_failed">Falló la sincronización con Health Connect.</string>
     <string name="wx_sync_health_connect">Sincronizar desde Health Connect</string>
+    <string name="wx_sync_now">Sincronizar</string>
+    <string name="wx_sync_retry">Reintentar</string>
     <string name="wx_syncing">Sincronizando…</string>
     <string name="wx_target">Objetivo</string>
     <string name="wx_time_in_level">Tiempo en cada nivel</string>

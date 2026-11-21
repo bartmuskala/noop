@@ -22,6 +22,7 @@
     <string name="wx_calories">Kalorien</string>
     <string name="wx_change_alarm">Wecker ändern</string>
     <string name="wx_compared_to_previous">Verglichen mit vorheriger Periode (%1$s)</string>
+    <string name="wx_connect">Verbinden</string>
     <string name="wx_daily_level">Tageswert</string>
     <string name="wx_days_logged">%1$d von 7 Tagen erfasst</string>
     <string name="wx_deep_plus_rem">Tief + REM</string>
@@ -52,6 +53,7 @@
     <string name="wx_last_night">letzte Nacht</string>
     <string name="wx_light">Leicht</string>
     <string name="wx_light_sleep">Leicht</string>
+    <string name="wx_live">Live</string>
     <string name="wx_log_today">Heute eintragen · 30 s</string>
     <string name="wx_low">Niedrig</string>
     <string name="wx_maintaining">Stabil</string>
@@ -113,6 +115,8 @@
     <string name="wx_stress_week_a11y">Täglicher Stresslevel der letzten sieben Tage</string>
     <string name="wx_sync_failed">Health-Connect-Sync fehlgeschlagen.</string>
     <string name="wx_sync_health_connect">Aus Health Connect synchronisieren</string>
+    <string name="wx_sync_now">Sync</string>
+    <string name="wx_sync_retry">Sync erneut</string>
     <string name="wx_syncing">Synchronisiere…</string>
     <string name="wx_target">Ziel</string>
     <string name="wx_time_in_level">Zeit pro Stufe</string>

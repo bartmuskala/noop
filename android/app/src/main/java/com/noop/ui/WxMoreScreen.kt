@@ -44,6 +44,7 @@ import com.noop.R
 
 /** The destinations the More page lists, in order, with the accent each row's icon sits on. */
 internal val wxMoreItems: List<Pair<Destination, Color>> = listOf(
+    Destination.Live to Wx.heart,
     Destination.Workouts to Wx.effort,
     Destination.Stress to Wx.stressLow,
     Destination.InsightsHub to Wx.recoveryHigh,
