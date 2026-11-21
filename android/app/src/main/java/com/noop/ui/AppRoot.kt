@@ -249,7 +249,7 @@ internal val drawerGroups: List<DrawerGroup> = listOf(
         Destination.Devices, Destination.DataSources, Destination.BackupSync,
     ), defaultExpanded = true),
     DrawerGroup("App", R.string.more_group_app, listOf(
-        Destination.SmartAlarm, Destination.Notifications, Destination.Settings,
+        Destination.SmartAlarm, Destination.Notifications, Destination.Settings, Destination.TestCentre,
     ), defaultExpanded = true),
 )
 

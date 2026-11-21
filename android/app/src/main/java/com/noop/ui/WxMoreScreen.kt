@@ -55,6 +55,7 @@ internal val wxMoreItems: List<Pair<Destination, Color>> = listOf(
     Destination.SmartAlarm to Wx.recoveryMid,
     Destination.Notifications to Wx.zone4,
     Destination.Settings to Wx.textSoft,
+    Destination.TestCentre to Wx.textSoft,
 )
 
 @Composable
