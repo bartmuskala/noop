@@ -77,7 +77,8 @@ internal fun WxScoreScreen(vm: AppViewModel, initial: WxScoreTab, initialOffset:
     var tab by remember { mutableStateOf(initial) }
     // The day shown: 0 = today, 1 = yesterday, ... Starts on the day Today had selected.
     var dayOffset by remember { mutableStateOf(initialOffset.coerceAtLeast(0L)) }
-    val date = LocalDate.now().minusDays(dayOffset)
+    val date = logicalDayNow().minusDays(dayOffset)
+    val todayResolved by vm.today.collectAsStateWithLifecycle()
     LaunchedEffect(Unit) { vm.loadWorkouts() }
     // The night that belongs to the shown day: the longest session ending between noon the day before
     // and 14:00 on the day itself.
@@ -91,8 +92,9 @@ internal fun WxScoreScreen(vm: AppViewModel, initial: WxScoreTab, initialOffset:
         stages = com.noop.analytics.AnalyticsEngine.decodeStages(night?.stagesJSON)
     }
 
-    val dateKey = date.toString()
-    val row = days.lastOrNull { it.day == dateKey }
+    val dateKey = if (dayOffset == 0L) todayResolved?.day ?: date.toString() else date.toString()
+    val row = if (dayOffset == 0L) todayResolved ?: days.lastOrNull { it.day == dateKey }
+              else days.lastOrNull { it.day == dateKey }
     val upToDate = days.filter { it.day <= dateKey }
     val baseline = days.filter { it.day < dateKey }.takeLast(30)
 

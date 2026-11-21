@@ -122,9 +122,13 @@ internal fun WxTodayScreen(vm: AppViewModel, onOpen: (WxTodayTarget) -> Unit) {
 
     // Day navigation: 0 = today, 1 = yesterday, and so on. Every card reads the row for that day.
     var dayOffset by remember { mutableStateOf(0L) }
-    val selectedDate = LocalDate.now().minusDays(dayOffset)
-    val selectedKey = selectedDate.toString()
-    val row = days.lastOrNull { it.day == selectedKey }
+    // Same anchor as the old Today: the LOGICAL day (rolls at 04:00), and at offset 0 the row the
+    // ViewModel resolves as today, which can be keyed differently from the calendar date.
+    val todayResolved by vm.today.collectAsStateWithLifecycle()
+    val selectedDate = logicalDayNow().minusDays(dayOffset)
+    val selectedKey = if (dayOffset == 0L) todayResolved?.day ?: selectedDate.toString() else selectedDate.toString()
+    val row = if (dayOffset == 0L) todayResolved ?: days.lastOrNull { it.day == selectedKey }
+              else days.lastOrNull { it.day == selectedKey }
     val history = days.filter { it.day <= selectedKey }
 
     // Journal: which of the seven days ending on the selected day have at least one native answer.
