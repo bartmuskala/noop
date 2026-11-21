@@ -33,6 +33,10 @@ import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import kotlin.math.abs
 import com.noop.R
 import com.noop.analytics.DaytimeStress
 import com.noop.data.WorkoutRow
@@ -116,7 +120,7 @@ internal fun WxDayHeartCard(
         Spacer(Modifier.height(10.dp))
         val d = data
         if (d == null) {
-            Box(Modifier.fillMaxWidth().height(170.dp), contentAlignment = Alignment.Center) {
+            Box(Modifier.fillMaxWidth().height(260.dp), contentAlignment = Alignment.Center) {
                 Text(uiString(R.string.wx_reading_today), style = WxType.caption, color = Wx.textMuted)
             }
         } else if (d.points.size < 2) {
@@ -132,25 +136,66 @@ internal fun WxDayHeartCard(
 @Composable
 private fun WxDayHeartChart(d: WxDayHeart, workouts: List<WorkoutRow>, description: String) {
     val measurer = rememberTextMeasurer()
-    Canvas(Modifier.fillMaxWidth().height(200.dp).semantics { contentDescription = description }) {
-        val axisH = 16.dp.toPx()
+    // Touch readout: the x position under the finger, null when nothing is touched.
+    var touchX by remember(d) { mutableStateOf<Float?>(null) }
+    val zone = ZoneId.systemDefault()
+    Canvas(
+        Modifier.fillMaxWidth().height(260.dp)
+            .semantics { contentDescription = description }
+            .pointerInput(d) {
+                detectTapGestures(onPress = { p ->
+                    touchX = p.x
+                    tryAwaitRelease()
+                    touchX = null
+                })
+            }
+            .pointerInput(d) {
+                detectHorizontalDragGestures(
+                    onDragStart = { p -> touchX = p.x },
+                    onDragEnd = { touchX = null },
+                    onDragCancel = { touchX = null },
+                    onHorizontalDrag = { change, _ -> touchX = change.position.x },
+                )
+            },
+    ) {
+        val axisStyle = TextStyle(fontSize = 10.sp, color = Wx.textDim)
+        val yAxisW = 30.dp.toPx()
+        val axisH = 18.dp.toPx()
         val stripH = 10.dp.toPx()
         val gap = 6.dp.toPx()
+        val topPad = 14.dp.toPx()
+        val plotL = yAxisW
+        val plotW = size.width - yAxisW
         val plotH = size.height - axisH - stripH - gap
         val span = (d.to - d.from).coerceAtLeast(1L).toFloat()
-        fun x(ts: Long) = ((ts - d.from) / span * size.width).coerceIn(0f, size.width)
-        val lo = (d.points.minOf { it.second } - 5).coerceAtLeast(30.0)
-        val hi = (d.points.maxOf { it.second } + 5).coerceAtLeast(lo + 20)
-        fun y(v: Double) = (plotH - (v - lo) / (hi - lo) * (plotH - 14.dp.toPx())).toFloat()
+        fun x(ts: Long) = plotL + ((ts - d.from) / span * plotW).coerceIn(0f, plotW)
+        val minBpm = d.points.minOf { it.second }
+        val maxBpm = d.points.maxOf { it.second }
+        // Axis in steps of 20 bpm around the day's range.
+        val lo = (Math.floor((minBpm - 5) / 20.0) * 20).coerceAtLeast(20.0)
+        val hi = (Math.ceil((maxBpm + 5) / 20.0) * 20).coerceAtLeast(lo + 40)
+        fun y(v: Double) = (topPad + (plotH - topPad) * (1 - (v - lo) / (hi - lo))).toFloat()
+
+        // Y axis: grid lines and bpm labels, unit on top.
+        var tick = lo
+        while (tick <= hi + 0.1) {
+            val yy = y(tick)
+            drawLine(Wx.line, Offset(plotL, yy), Offset(size.width, yy), 1f)
+            val t = measurer.measure("${tick.toInt()}", axisStyle)
+            drawText(t, topLeft = Offset(0f, yy - t.size.height / 2f))
+            tick += 20.0
+        }
+        val unit = measurer.measure("bpm", axisStyle)
+        drawText(unit, topLeft = Offset(0f, 0f))
 
         // Workout bands with their sport name, drawn first so the line sits on top.
         workouts.forEach { w ->
             val x0 = x(w.startTs); val x1 = x(w.endTs).coerceAtLeast(x0 + 3f)
-            drawRect(Wx.effort.copy(alpha = 0.22f), Offset(x0, 0f), Size(x1 - x0, plotH))
-            drawLine(Wx.effort, Offset(x0, 0f), Offset(x0, plotH), 1.5f)
+            drawRect(Wx.effort.copy(alpha = 0.22f), Offset(x0, topPad), Size(x1 - x0, plotH - topPad))
+            drawLine(Wx.effort, Offset(x0, topPad), Offset(x0, plotH), 1.5f)
             val label = measurer.measure(wxSportName(w.sport), TextStyle(fontSize = 10.sp, color = Wx.effort))
             if (x1 - x0 > 8f || workouts.size < 4) {
-                drawText(label, topLeft = Offset((x0 + 3f).coerceAtMost(size.width - label.size.width), 0f))
+                drawText(label, topLeft = Offset((x0 + 3f).coerceAtMost(size.width - label.size.width), topPad))
             }
         }
         // Heart rate line; a gap of more than 20 minutes breaks it.
@@ -170,11 +215,32 @@ private fun WxDayHeartChart(d: WxDayHeart, workouts: List<WorkoutRow>, descripti
             drawRoundRect(Wx.stressColor(lvl), Offset(x0 + 1f, stripTop), Size((x1 - x0 - 2f).coerceAtLeast(2f), stripH),
                 androidx.compose.ui.geometry.CornerRadius(2.dp.toPx()))
         }
-        // Time axis every 6 hours.
-        for (hh in listOf(0, 6, 12, 18)) {
-            val t = measurer.measure(String.format(Locale.US, "%02d", hh), TextStyle(fontSize = 10.sp, color = Wx.textDim))
-            val xx = (size.width * hh / 24f).coerceAtMost(size.width - t.size.width)
+        // X axis: clock time every 6 hours.
+        for (hh in listOf(0, 6, 12, 18, 24)) {
+            val t = measurer.measure(String.format(Locale.US, "%02d:00", hh % 24), axisStyle)
+            val xx = (plotL + plotW * hh / 24f - t.size.width / 2f).coerceIn(plotL, size.width - t.size.width)
             drawText(t, topLeft = Offset(xx, size.height - t.size.height))
+        }
+
+        // Touch readout: nearest 5-minute point, a vertical guide, a dot and "HH:mm · N bpm".
+        touchX?.let { tx ->
+            val ts = d.from + ((tx - plotL) / plotW * span).toLong()
+            val p = d.points.minByOrNull { abs(it.first - ts) } ?: return@let
+            if (abs(p.first - ts) > 1800L) return@let
+            val px = x(p.first); val py = y(p.second)
+            drawLine(Wx.textMuted, Offset(px, topPad), Offset(px, plotH), 1f)
+            drawCircle(Wx.heart, 5.dp.toPx(), Offset(px, py))
+            drawCircle(Wx.canvas, 2.5.dp.toPx(), Offset(px, py))
+            val t = Instant.ofEpochSecond(p.first).atZone(zone)
+            val label = measurer.measure(
+                String.format(Locale.US, "%02d:%02d · %d bpm", t.hour, t.minute, p.second.roundToInt()),
+                TextStyle(fontSize = 12.sp, color = Wx.text),
+            )
+            val padX = 8.dp.toPx(); val padY = 4.dp.toPx()
+            val w = label.size.width + padX * 2; val h = label.size.height + padY * 2
+            val bx = (px - w / 2).coerceIn(plotL, size.width - w)
+            drawRoundRect(Wx.cardRaised, Offset(bx, 0f), Size(w, h), androidx.compose.ui.geometry.CornerRadius(6.dp.toPx()))
+            drawText(label, topLeft = Offset(bx + padX, padY))
         }
     }
 }

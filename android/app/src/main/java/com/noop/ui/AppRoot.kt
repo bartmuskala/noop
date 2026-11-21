@@ -642,6 +642,7 @@ fun AppRoot(viewModel: AppViewModel = viewModel()) {
                             WxTodayTarget.Settings -> nav.navigate(Destination.Settings.route)
                             WxTodayTarget.Live -> nav.navigate(Destination.Live.route)
                             WxTodayTarget.Devices -> nav.navigate(Destination.Devices.route)
+                            WxTodayTarget.FitnessAge -> nav.navigate(Destination.FitnessAge.route)
                         }
                     }
                 }
@@ -653,6 +654,7 @@ fun AppRoot(viewModel: AppViewModel = viewModel()) {
                         onBack = { nav.popBackStack() },
                         onOpenWorkouts = { nav.navigate(Destination.Workouts.route) },
                         onOpenProfile = { nav.navigate(Destination.Settings.route) },
+                        onOpenMoves = { nav.navigate(Destination.InsightsHub.route) },
                     )
                 }
                 composable(Destination.TrendsMetric.route) { entry ->

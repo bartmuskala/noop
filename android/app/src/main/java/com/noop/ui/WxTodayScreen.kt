@@ -91,6 +91,7 @@ internal sealed interface WxTodayTarget {
     data object Settings : WxTodayTarget
     data object Live : WxTodayTarget
     data object Devices : WxTodayTarget
+    data object FitnessAge : WxTodayTarget
 }
 
 /** The day window every Today average uses, persisted per install. */
@@ -112,6 +113,12 @@ internal fun WxTodayScreen(vm: AppViewModel, onOpen: (WxTodayTarget) -> Unit) {
     val days by vm.recentDays.collectAsStateWithLifecycle()
     val workouts by vm.workouts.collectAsStateWithLifecycle()
     val nextWake = rememberWxNextWake(vm)
+    var vo2max by remember { mutableStateOf<Double?>(null) }
+    var fitnessAge by remember { mutableStateOf<Double?>(null) }
+    LaunchedEffect(days) {
+        vo2max = runCatching { vm.repo.latestMetricComputedUnion(vm.activeStrapId, "vo2max_est")?.value }.getOrNull()
+        fitnessAge = runCatching { vm.repo.latestMetricComputedUnion(vm.activeStrapId, "fitness_age")?.value }.getOrNull()
+    }
     val effortScale = remember { UnitPrefs.effortScale(context) }
     val avgDays = remember { WxAveragePrefs.read(context) }
     val is24h = remember { android.text.format.DateFormat.is24HourFormat(context) }
@@ -382,6 +389,25 @@ internal fun WxTodayScreen(vm: AppViewModel, onOpen: (WxTodayTarget) -> Unit) {
                         )
                     }
                     if (pair.size == 1) Spacer(Modifier.weight(1f))
+                }
+            }
+
+            // VO2max and Fitness Age: the latest weekly values the engine stores, opening their detail.
+            if (vo2max != null || fitnessAge != null) {
+                Row(horizontalArrangement = Arrangement.spacedBy(Wx.gap)) {
+                    WxMetricTile(
+                        label = uiString(R.string.wx_vo2max), value = vo2max?.roundToInt()?.toString() ?: "–",
+                        unit = "ml/kg/min", delta = null, deltaColor = Wx.textMuted,
+                        averageLine = uiString(R.string.wx_latest_estimate),
+                        onClick = { onOpen(WxTodayTarget.FitnessAge) }, modifier = Modifier.weight(1f),
+                    )
+                    WxMetricTile(
+                        label = uiString(R.string.today_card_fitness_age),
+                        value = fitnessAge?.let { String.format(Locale.US, "%.1f", it) } ?: "–",
+                        unit = null, delta = null, deltaColor = Wx.textMuted,
+                        averageLine = uiString(R.string.wx_latest_estimate),
+                        onClick = { onOpen(WxTodayTarget.FitnessAge) }, modifier = Modifier.weight(1f),
+                    )
                 }
             }
 

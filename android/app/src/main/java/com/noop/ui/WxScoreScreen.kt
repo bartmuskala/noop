@@ -48,6 +48,8 @@ import com.noop.R
 import com.noop.analytics.RestScorer
 import com.noop.analytics.StrainScorer
 import com.noop.data.DailyMetric
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
@@ -68,7 +70,7 @@ internal enum class WxScoreTab(val route: String) {
 
 @Composable
 internal fun WxScoreScreen(vm: AppViewModel, initial: WxScoreTab, initialOffset: Long = 0L, onBack: () -> Unit, onOpenWorkouts: () -> Unit,
-                           onOpenProfile: () -> Unit) {
+                           onOpenProfile: () -> Unit, onOpenMoves: () -> Unit = {}) {
     val context = LocalContext.current
     val days by vm.recentDays.collectAsStateWithLifecycle()
     val workouts by vm.workouts.collectAsStateWithLifecycle()
@@ -83,13 +85,34 @@ internal fun WxScoreScreen(vm: AppViewModel, initial: WxScoreTab, initialOffset:
     // The night that belongs to the shown day: the longest session ending between noon the day before
     // and 14:00 on the day itself.
     var stages by remember { mutableStateOf<List<com.noop.analytics.StageSegment>>(emptyList()) }
+    // Sleep sessions of the last six weeks up to the shown day: the night itself, bed/wake times,
+    // consistency and time in bed all read from these.
+    var sessions by remember { mutableStateOf<List<com.noop.data.SleepSession>>(emptyList()) }
+    var nightHr by remember { mutableStateOf<List<Pair<Long, Double>>>(emptyList()) }
     LaunchedEffect(date) {
         val zone = ZoneId.systemDefault()
         val to = date.atTime(14, 0).atZone(zone).toEpochSecond()
-        val from = date.minusDays(1).atTime(12, 0).atZone(zone).toEpochSecond()
-        val sessions = runCatching { vm.repo.sleepSessionsUnion(vm.activeStrapId, from - 24 * 3600L, to) }.getOrDefault(emptyList())
-        val night = sessions.filter { it.endTs in from..to }.maxByOrNull { it.endTs - it.startTs }
+        val all = runCatching { vm.repo.sleepSessionsUnion(vm.activeStrapId, to - 42 * 86_400L, to) }.getOrDefault(emptyList())
+        sessions = all
+        val night = wxMainNight(all, date)
         stages = com.noop.analytics.AnalyticsEngine.decodeStages(night?.stagesJSON)
+        nightHr = if (night == null) emptyList() else withContext(Dispatchers.Default) {
+            val hr = runCatching {
+                vm.repo.hrSamplesUnion(vm.activeStrapId, night.effectiveStartTs - 1800L, night.endTs + 1800L, limit = 100_000)
+            }.getOrDefault(emptyList())
+            hr.groupBy { it.ts / 60L }.toSortedMap().map { (m, xs) -> (m * 60L + 30L) to xs.map { it.bpm }.average() }
+        }
+    }
+    // Effort zone minutes for the seven days ending on the shown day, from the scorer's own zone function.
+    var zones by remember { mutableStateOf<Map<String, List<Double>>>(emptyMap()) }
+    val zoneHrMax = StrainScorer.effortHRmax(profile.hrMaxOverride.takeIf { it > 0 }?.toDouble(), profile.age.toDouble()).first
+    LaunchedEffect(date, days.size) {
+        val byDay = days.associateBy { it.day }
+        val out = HashMap<String, List<Double>>()
+        for (d in wxWeekDates(date)) {
+            wxDayZoneMinutes(vm, d, byDay[d.toString()]?.restingHr, zoneHrMax)?.let { out[d.toString()] = it }
+            zones = HashMap(out)
+        }
     }
 
     val dateKey = if (dayOffset == 0L) todayResolved?.day ?: date.toString() else date.toString()
@@ -156,9 +179,9 @@ internal fun WxScoreScreen(vm: AppViewModel, initial: WxScoreTab, initialOffset:
         }
 
         when (tab) {
-            WxScoreTab.Recovery -> WxRecoveryTab(night, nightBaseline, upToDate)
-            WxScoreTab.Effort -> WxEffortTab(row, date, workouts, effortScale, profile, onOpenWorkouts, onOpenProfile)
-            WxScoreTab.Sleep -> WxSleepTab(night, upToDate, stages)
+            WxScoreTab.Recovery -> WxRecoveryTab(night, nightBaseline, upToDate, date, onOpenMoves)
+            WxScoreTab.Effort -> WxEffortTab(row, date, workouts, effortScale, profile, onOpenWorkouts, onOpenProfile, upToDate, baseline, zones)
+            WxScoreTab.Sleep -> WxSleepTab(night, upToDate, stages, sessions, nightHr, date)
         }
     }
 }
@@ -222,7 +245,7 @@ private fun WxCards(content: @Composable () -> Unit) {
 // MARK: Recovery
 
 @Composable
-private fun WxRecoveryTab(row: DailyMetric?, baseline: List<DailyMetric>, days: List<DailyMetric>) {
+private fun WxRecoveryTab(row: DailyMetric?, baseline: List<DailyMetric>, days: List<DailyMetric>, date: LocalDate, onOpenMoves: () -> Unit) {
     val rec = row?.recovery
     val color = Wx.recoveryColor(rec)
     fun mean(sel: (DailyMetric) -> Double?): Double? = baseline.mapNotNull(sel).takeIf { it.isNotEmpty() }?.average()
@@ -269,6 +292,8 @@ private fun WxRecoveryTab(row: DailyMetric?, baseline: List<DailyMetric>, days: 
                 description = uiString(R.string.wx_recovery_30_a11y), height = 130.dp,
             )
         }
+        WxLinkCard(uiString(R.string.wx_behaviour_insights), uiString(R.string.wx_behaviour_insights_body), onOpenMoves)
+        WxRecoveryWeek(days, date)
     }
 }
 
@@ -320,6 +345,9 @@ private fun WxEffortTab(
     profile: ProfileStore,
     onOpenWorkouts: () -> Unit,
     onOpenProfile: () -> Unit,
+    days: List<DailyMetric>,
+    baseline: List<DailyMetric>,
+    zones: Map<String, List<Double>>,
 ) {
     val effort = row?.strain
     val range = optimalStrainRange(row?.recovery)
@@ -353,6 +381,27 @@ private fun WxEffortTab(
         bandFrom = range?.let { it.low / 21.0 }, bandTo = range?.let { it.high / 21.0 },
     )
     WxCards {
+        // Today against a stated baseline: zones against the seven days ending today, steps and calories
+        // against the last 30 days.
+        WxCard(padding = 16.dp) {
+            val dayZ = zones[dayDate.toString()]
+            val weekZ = wxWeekDates(dayDate).mapNotNull { zones[it.toString()] }
+            fun z13(z: List<Double>) = z[1] + z[2] + z[3]
+            fun z45(z: List<Double>) = z[4] + z[5]
+            val avg13 = weekZ.takeIf { it.isNotEmpty() }?.map(::z13)?.average()
+            val avg45 = weekZ.takeIf { it.isNotEmpty() }?.map(::z45)?.average()
+            val stepsAvg = baseline.mapNotNull { it.steps?.toDouble() }.takeIf { it.isNotEmpty() }?.average()
+            val kcalAvg = baseline.mapNotNull { it.activeKcalEst }.takeIf { it.isNotEmpty() }?.average()
+            WxLabel(uiString(R.string.wx_vs_baseline_title), Modifier.padding(bottom = 4.dp))
+            WxCompareRow(uiString(R.string.wx_hr_zones_13), uiString(R.string.wx_7_day_avg_value, avg13?.let { wxHoursMinutes(it) } ?: "–"),
+                dayZ?.let { wxHoursMinutes(z13(it)) } ?: "–", wxPct(dayZ?.let(::z13), avg13), null)
+            WxCompareRow(uiString(R.string.wx_hr_zones_45), uiString(R.string.wx_7_day_avg_value, avg45?.let { wxHoursMinutes(it) } ?: "–"),
+                dayZ?.let { wxHoursMinutes(z45(it)) } ?: "–", wxPct(dayZ?.let(::z45), avg45), null)
+            WxCompareRow(uiString(R.string.wx_steps), uiString(R.string.wx_30_day_avg_value, stepsAvg?.let { String.format(Locale.getDefault(), "%,d", it.roundToInt()) } ?: "–"),
+                row?.steps?.let { String.format(Locale.getDefault(), "%,d", it) } ?: "–", wxPct(row?.steps?.toDouble(), stepsAvg), true)
+            WxCompareRow(uiString(R.string.wx_calories), uiString(R.string.wx_30_day_avg_value, kcalAvg?.let { String.format(Locale.getDefault(), "%,d", it.roundToInt()) } ?: "–"),
+                row?.activeKcalEst?.let { String.format(Locale.getDefault(), "%,d", it.roundToInt()) } ?: "–", wxPct(row?.activeKcalEst, kcalAvg), null)
+        }
         WxCard(padding = 16.dp) {
             WxLabel(uiString(R.string.wx_activities), Modifier.padding(bottom = 4.dp))
             if (dayWorkouts.isEmpty()) {
@@ -391,17 +440,28 @@ private fun WxEffortTab(
                 Text(uiString(R.string.wx_edit), style = WxType.bodyStrong.copy(fontSize = 13.sp), color = Wx.effort)
             }
         }
+        WxEffortWeek(days, dayDate, zones, scale)
     }
 }
 
 // MARK: Sleep
 
 @Composable
-private fun WxSleepTab(row: DailyMetric?, days: List<DailyMetric>, stages: List<com.noop.analytics.StageSegment>) {
+private fun WxSleepTab(
+    row: DailyMetric?,
+    days: List<DailyMetric>,
+    stages: List<com.noop.analytics.StageSegment>,
+    sessions: List<com.noop.data.SleepSession>,
+    nightHr: List<Pair<Long, Double>>,
+    date: LocalDate,
+) {
+    val context = LocalContext.current
+    val is24h = remember { android.text.format.DateFormat.is24HourFormat(context) }
     val perf = row?.let { RestScorer.restFromDaily(it) }
     val needMin = sleepNeedForDay(row, days.takeLast(30), emptyMap())
     val slept = row?.totalSleepMin
     val short = if (slept != null) needMin - slept else null
+    val eff = wxEfficiencyPct(row?.efficiency)
     WxScoreHero(
         fraction = perf?.div(100.0), color = Wx.sleep,
         value = perf?.roundToInt()?.toString() ?: "–", unit = if (perf != null) "%" else null,
@@ -409,7 +469,7 @@ private fun WxSleepTab(row: DailyMetric?, days: List<DailyMetric>, stages: List<
         stats = listOf(
             uiString(R.string.wx_hours) to (slept?.let { wxHoursMinutes(it) } ?: "–"),
             uiString(R.string.wx_needed) to wxHoursMinutes(needMin),
-            uiString(R.string.wx_efficiency) to (row?.efficiency?.let { "${it.roundToInt()}%" } ?: "–"),
+            uiString(R.string.wx_efficiency) to (eff?.let { "${it.roundToInt()}%" } ?: "–"),
         ),
         sentence = when {
             short == null -> uiString(R.string.wx_sleep_sentence_empty)
@@ -417,45 +477,100 @@ private fun WxSleepTab(row: DailyMetric?, days: List<DailyMetric>, stages: List<
             else -> uiString(R.string.wx_sleep_met)
         },
     )
+    // The night this row describes (it can be carried from the day before on Today).
+    val nightDate = row?.day?.let { runCatching { LocalDate.parse(it) }.getOrNull() } ?: date
+    val night = wxMainNight(sessions, nightDate)
+    val base = days.filter { it.day < nightDate.toString() }.takeLast(30)
+    fun avg(sel: (DailyMetric) -> Double?): Double? = base.mapNotNull(sel).takeIf { it.isNotEmpty() }?.average()
+    val awakeMin = stages.filter { it.stage == "wake" }.sumOf { (it.end - it.start) / 60.0 }
+    val light = row?.lightMin ?: 0.0
+    val deep = row?.deepMin ?: 0.0
+    val rem = row?.remMin ?: 0.0
     WxCards {
+        // Last night against the 30 nights before it.
+        WxCard(padding = 16.dp) {
+            WxLabel(uiString(R.string.wx_vs_baseline_title), Modifier.padding(bottom = 4.dp))
+            val hvn = slept?.let { it / needMin * 100 }
+            val hvnAvg = avg { it.totalSleepMin }?.let { it / needMin * 100 }
+            WxCompareRow(uiString(R.string.wx_hours_vs_needed), avgLine(hvnAvg, "%", 0),
+                hvn?.let { "${it.roundToInt()}%" } ?: "–", wxPct(hvn, hvnAvg), true)
+            val cons = consistencySeries(sessions.filter { night == null || it.endTs <= night.endTs })
+            WxCompareRow(uiString(R.string.wx_sleep_consistency), avgLine(cons.typical, "%", 0),
+                cons.latest?.let { "${it.roundToInt()}%" } ?: "–", wxPct(cons.latest, cons.typical), true)
+            val effAvg = avg { wxEfficiencyPct(it.efficiency) }
+            WxCompareRow(uiString(R.string.wx_efficiency), avgLine(effAvg, "%", 0),
+                eff?.let { "${it.roundToInt()}%" } ?: "–", wxPct(eff, effAvg), true)
+            val restor = row?.let { (it.deepMin ?: 0.0) + (it.remMin ?: 0.0) }
+            val restorAvg = avg { r -> if (r.deepMin == null && r.remMin == null) null else (r.deepMin ?: 0.0) + (r.remMin ?: 0.0) }
+            WxCompareRow(uiString(R.string.wx_restorative), uiString(R.string.wx_30_day_avg_value, restorAvg?.let { wxHoursMinutes(it) } ?: "–"),
+                restor?.let { wxHoursMinutes(it) } ?: "–", wxPct(restor, restorAvg), true)
+        }
+
+        // Hours of sleep: the night's heart rate between bed and wake.
         WxCard {
-            WxCardHeader(uiString(R.string.wx_stages), stages.takeIf { it.isNotEmpty() }?.let {
+            WxCardHeader(uiString(R.string.wx_hours_of_sleep), slept?.let { wxHoursMinutes(it) })
+            Spacer(Modifier.height(10.dp))
+            if (night != null && nightHr.size >= 2) {
+                WxNightHrChart(nightHr, night.effectiveStartTs, night.endTs, is24h, uiString(R.string.wx_hours_of_sleep))
+            } else {
+                Text(uiString(R.string.wx_no_hr_night), style = WxType.caption, color = Wx.textMuted)
+            }
+        }
+
+        // Stages with the hypnogram, each against its 30-night average (the white mark).
+        WxCard {
+            WxCardHeader(uiString(R.string.wx_stages), night?.let {
                 val z = ZoneId.systemDefault()
-                fun c(ts: Long) = Instant.ofEpochSecond(ts).atZone(z).let { t -> String.format(Locale.US, "%02d:%02d", t.hour, t.minute) }
-                "${c(it.first().start)} – ${c(it.last().end)}"
+                fun c(ts: Long) = Instant.ofEpochSecond(ts).atZone(z).let { t -> wxClock(t.hour * 60 + t.minute, is24h) }
+                "${c(it.effectiveStartTs)} – ${c(it.endTs)}"
             })
             Spacer(Modifier.height(14.dp))
             if (stages.isNotEmpty()) {
                 WxHypnogram(stages, uiString(R.string.wx_hypnogram_a11y))
-                Spacer(Modifier.height(16.dp))
+                Spacer(Modifier.height(12.dp))
             }
-            val light = row?.lightMin ?: 0.0
-            val deep = row?.deepMin ?: 0.0
-            val rem = row?.remMin ?: 0.0
-            val total = (light + deep + rem).coerceAtLeast(1.0)
-            Row(Modifier.fillMaxWidth().height(14.dp).clip(RoundedCornerShape(7.dp))) {
-                if (light > 0) Box(Modifier.weight(light.toFloat()).fillMaxSize().background(Wx.stageLight))
-                if (deep > 0) Box(Modifier.weight(deep.toFloat()).fillMaxSize().background(Wx.stageDeep))
-                if (rem > 0) Box(Modifier.weight(rem.toFloat()).fillMaxSize().background(Wx.stageRem))
-                if (light + deep + rem <= 0) Box(Modifier.weight(1f).fillMaxSize().background(Wx.cardRaised))
-            }
+            val inBed = (awakeMin + light + deep + rem).coerceAtLeast(1.0)
+            WxStageRow(uiString(R.string.wx_awake), Wx.stageAwake, awakeMin, inBed, null)
+            WxStageRow(uiString(R.string.wx_light_sleep), Wx.stageLight, light, inBed, avg { it.lightMin })
+            WxStageRow(uiString(R.string.wx_deep_sleep), Wx.stageDeep, deep, inBed, avg { it.deepMin })
+            WxStageRow(uiString(R.string.wx_rem_sleep), Wx.stageRem, rem, inBed, avg { it.remMin })
+            Text(uiString(R.string.wx_stage_avg_note), style = WxType.caption, color = Wx.textDim, modifier = Modifier.padding(top = 4.dp))
+        }
+
+        // Efficiency: asleep against awake, and the wake events.
+        WxCard {
+            WxCardHeader(uiString(R.string.wx_efficiency), eff?.let { "${it.roundToInt()}%" })
             Spacer(Modifier.height(12.dp))
             Row(Modifier.fillMaxWidth()) {
-                WxStage(uiString(R.string.wx_light_sleep), Wx.stageLight, light, total, Modifier.weight(1f))
-                WxStage(uiString(R.string.wx_deep_sleep), Wx.stageDeep, deep, total, Modifier.weight(1f))
-                WxStage(uiString(R.string.wx_rem_sleep), Wx.stageRem, rem, total, Modifier.weight(1f))
+                WxStat(uiString(R.string.wx_asleep), slept?.let { wxHoursMinutes(it) } ?: "–", Modifier.weight(1f))
+                WxStat(uiString(R.string.wx_awake), if (stages.isNotEmpty()) wxHoursMinutes(awakeMin) else "–", Modifier.weight(1f))
+                WxStat(uiString(R.string.wx_wake_events), row?.disturbances?.toString() ?: "–", Modifier.weight(1f))
             }
         }
-        Row(horizontalArrangement = Arrangement.spacedBy(Wx.gap)) {
-            WxSmallStat(uiString(R.string.wx_restorative), row?.let { wxHoursMinutes((it.deepMin ?: 0.0) + (it.remMin ?: 0.0)) } ?: "–",
-                uiString(R.string.wx_deep_plus_rem), Modifier.weight(1f))
-            WxSmallStat(uiString(R.string.wx_disturbances), row?.disturbances?.toString() ?: "–",
-                uiString(R.string.wx_last_night), Modifier.weight(1f))
+
+        // Consistency: bed and wake times of the last five nights.
+        WxCard {
+            val cons = consistencySeries(sessions.filter { night == null || it.endTs <= night.endTs })
+            WxCardHeader(uiString(R.string.wx_sleep_consistency), cons.latest?.let { "${it.roundToInt()}%" })
+            Spacer(Modifier.height(12.dp))
+            val five = (4 downTo 0).map { nightDate.minusDays(it.toLong()) }
+            WxBedWakeBars(five.map { d -> wxMainNight(sessions, d)?.let { it.effectiveStartTs to it.endTs } },
+                five.map { wxWeekdayShort(it) }, highlightLast = true, color = Wx.sleepSoft,
+                description = uiString(R.string.wx_sleep_consistency), is24h = is24h)
         }
+
         Row(horizontalArrangement = Arrangement.spacedBy(Wx.gap)) {
             WxSmallStat(uiString(R.string.wx_hrv), row?.avgHrv?.let { "${it.roundToInt()}" } ?: "–", "ms", Modifier.weight(1f))
             WxSmallStat(uiString(R.string.wx_resting_hr), row?.restingHr?.toString() ?: "–", "bpm", Modifier.weight(1f))
         }
+
+        val debtByDay = remember(days) {
+            com.noop.analytics.SleepDebt.debtSeries(
+                series = days.map { it.day to com.noop.analytics.SleepDebt.creditedSleepMin(it.totalSleepMin) },
+                needHours = RestScorer.personalizedNeedHours(days.mapNotNull { it.totalSleepMin?.let { m -> m / 60.0 } }, null),
+            ).toMap()
+        }
+        WxSleepWeek(days, nightDate, sessions, needMin, debtByDay, is24h)
     }
 }
 

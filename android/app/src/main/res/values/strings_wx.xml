@@ -2,11 +2,13 @@
 <!-- Wx redesign copy (fork). -->
 <resources>
     <string name="wx_30_day_avg_value">30-day avg %1$s</string>
+    <string name="wx_7_day_avg_value">7-day avg %1$s</string>
     <string name="wx_activities">Activities</string>
     <string name="wx_alarm">Alarm</string>
     <string name="wx_alarm_set">Set for tomorrow</string>
     <string name="wx_all_alarm_options">Wake window, day overrides &amp; more</string>
     <string name="wx_all_out">All out</string>
+    <string name="wx_asleep">Asleep</string>
     <string name="wx_average_over">Average %1$s · %2$s</string>
     <string name="wx_avg_hr">Avg HR</string>
     <string name="wx_avg_pct">avg %1$d%%</string>
@@ -16,6 +18,8 @@
     <string name="wx_backup_alarm_note">Keep a backup alarm for anything you can\'t miss.</string>
     <string name="wx_bars">Bars</string>
     <string name="wx_bars_a11y">%1$s per period as bars</string>
+    <string name="wx_behaviour_insights">Behaviour insights</string>
+    <string name="wx_behaviour_insights_body">See how your journal answers line up with your recovery</string>
     <string name="wx_best_day">Best: %1$s</string>
     <string name="wx_bpm_avg">avg %1$d bpm</string>
     <string name="wx_bpm_now">%1$d bpm now</string>
@@ -60,6 +64,9 @@
     <string name="wx_hours">Hours</string>
     <string name="wx_hours_of_sleep">Sleep</string>
     <string name="wx_hours_short">%1$d h</string>
+    <string name="wx_hours_vs_needed">Hours vs needed</string>
+    <string name="wx_hr_zones_13">HR zones 1–3</string>
+    <string name="wx_hr_zones_45">HR zones 4–5</string>
     <string name="wx_hrv">HRV</string>
     <string name="wx_hrv_long">Heart rate variability</string>
     <string name="wx_hurts">Hurts</string>
@@ -71,6 +78,7 @@
     <string name="wx_last_30_days">Last 30 days</string>
     <string name="wx_last_7_days">Last 7 days</string>
     <string name="wx_last_night">last night</string>
+    <string name="wx_latest_estimate">Latest estimate</string>
     <string name="wx_light">Light</string>
     <string name="wx_light_sleep">Light</string>
     <string name="wx_line">Line</string>
@@ -101,6 +109,7 @@
     <string name="wx_no_alarm_set">No alarm set</string>
     <string name="wx_no_data">No data</string>
     <string name="wx_no_hr_day">No heart-rate data for this day.</string>
+    <string name="wx_no_hr_night">No heart-rate data for this night.</string>
     <string name="wx_no_hr_session">No heart-rate data for this session.</string>
     <string name="wx_no_workouts">No workouts on this day.</string>
     <string name="wx_not_enough_today">Not enough heart-rate data yet today.</string>
@@ -144,12 +153,15 @@
     <string name="wx_showing_earlier_night">Last night isn\'t scored yet · showing the night to %1$s</string>
     <string name="wx_skin_temp">Skin temp</string>
     <string name="wx_sleep">Sleep</string>
+    <string name="wx_sleep_consistency">Sleep consistency</string>
+    <string name="wx_sleep_debt">Sleep debt</string>
     <string name="wx_sleep_efficiency">%1$d%% efficiency</string>
     <string name="wx_sleep_met">You met your sleep need. Keep the same bedtime tonight.</string>
     <string name="wx_sleep_need_value">Need %1$s</string>
     <string name="wx_sleep_performance">Sleep performance</string>
     <string name="wx_sleep_sentence_empty">Sleep is scored after the night is synced.</string>
     <string name="wx_sleep_short">%1$s short of your need. Go to bed earlier tonight to pay it back.</string>
+    <string name="wx_stage_avg_note">White mark: your 30-night average</string>
     <string name="wx_stages">Stages</string>
     <string name="wx_start_workout">Start workout</string>
     <string name="wx_steps">Steps</string>
@@ -168,19 +180,25 @@
     <string name="wx_sync_retry">Retry sync</string>
     <string name="wx_syncing">Syncing…</string>
     <string name="wx_target">Target</string>
+    <string name="wx_time_in_bed">Time in bed</string>
     <string name="wx_time_in_level">Time in each level</string>
     <string name="wx_todays_activities">Today\'s activities</string>
     <string name="wx_tonights_sleep">Tonight\'s sleep</string>
+    <string name="wx_vo2max">VO₂ max</string>
     <string name="wx_vs_baseline">vs baseline</string>
+    <string name="wx_vs_baseline_title">Compared with your usual</string>
     <string name="wx_vs_previous">vs previous</string>
     <string name="wx_wake_at">Wake at</string>
+    <string name="wx_wake_events">Wake events</string>
     <string name="wx_week">Week</string>
     <string name="wx_weekday_a11y">%1$s average per weekday</string>
+    <string name="wx_weekly_trends">Weekly trends</string>
     <string name="wx_what_drove_it">What drove it · vs 30-day avg</string>
     <string name="wx_what_moves_you">What moves you</string>
     <string name="wx_workouts">Workouts</string>
     <string name="wx_yellow_days">%1$d yellow</string>
     <string name="wx_yes">Yes</string>
     <string name="wx_yes_no_counts">%1$d yes · %2$d no</string>
+    <string name="wx_zone_n">Zone %1$d</string>
     <string name="wx_zones">Zones</string>
 </resources>
