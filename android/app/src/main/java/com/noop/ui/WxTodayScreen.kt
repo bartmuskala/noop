@@ -444,8 +444,10 @@ private fun WxStrapStatus(
                 style = WxType.caption.copy(fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold), color = Wx.text)
         }
         // Sync.
+        // Only the offload itself counts as "syncing", as on the old Today. analyzingHistory is re-armed
+        // after every committed chunk while the strap streams, so it reads as permanently busy.
         val syncing = live.backfilling
-        val calculating = !live.backfilling && live.analyzingHistory
+        val calculating = false
         Row(
             Modifier.height(32.dp).clip(RoundedCornerShape(16.dp)).background(Wx.cardRaised).clickable(onClick = onSync)
                 .padding(horizontal = 10.dp),
