@@ -98,7 +98,6 @@ internal fun WxTrendsScreen(vm: AppViewModel, initial: WxTrendMetric = WxTrendMe
             .fillMaxSize()
             .background(Wx.canvas)
             .verticalScroll(rememberScrollState())
-            .statusBarsPadding()
             .padding(bottom = BottomBarStyleStore.barHeightForContent() + 24.dp),
     ) {
         Text(uiString(R.string.nav_trends).uppercase(), style = WxType.title.copy(fontSize = 28.sp), color = Wx.text,

@@ -31,7 +31,7 @@ class BottomBarTabsTest {
     @Test
     fun theBarCarriesTheForkTabs() {
         assertEquals(
-            listOf(Destination.Today, Destination.Trends, Destination.Coach, Destination.Insights),
+            listOf(Destination.Today, Destination.Trends, Destination.Workouts, Destination.Coach, Destination.Insights),
             barTabs.map { it.dest },
         )
     }

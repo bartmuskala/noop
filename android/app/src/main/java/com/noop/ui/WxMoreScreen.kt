@@ -45,7 +45,6 @@ import com.noop.R
 /** The destinations the More page lists, in order, with the accent each row's icon sits on. */
 internal val wxMoreItems: List<Pair<Destination, Color>> = listOf(
     Destination.Live to Wx.heart,
-    Destination.Workouts to Wx.effort,
     Destination.Stress to Wx.stressLow,
     Destination.InsightsHub to Wx.recoveryHigh,
     Destination.FitnessAge to Wx.heart,
@@ -66,7 +65,6 @@ internal fun WxMoreScreen(vm: AppViewModel, onNavigate: (String) -> Unit) {
             .fillMaxSize()
             .background(Wx.canvas)
             .verticalScroll(rememberScrollState())
-            .statusBarsPadding()
             .padding(bottom = BottomBarStyleStore.barHeightForContent() + 24.dp),
     ) {
         Text(uiString(R.string.nav_more).uppercase(), style = WxType.title.copy(fontSize = 28.sp), color = Wx.text,

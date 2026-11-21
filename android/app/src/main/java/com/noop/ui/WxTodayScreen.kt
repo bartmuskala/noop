@@ -193,7 +193,6 @@ internal fun WxTodayScreen(vm: AppViewModel, onOpen: (WxTodayTarget) -> Unit) {
             .fillMaxSize()
             .background(Wx.canvas)
             .verticalScroll(rememberScrollState())
-            .statusBarsPadding()
             .padding(bottom = BottomBarStyleStore.barHeightForContent() + 24.dp),
     ) {
         // Header: avatar → Settings on the left; live HR, sync and battery on the right.
@@ -300,7 +299,7 @@ internal fun WxTodayScreen(vm: AppViewModel, onOpen: (WxTodayTarget) -> Unit) {
                     WxActivityRow(
                         accent = Wx.sleep,
                         title = uiString(R.string.wx_sleep),
-                        subtitle = uiString(R.string.wx_sleep_efficiency, night.efficiency?.roundToInt() ?: 0),
+                        subtitle = uiString(R.string.wx_sleep_efficiency, wxEfficiencyPct(night.efficiency)?.roundToInt() ?: 0),
                         trailing = wxHoursMinutes(mins),
                         onClick = { onOpen(WxTodayTarget.Score(WxScoreTab.Sleep, dayOffset)) },
                     )

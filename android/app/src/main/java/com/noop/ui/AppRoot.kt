@@ -9,6 +9,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.border
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -250,7 +251,7 @@ internal data class DrawerGroup(
 internal val drawerGroups: List<DrawerGroup> = listOf(
     // The fork keeps only the screens it uses; the Wx More page lists exactly these (see wxMoreItems).
     DrawerGroup("Body", R.string.more_group_body, listOf(
-        Destination.Live, Destination.Workouts, Destination.Stress, Destination.InsightsHub, Destination.FitnessAge,
+        Destination.Live, Destination.Stress, Destination.InsightsHub, Destination.FitnessAge,
     ), defaultExpanded = true),
     DrawerGroup("Data", R.string.more_group_data, listOf(
         Destination.Devices, Destination.DataSources, Destination.BackupSync,
@@ -715,7 +716,7 @@ fun AppRoot(viewModel: AppViewModel = viewModel()) {
                 }
                 composable(Destination.SmartAlarmClassic.route) { SmartAlarmScreen(viewModel) }
                 composable(Destination.Workouts.route) {
-                    WxWorkoutsScreen(viewModel, onBack = { nav.popBackStack() },
+                    WxWorkoutsScreen(viewModel, onBack = null,
                         onOpenFull = { nav.navigate(Destination.WorkoutsClassic.route) })
                 }
                 composable(Destination.WorkoutsClassic.route) { WorkoutsScreen(viewModel) }
@@ -1127,6 +1128,7 @@ internal val barLeadingTabs = listOf(
     BarTab(Destination.Today, Icons.Outlined.GridView, R.string.nav_today),
     // chart.line.uptrend.xyaxis on iOS — the rising-trend glyph, not a flat bar chart.
     BarTab(Destination.Trends, Icons.AutoMirrored.Filled.TrendingUp, R.string.nav_trends),
+    BarTab(Destination.Workouts, Icons.Filled.FitnessCenter, R.string.nav_workouts),
 )
 /**
  * The trailing tabs, as shipped. [barTrailingTabsFor] is what the bar actually draws: Coach is
@@ -1249,10 +1251,12 @@ private fun BarSlot(
     modifier: Modifier = Modifier,
     onClick: () -> Unit,
 ) {
-    val tint = if (active) Palette.accent else Palette.textSecondary
+    // The active tab sits on a soft green pill with a green icon and label.
+    val tint = if (active) Wx.recoveryHigh else Palette.textSecondary
     Column(
         modifier = modifier
             .clip(RoundedCornerShape(14.dp))
+            .background(if (active) Wx.recoveryHigh.copy(alpha = 0.16f) else androidx.compose.ui.graphics.Color.Transparent)
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null,

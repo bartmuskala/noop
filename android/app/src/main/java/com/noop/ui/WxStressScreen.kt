@@ -99,7 +99,6 @@ internal fun WxStressScreen(vm: AppViewModel, onBack: () -> Unit, onBreathe: () 
             .fillMaxSize()
             .background(Wx.canvas)
             .verticalScroll(rememberScrollState())
-            .statusBarsPadding()
             .padding(bottom = BottomBarStyleStore.barHeightForContent() + 24.dp),
     ) {
         Row(Modifier.fillMaxWidth().padding(4.dp), verticalAlignment = Alignment.CenterVertically) {

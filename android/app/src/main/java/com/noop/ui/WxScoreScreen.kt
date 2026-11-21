@@ -135,7 +135,6 @@ internal fun WxScoreScreen(vm: AppViewModel, initial: WxScoreTab, initialOffset:
             .fillMaxSize()
             .background(Wx.canvas)
             .verticalScroll(rememberScrollState())
-            .statusBarsPadding()
             .padding(bottom = BottomBarStyleStore.barHeightForContent() + 24.dp),
     ) {
         Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
