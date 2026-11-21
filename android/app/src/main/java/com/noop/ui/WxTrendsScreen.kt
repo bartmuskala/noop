@@ -34,6 +34,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import com.noop.R
 import com.noop.analytics.RestScorer
 import com.noop.data.DailyMetric
@@ -151,13 +154,13 @@ internal fun WxTrendsScreen(vm: AppViewModel, initial: WxTrendMetric = WxTrendMe
                     Column(horizontalAlignment = Alignment.End) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             androidx.compose.material3.IconButton(onClick = { page += 1 }) {
-                                androidx.compose.material3.Icon(androidx.compose.material.icons.Icons.AutoMirrored.Filled.KeyboardArrowLeft,
+                                androidx.compose.material3.Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft,
                                     uiString(R.string.wx_prev_day), tint = Wx.text)
                             }
                             val rf = DateTimeFormatter.ofPattern("d MMM", Locale.getDefault())
                             Text("${start.format(rf)} – ${today.format(rf)}".uppercase(), style = WxType.label, color = Wx.text)
                             androidx.compose.material3.IconButton(onClick = { if (page > 0) page -= 1 }, enabled = page > 0) {
-                                androidx.compose.material3.Icon(androidx.compose.material.icons.Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                                androidx.compose.material3.Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight,
                                     uiString(R.string.wx_next_day), tint = if (page > 0) Wx.text else Wx.lineStrong)
                             }
                         }
