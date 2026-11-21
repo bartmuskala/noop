@@ -102,9 +102,10 @@ data class PaletteTokens(
 // Titanium column byte-for-byte: blue-grey canvas, WHOOP red→yellow→green recovery, green Charge,
 // blue Effort, slate Rest, amber Stress. NO gold anywhere — accent/gold tokens point to WHOOP blue.
 val DarkTokens = PaletteTokens(
-    surfaceBase = Color(0xFF121518), surfaceRaised = Color(0xFF25292C), surfaceOverlay = Color(0xFF1C1F26),
-    surfaceInset = Color(0xFF1F2229), hairline = Color(0xFF21304A), hairlineStrong = Color(0xFF2E3C57),
-    textPrimary = Color(0xFFF4F6F8), textSecondary = Color(0xFFC8CFD8), textTertiary = Color(0xFF8A94A4),
+    // Fork: the canvas, cards and hairlines follow the Wx screens (near-black canvas, flat cards).
+    surfaceBase = Color(0xFF0B0D10), surfaceRaised = Color(0xFF161A1F), surfaceOverlay = Color(0xFF1E242B),
+    surfaceInset = Color(0xFF0F1216), hairline = Color(0xFF222930), hairlineStrong = Color(0xFF2A3139),
+    textPrimary = Color(0xFFF2F4F6), textSecondary = Color(0xFFC9D0D6), textTertiary = Color(0xFF9AA4AE),
     glowAmbient = Color(0xFF3A2D0A),
     // Brand accent → mint, parity with iOS #1068 (NoopVisualStyle.mint/mintGlow). accentMuted is a dark
     // teal muted surface (green-shifted analog of the old navy 0xFF16233A). Gold stays in the recovery world.
@@ -120,8 +121,8 @@ val DarkTokens = PaletteTokens(
     effortColor = Color(0xFF4090E0), effortDeep = Color(0xFF2A6FB0), effortBright = Color(0xFF74B6F0), effortGlow = Color(0xFF4090E0),
     restColor = Color(0xFF83A0B8), restDeep = Color(0xFF2F6FCB), restBright = Color(0xFF6FA8E8), restGlow = Color(0xFF4A90E2),
     stressColor = Color(0xFFF0A020), stressDeep = Color(0xFF4A90E2), stressBright = Color(0xFFE0662F), stressGlow = Color(0xFFF0A020),
-    scenicCenter = Color(0xFF1C2128), scenicEdge = Color(0xFF121518), scenicStar = Color(0xFFC8CFD8),
-    cardFillTop = Color(0xFF15243C), cardFillBottom = Color(0xFF0B1424),
+    scenicCenter = Color(0xFF0B0D10), scenicEdge = Color(0xFF0B0D10), scenicStar = Color(0xFFC8CFD8),
+    cardFillTop = Color(0xFF161A1F), cardFillBottom = Color(0xFF161A1F),
     gold = Color(0xFF60A0E0), goldLight = Color(0xFF9FC8F0), goldDeep = Color(0xFF3A78C8),
     goldDeepText = Color(0xFFFFFFFF), signalYellow = Color(0xFFFFD63D),
     titaniumTop = Color(0xFFF1F3F5), titaniumMid = Color(0xFFC9CFD4), titaniumLow = Color(0xFF969DA4), titaniumDeep = Color(0xFF6B737B),
@@ -309,7 +310,7 @@ object AppearancePrefs {
         private set
 
     fun load(ctx: Context) {
-        mode = AppearanceMode.fromStorage(prefs(ctx).getString(KEY, AppearanceMode.SYSTEM.storageValue))
+        mode = AppearanceMode.fromStorage(prefs(ctx).getString(KEY, AppearanceMode.DARK.storageValue))
         gaugeNumerals = GaugeNumeralStyle.fromStorage(
             prefs(ctx).getString(GAUGE_KEY, GaugeNumeralStyle.BOLD.storageValue))
     }

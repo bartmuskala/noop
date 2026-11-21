@@ -118,7 +118,7 @@ internal fun WxTodayScreen(vm: AppViewModel, onOpen: (WxTodayTarget) -> Unit) {
     val effortScale = remember { UnitPrefs.effortScale(context) }
     val avgDays = remember { WxAveragePrefs.read(context) }
     val is24h = remember { android.text.format.DateFormat.is24HourFormat(context) }
-    LaunchedEffect(Unit) { vm.loadWorkouts() }
+    LaunchedEffect(Unit) { vm.loadWorkouts(); vm.rescoreWorkoutsWithFittedCurve() }
 
     // Day navigation: 0 = today, 1 = yesterday, and so on. Every card reads the row for that day.
     var dayOffset by remember { mutableStateOf(0L) }
@@ -270,45 +270,12 @@ internal fun WxTodayScreen(vm: AppViewModel, onOpen: (WxTodayTarget) -> Unit) {
             Modifier.fillMaxWidth().padding(horizontal = Wx.gutter, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(Wx.gap),
         ) {
-            // Tonight's sleep: recommended bedtime on the left, the alarm on the right.
-            val needMin = sleepNeedForDay(row, history.takeLast(30), emptyMap())
-            val alarmMin: Int? = when {
-                phoneAlarmOn -> phoneAlarmMin
-                strapAlarmOn -> strapAlarmMin
-                else -> null
-            }
-            val wakeMin = alarmMin ?: WX_DEFAULT_WAKE_MIN
-            val bedMin = ((wakeMin - needMin.roundToInt() - WX_SLEEP_LATENCY_MIN) % 1440 + 1440) % 1440
-            WxTonightCard(
-                bedtime = wxClock(bedMin, is24h),
-                need = wxHoursMinutes(needMin),
-                alarm = alarmMin?.let { wxClock(it, is24h) },
-                onAlarm = { onOpen(WxTodayTarget.Alarms) },
+            // Heart rate & stress for the selected day, with that day's workouts marked.
+            WxDayHeartCard(
+                vm = vm, date = selectedDate, workouts = workouts,
+                liveBpm = live.heartRate?.takeIf { live.connected },
+                onOpenStress = { onOpen(WxTodayTarget.Stress) },
             )
-
-            // Effort & recovery, last seven days ending on the selected day.
-            val week = (6 downTo 0).map { selectedDate.minusDays(it.toLong()) }
-            val byKey = history.associateBy { it.day }
-            val recSeries = week.map { byKey[it.toString()]?.recovery }
-            val effSeries = week.map { d -> byKey[d.toString()]?.strain?.let { UnitFormatter.effortValue(it, effortScale) } }
-            val effMax = UnitFormatter.effortValue(100.0, effortScale)
-            WxCard(radius = Wx.chartRadius) {
-                WxCardHeader(uiString(R.string.wx_effort_and_recovery), uiString(R.string.wx_last_7_days))
-                Spacer(Modifier.height(10.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                    WxLegend(Wx.recoveryColor(recovery), uiString(R.string.wx_recovery), recovery?.let { "${it.roundToInt()}%" } ?: "–")
-                    WxLegend(Wx.effort, uiString(R.string.wx_effort),
-                        effortStored?.let { UnitFormatter.effortDisplay(it, effortScale) } ?: "–")
-                }
-                Spacer(Modifier.height(12.dp))
-                WxTwoLineChart(
-                    a = WxSeries(recSeries, Wx.recoveryHigh, 0.0, 100.0, format = { "${it.roundToInt()}" },
-                        pointColor = { Wx.recoveryColor(it) }),
-                    b = WxSeries(effSeries, Wx.effort, 0.0, effMax, format = { String.format(Locale.US, "%.1f", it) }),
-                    dayLabels = week.map { wxWeekdayShort(it) },
-                    description = uiString(R.string.wx_effort_and_recovery_a11y),
-                )
-            }
 
             // Activities: the night, then the day's workouts, then the Health Connect sync.
             val dayWorkouts = workouts.filter {
@@ -365,28 +332,38 @@ internal fun WxTodayScreen(vm: AppViewModel, onOpen: (WxTodayTarget) -> Unit) {
                 }
             }
 
-            // Stress glance.
-            WxCard(onClick = { onOpen(WxTodayTarget.Stress) }) {
-                WxCardHeader(uiString(R.string.wx_stress_monitor), uiString(R.string.wx_daily_level))
-                Row(Modifier.padding(top = 8.dp), verticalAlignment = Alignment.Bottom) {
-                    Text(stressToday?.let { String.format(Locale.US, "%.1f", it) } ?: "–", style = WxType.number, color = Wx.text)
-                    Spacer(Modifier.width(8.dp))
-                    Text(wxStressBand(stressToday), style = WxType.bodyStrong.copy(fontSize = 14.sp),
-                        color = Wx.stressColor(stressToday), modifier = Modifier.padding(bottom = 4.dp))
-                    Spacer(Modifier.weight(1f))
-                    Text(uiString(R.string.wx_of_three), style = WxType.caption, color = Wx.textMuted,
-                        modifier = Modifier.padding(bottom = 4.dp))
-                }
-                Spacer(Modifier.height(8.dp))
-                Row(Modifier.fillMaxWidth().height(28.dp), horizontalArrangement = Arrangement.spacedBy(3.dp),
-                    verticalAlignment = Alignment.Bottom) {
-                    stressWeek.forEachIndexed { i, v ->
-                        val f = ((v ?: 0.0) / 3.0).toFloat().coerceIn(0.08f, 1f)
-                        val c = Wx.stressColor(v).copy(alpha = if (i == stressWeek.lastIndex) 1f else 0.45f)
-                        Box(Modifier.weight(1f).fillMaxHeight(f).clip(RoundedCornerShape(2.dp)).background(c))
-                    }
+            // Journal week.
+            val journalWeek = (6 downTo 0).map { selectedDate.minusDays(it.toLong()) }.map {
+                WxJournalDay(wxWeekdayShort(it), it.dayOfMonth, it.toString() in loggedDays, it == selectedDate)
+            }
+            val loggedCount = journalWeek.count { it.logged }
+            WxCard(onClick = { onOpen(WxTodayTarget.Journal) }) {
+                WxCardHeader(uiString(R.string.today_section_journal), uiString(R.string.wx_days_logged, loggedCount))
+                Spacer(Modifier.height(14.dp))
+                WxJournalWeek(journalWeek, uiString(R.string.wx_journal_week_a11y, loggedCount))
+                Spacer(Modifier.height(14.dp))
+                Box(
+                    Modifier.fillMaxWidth().height(44.dp).clip(RoundedCornerShape(12.dp)).background(Wx.cardRaised),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(uiString(R.string.wx_log_today), style = WxType.bodyStrong.copy(fontSize = 14.sp), color = Wx.text)
                 }
             }
+            // Tonight's sleep: recommended bedtime on the left, the alarm on the right.
+            val needMin = sleepNeedForDay(row, history.takeLast(30), emptyMap())
+            val alarmMin: Int? = when {
+                phoneAlarmOn -> phoneAlarmMin
+                strapAlarmOn -> strapAlarmMin
+                else -> null
+            }
+            val wakeMin = alarmMin ?: WX_DEFAULT_WAKE_MIN
+            val bedMin = ((wakeMin - needMin.roundToInt() - WX_SLEEP_LATENCY_MIN) % 1440 + 1440) % 1440
+            WxTonightCard(
+                bedtime = wxClock(bedMin, is24h),
+                need = wxHoursMinutes(needMin),
+                alarm = alarmMin?.let { wxClock(it, is24h) },
+                onAlarm = { onOpen(WxTodayTarget.Alarms) },
+            )
 
             // Metric tiles: today's value, change vs the N-day average, and the average itself.
             val window = history.takeLast(avgDays)
@@ -406,23 +383,30 @@ internal fun WxTodayScreen(vm: AppViewModel, onOpen: (WxTodayTarget) -> Unit) {
                 }
             }
 
-            // Journal week.
-            val journalWeek = (6 downTo 0).map { selectedDate.minusDays(it.toLong()) }.map {
-                WxJournalDay(wxWeekdayShort(it), it.dayOfMonth, it.toString() in loggedDays, it == selectedDate)
-            }
-            val loggedCount = journalWeek.count { it.logged }
-            WxCard(onClick = { onOpen(WxTodayTarget.Journal) }) {
-                WxCardHeader(uiString(R.string.today_section_journal), uiString(R.string.wx_days_logged, loggedCount))
-                Spacer(Modifier.height(14.dp))
-                WxJournalWeek(journalWeek, uiString(R.string.wx_journal_week_a11y, loggedCount))
-                Spacer(Modifier.height(14.dp))
-                Box(
-                    Modifier.fillMaxWidth().height(44.dp).clip(RoundedCornerShape(12.dp)).background(Wx.cardRaised),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text(uiString(R.string.wx_log_today), style = WxType.bodyStrong.copy(fontSize = 14.sp), color = Wx.text)
+            // Effort & recovery, last seven days ending on the selected day.
+            val week = (6 downTo 0).map { selectedDate.minusDays(it.toLong()) }
+            val byKey = history.associateBy { it.day }
+            val recSeries = week.map { byKey[it.toString()]?.recovery }
+            val effSeries = week.map { d -> byKey[d.toString()]?.strain?.let { UnitFormatter.effortValue(it, effortScale) } }
+            val effMax = UnitFormatter.effortValue(100.0, effortScale)
+            WxCard(radius = Wx.chartRadius) {
+                WxCardHeader(uiString(R.string.wx_effort_and_recovery), uiString(R.string.wx_last_7_days))
+                Spacer(Modifier.height(10.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                    WxLegend(Wx.recoveryColor(recovery), uiString(R.string.wx_recovery), recovery?.let { "${it.roundToInt()}%" } ?: "–")
+                    WxLegend(Wx.effort, uiString(R.string.wx_effort),
+                        effortStored?.let { UnitFormatter.effortDisplay(it, effortScale) } ?: "–")
                 }
+                Spacer(Modifier.height(12.dp))
+                WxTwoLineChart(
+                    a = WxSeries(recSeries, Wx.recoveryHigh, 0.0, 100.0, format = { "${it.roundToInt()}" },
+                        pointColor = { Wx.recoveryColor(it) }),
+                    b = WxSeries(effSeries, Wx.effort, 0.0, effMax, format = { String.format(Locale.US, "%.1f", it) }),
+                    dayLabels = week.map { wxWeekdayShort(it) },
+                    description = uiString(R.string.wx_effort_and_recovery_a11y),
+                )
             }
+
         }
     }
         if (pullState.progress > 0f || pullState.isRefreshing) {

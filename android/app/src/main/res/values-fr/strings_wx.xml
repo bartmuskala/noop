@@ -14,6 +14,8 @@
     <string name="wx_bars">Barres</string>
     <string name="wx_bars_a11y">%1$s par période en barres</string>
     <string name="wx_best_day">Meilleur : %1$s</string>
+    <string name="wx_bpm_avg">moy. %1$d bpm</string>
+    <string name="wx_bpm_now">%1$d bpm maintenant</string>
     <string name="wx_breathe_body">Respiration lente guidée pour le faire baisser</string>
     <string name="wx_breathe_title">Respire 2 minutes</string>
     <string name="wx_by_day">Par jour</string>
@@ -43,6 +45,9 @@
     <string name="wx_fitness_age_subtitle">Hebdomadaire, comparé à ton âge</string>
     <string name="wx_for_full_sleep">pour 100%% · besoin %1$s</string>
     <string name="wx_green_days">%1$d verts</string>
+    <string name="wx_heart_and_stress">Fréquence cardiaque et stress</string>
+    <string name="wx_heart_chart_a11y">Fréquence cardiaque de la journée avec séances marquées et stress horaire dessous</string>
+    <string name="wx_heart_rate">Fréquence cardiaque</string>
     <string name="wx_high">Élevé</string>
     <string name="wx_hours">Heures</string>
     <string name="wx_hours_of_sleep">Sommeil</string>
@@ -73,6 +78,7 @@
     <string name="wx_next_day">Jour suivant</string>
     <string name="wx_no_alarm">Pas d’alarme pour demain</string>
     <string name="wx_no_data">Pas de données</string>
+    <string name="wx_no_hr_day">Pas de données cardiaques ce jour-là.</string>
     <string name="wx_no_workouts">Aucun entraînement ce jour-là.</string>
     <string name="wx_not_enough_today">Pas encore assez de données cardiaques aujourd’hui.</string>
     <string name="wx_of_three">sur 3,0</string>

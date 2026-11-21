@@ -2060,6 +2060,51 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         }.onFailure { if (it is kotlin.coroutines.cancellation.CancellationException) throw it }
         IntelligenceEngine.stepsHasMotionSink = null
     }
+    /**
+     * Fork: score every non-WHOOP-imported workout of the last 180 days once with the fitted Effort curve,
+     * from the strap heart rate inside the session. WHOOP-imported rows keep WHOOP's own strain. Each row is
+     * done once (its source + start are remembered), so reopening Workouts costs nothing.
+     */
+    fun rescoreWorkoutsWithFittedCurve() {
+        if (!NoopPrefs.fittedEffort(appContext)) return
+        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            val prefs = NoopPrefs.of(appContext)
+            val doneKey = "wx.workouts.fittedRescored"
+            val done = prefs.getStringSet(doneKey, emptySet()).orEmpty().toMutableSet()
+            val now = System.currentTimeMillis() / 1000
+            val since = now - 180L * 86_400L
+            val rows = runCatching {
+                repository.workoutsUnion(deviceId, since, now) +
+                    repository.workouts("health-connect", since, now) +
+                    repository.workouts("apple-health", since, now) +
+                    repository.workouts("activity-file", since, now) +
+                    repository.detectedWorkoutsUnion(deviceId, since, now)
+            }.getOrDefault(emptyList())
+            val hrMax = com.noop.analytics.StrainScorer.effortHRmax(
+                profileStore.hrMaxOverride.takeIf { it > 0 }?.toDouble(), profileStore.age.toDouble(),
+            ).first
+            val rest = recentDays.value.lastOrNull { it.restingHr != null }?.restingHr?.toDouble()
+                ?: com.noop.analytics.StrainScorer.defaultRestingHR
+            val updated = ArrayList<WorkoutRow>()
+            for (row in rows) {
+                val key = "${row.source}:${row.startTs}"
+                if (key in done) continue
+                if (row.source == "my-whoop" || row.endTs <= row.startTs) { done += key; continue }
+                val samples = runCatching { repository.hrSamplesUnion(activeStrapId, row.startTs, row.endTs, 20_000) }
+                    .getOrDefault(emptyList())
+                val s = com.noop.analytics.StrainScorer.strain(
+                    samples, maxHR = hrMax, restingHR = rest,
+                    method = com.noop.analytics.StrainScorer.Method.FITTED, sex = profileStore.sex,
+                )
+                done += key
+                if (s != null && (row.strain == null || kotlin.math.abs(s - row.strain) > 0.5)) updated += row.copy(strain = s)
+            }
+            if (updated.isNotEmpty()) runCatching { repository.upsertWorkouts(updated) }
+            prefs.edit().putStringSet(doneKey, done).apply()
+            if (updated.isNotEmpty()) loadWorkouts()
+        }
+    }
+
     fun loadWorkouts() {
         viewModelScope.launch {
             val now = System.currentTimeMillis() / 1000

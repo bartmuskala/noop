@@ -239,6 +239,7 @@ fun WorkoutsScreen(vm: AppViewModel) {
 
     LaunchedEffect(Unit) {
         vm.loadWorkouts()
+        vm.rescoreWorkoutsWithFittedCurve()
     }
     LaunchedEffect(allRows) {
         if (!didPickDefaultRange && allRows.isNotEmpty()) {

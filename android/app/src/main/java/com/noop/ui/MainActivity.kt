@@ -1036,7 +1036,7 @@ object NoopPrefs {
     const val KEY_SHOW_DAY_CYCLE_BACKGROUND = "noop.showDayCycleBackground"
 
     fun showDayCycleBackground(context: Context): Boolean =
-        of(context).getBoolean(KEY_SHOW_DAY_CYCLE_BACKGROUND, true)
+        of(context).getBoolean(KEY_SHOW_DAY_CYCLE_BACKGROUND, false)
 
     fun setShowDayCycleBackground(context: Context, enabled: Boolean) {
         of(context).edit().putBoolean(KEY_SHOW_DAY_CYCLE_BACKGROUND, enabled).apply()
