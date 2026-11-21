@@ -19,6 +19,7 @@
     <string name="wx_by_month">Por mês</string>
     <string name="wx_by_week">Por semana</string>
     <string name="wx_by_weekday">Por dia da semana</string>
+    <string name="wx_calculating">A calcular…</string>
     <string name="wx_calories">Calorias</string>
     <string name="wx_change_alarm">Alterar alarme</string>
     <string name="wx_compared_to_previous">Comparado com o período anterior (%1$s)</string>

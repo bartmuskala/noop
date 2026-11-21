@@ -443,7 +443,8 @@ private fun WxStrapStatus(
                 style = WxType.caption.copy(fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold), color = Wx.text)
         }
         // Sync.
-        val syncing = live.backfilling || live.analyzingHistory
+        val syncing = live.backfilling
+        val calculating = !live.backfilling && live.analyzingHistory
         Row(
             Modifier.height(32.dp).clip(RoundedCornerShape(16.dp)).background(Wx.cardRaised).clickable(onClick = onSync)
                 .padding(horizontal = 10.dp),
@@ -459,6 +460,11 @@ private fun WxStrapStatus(
                     CircularProgressIndicator(Modifier.size(12.dp), color = Wx.effort, strokeWidth = 2.dp)
                     Spacer(Modifier.width(6.dp))
                     Text(uiString(R.string.wx_syncing), style = WxType.caption, color = Wx.textSoft)
+                }
+                calculating -> {
+                    CircularProgressIndicator(Modifier.size(12.dp), color = Wx.recoveryHigh, strokeWidth = 2.dp)
+                    Spacer(Modifier.width(6.dp))
+                    Text(uiString(R.string.wx_calculating), style = WxType.caption, color = Wx.textSoft)
                 }
                 live.lastSyncError != null -> {
                     Icon(Icons.Filled.ErrorOutline, contentDescription = null, tint = Wx.recoveryMid, modifier = Modifier.size(14.dp))

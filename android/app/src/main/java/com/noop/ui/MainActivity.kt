@@ -337,7 +337,7 @@ object NoopPrefs {
     }
 
     /** Whether the one-shot full-history rescore onto the fitted Effort curve has run. */
-    const val KEY_FITTED_RESCORE_DONE = "noop.effortRescore.fitted.v1.done"
+    const val KEY_FITTED_RESCORE_DONE = "noop.effortRescore.fitted.v2.done"
 
     fun fittedRescoreDone(context: Context): Boolean = of(context).getBoolean(KEY_FITTED_RESCORE_DONE, false)
 
