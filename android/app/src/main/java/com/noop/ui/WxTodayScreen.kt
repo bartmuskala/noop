@@ -462,9 +462,14 @@ private fun WxStrapStatus(
                     Text(uiString(R.string.wx_syncing), style = WxType.caption, color = Wx.textSoft)
                 }
                 calculating -> {
+                    // The download is done; only scoring is running. Show when the strap last synced.
                     CircularProgressIndicator(Modifier.size(12.dp), color = Wx.recoveryHigh, strokeWidth = 2.dp)
                     Spacer(Modifier.width(6.dp))
-                    Text(uiString(R.string.wx_calculating), style = WxType.caption, color = Wx.textSoft)
+                    val at = live.lastSyncAt?.let {
+                        val t = Instant.ofEpochSecond(if (it > 10_000_000_000L) it / 1000 else it).atZone(ZoneId.systemDefault())
+                        wxClock(t.hour * 60 + t.minute, is24h)
+                    }
+                    Text(at ?: uiString(R.string.wx_calculating), style = WxType.caption, color = Wx.textSoft)
                 }
                 live.lastSyncError != null -> {
                     Icon(Icons.Filled.ErrorOutline, contentDescription = null, tint = Wx.recoveryMid, modifier = Modifier.size(14.dp))

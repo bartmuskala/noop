@@ -1378,29 +1378,6 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 // #1816: clear the motion sink after the pass completes (success or failure) so a stale
                 // callback is never left behind. The next pass sets its own before calling analyzeRecent.
                 IntelligenceEngine.stepsHasMotionSink = null
-                // Fork: one pass over the last 90 days onto the fitted Effort curve, after the first regular
-                // pass. Marked done BEFORE it runs: a pass this long that restarts on every launch held the
-                // shared analysis lock indefinitely, which kept the post-offload scoring (and the Syncing
-                // badge) waiting. Older days keep the score they had.
-                if (NoopPrefs.fittedEffort(appContext) && !NoopPrefs.fittedRescoreDone(appContext)) {
-                    NoopPrefs.setFittedRescoreDone(appContext)
-                    runCatching {
-                        IntelligenceEngine.analyzeRecent(
-                            repo = repository,
-                            profile = currentProfile(),
-                            maxDays = 90,
-                            importedDeviceId = deviceId,
-                            maxHROverride = profileStore.hrMaxOverride.takeIf { it > 0 }?.toDouble(),
-                            ownerSource = RegistryDayOwnerSource(noopApp.deviceRegistry),
-                            baselineEpoch = NoopPrefs.of(appContext)
-                                .getLong(Baselines.hrvBaselineEpochKey, 0L).toDouble(),
-                            recoveryEpoch = NoopPrefs.of(appContext)
-                                .getLong(Baselines.recoveryBaselineEpochKey, 0L).toDouble(),
-                            effortMethod = NoopPrefs.effortMethod(appContext),
-                            dayCycleMode = NoopPrefs.dayCycleMode(appContext),
-                        )
-                    }.onFailure { if (it is kotlin.coroutines.cancellation.CancellationException) throw it }
-                }
                 // Opt-in writeback: push the freshly computed nights into Health Connect so other
                 // apps see them. Idempotent (clientRecordId per metric+day), so re-running every
                 // cycle just upserts. Never let an HC hiccup (perm revoked mid-flight, provider
