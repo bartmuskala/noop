@@ -208,6 +208,12 @@ internal enum class Destination(
     Score("score/{tab}/{off}", R.string.wx_recovery, Icons.Filled.MonitorHeart),
     TrendsMetric("trends_metric/{metric}", R.string.nav_trends, Icons.AutoMirrored.Filled.TrendingUp),
     FitnessAge("fitness_age", R.string.today_card_fitness_age, Icons.Filled.Cake),
+    // The full classic screens behind the Wx Journal, What moves you, Workouts and Alarms pages, for
+    // their editing and advanced options. Contextual pushes, never in a More group.
+    InsightsClassic("insights_classic", R.string.nav_insights, Icons.Filled.Insights),
+    InsightsHubClassic("insights_hub_classic", R.string.nav_insights_hub, Icons.Filled.Insights),
+    WorkoutsClassic("workouts_classic", R.string.nav_workouts, Icons.Filled.FitnessCenter),
+    SmartAlarmClassic("smart_alarm_classic", R.string.nav_alarms, Icons.Filled.Alarm),
 
     // The "More" tab: its own navigated page (mirroring the iOS More tab) that hosts the full
     // grouped destination list. It is NOT itself in any [DrawerGroup] — it's the door to them.
@@ -696,8 +702,16 @@ fun AppRoot(viewModel: AppViewModel = viewModel()) {
                 }
                 composable(Destination.Explore.route) { TrendsExploreScreen(viewModel) }
                 composable(Destination.Automations.route) { AutomationsScreen(viewModel) }
-                composable(Destination.SmartAlarm.route) { SmartAlarmScreen(viewModel) }
-                composable(Destination.Workouts.route) { WorkoutsScreen(viewModel) }
+                composable(Destination.SmartAlarm.route) {
+                    WxAlarmScreen(viewModel, onBack = { nav.popBackStack() },
+                        onOpenFull = { nav.navigate(Destination.SmartAlarmClassic.route) })
+                }
+                composable(Destination.SmartAlarmClassic.route) { SmartAlarmScreen(viewModel) }
+                composable(Destination.Workouts.route) {
+                    WxWorkoutsScreen(viewModel, onBack = { nav.popBackStack() },
+                        onOpenFull = { nav.navigate(Destination.WorkoutsClassic.route) })
+                }
+                composable(Destination.WorkoutsClassic.route) { WorkoutsScreen(viewModel) }
                 composable(Destination.Intelligence.route) { IntelligenceScreen(viewModel) }
 
                 // --- Placeholder routes (later waves fill these in) ---
@@ -709,7 +723,14 @@ fun AppRoot(viewModel: AppViewModel = viewModel()) {
                     )
                 }
                 composable(Destination.Trends.route) { WxTrendsScreen(viewModel) }
-                composable(Destination.Insights.route) { InsightsScreen(viewModel, onOpenInsightsHub = { nav.navigateTopLevel(Destination.InsightsHub.route) }) }
+                composable(Destination.Insights.route) {
+                    WxJournalScreen(viewModel,
+                        onOpenMoves = { nav.navigate(Destination.InsightsHub.route) },
+                        onEditQuestions = { nav.navigate(Destination.InsightsClassic.route) })
+                }
+                composable(Destination.InsightsClassic.route) {
+                    InsightsScreen(viewModel, onOpenInsightsHub = { nav.navigate(Destination.InsightsHubClassic.route) })
+                }
                 composable(Destination.Compare.route) { CompareScreen(viewModel) }
                 composable(Destination.Health.route) {
                     HealthScreen(
@@ -734,7 +755,11 @@ fun AppRoot(viewModel: AppViewModel = viewModel()) {
                     )
                 }
                 // --- v5 pillar screens (Wave 3 wiring) ---
-                composable(Destination.InsightsHub.route) { InsightsHubScreen(viewModel) }
+                composable(Destination.InsightsHub.route) {
+                    WxMovesScreen(viewModel, onBack = { nav.popBackStack() },
+                        onOpenMore = { nav.navigate(Destination.InsightsHubClassic.route) })
+                }
+                composable(Destination.InsightsHubClassic.route) { InsightsHubScreen(viewModel) }
                 composable(Destination.LabBook.route) { LabBookScreen(viewModel) }
                 composable(Destination.Rhythm.route) {
                     RhythmRoute(viewModel)

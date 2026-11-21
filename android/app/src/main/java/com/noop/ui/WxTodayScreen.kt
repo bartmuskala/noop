@@ -111,10 +111,7 @@ internal fun WxTodayScreen(vm: AppViewModel, onOpen: (WxTodayTarget) -> Unit) {
     val scope = rememberCoroutineScope()
     val days by vm.recentDays.collectAsStateWithLifecycle()
     val workouts by vm.workouts.collectAsStateWithLifecycle()
-    val phoneAlarmOn by vm.phoneAlarmEnabled.collectAsStateWithLifecycle()
-    val phoneAlarmMin by vm.phoneAlarmTargetMinutes.collectAsStateWithLifecycle()
-    val strapAlarmOn by vm.smartAlarmEnabled.collectAsStateWithLifecycle()
-    val strapAlarmMin by vm.smartAlarmMinutes.collectAsStateWithLifecycle()
+    val nextWake = rememberWxNextWake(vm)
     val effortScale = remember { UnitPrefs.effortScale(context) }
     val avgDays = remember { WxAveragePrefs.read(context) }
     val is24h = remember { android.text.format.DateFormat.is24HourFormat(context) }
@@ -360,13 +357,9 @@ internal fun WxTodayScreen(vm: AppViewModel, onOpen: (WxTodayTarget) -> Unit) {
             }
             // Tonight's sleep: recommended bedtime on the left, the alarm on the right.
             val needMin = sleepNeedForDay(row, history.takeLast(30), emptyMap())
-            val alarmMin: Int? = when {
-                phoneAlarmOn -> phoneAlarmMin
-                strapAlarmOn -> strapAlarmMin
-                else -> null
-            }
-            val wakeMin = alarmMin ?: WX_DEFAULT_WAKE_MIN
-            val bedMin = ((wakeMin - needMin.roundToInt() - WX_SLEEP_LATENCY_MIN) % 1440 + 1440) % 1440
+            // The next alarm that will actually fire, from the one resolver the Alarms screen shares.
+            val alarmMin: Int? = nextWake?.minuteOfDay
+            val bedMin = wxBedtimeMinutes(needMin, alarmMin ?: WX_DEFAULT_WAKE_MIN)
             WxTonightCard(
                 bedtime = wxClock(bedMin, is24h),
                 need = wxHoursMinutes(needMin),
@@ -689,6 +682,10 @@ private suspend fun wxSyncHealthConnect(context: android.content.Context, vm: Ap
 
 internal const val WX_DEFAULT_WAKE_MIN = 7 * 60
 internal const val WX_SLEEP_LATENCY_MIN = 15
+
+/** Recommended bedtime: the wake time minus tonight's sleep need and the usual time to fall asleep. */
+internal fun wxBedtimeMinutes(needMin: Double, wakeMin: Int): Int =
+    ((wakeMin - needMin.roundToInt() - WX_SLEEP_LATENCY_MIN) % 1440 + 1440) % 1440
 
 internal fun wxClock(minutesOfDay: Int, is24h: Boolean): String {
     val m = ((minutesOfDay % 1440) + 1440) % 1440
