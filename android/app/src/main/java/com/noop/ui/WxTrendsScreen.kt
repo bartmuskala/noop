@@ -83,7 +83,9 @@ internal fun WxTrendsScreen(vm: AppViewModel, initial: WxTrendMetric = WxTrendMe
     val start = today.minusDays(period.toLong() - 1)
     val prevStart = start.minusDays(period.toLong())
     val byDay = days.associateBy { it.day }
-    fun valueOf(m: WxTrendMetric, d: DailyMetric): Double? = wxMetricValue(m, d, scale)
+    val skinDev = remember(days) { wxSkinDeviationByDay(days) }
+    fun valueOf(m: WxTrendMetric, d: DailyMetric): Double? =
+        if (m == WxTrendMetric.SkinTemp) skinDev[d.day] else wxMetricValue(m, d, scale)
     fun windowValues(m: WxTrendMetric, from: LocalDate, to: LocalDate): List<Pair<LocalDate, Double>> =
         generateSequence(from) { it.plusDays(1) }.takeWhile { !it.isAfter(to) }
             .mapNotNull { d -> byDay[d.toString()]?.let { valueOf(m, it) }?.let { d to it } }.toList()
@@ -159,7 +161,7 @@ internal fun WxTrendsScreen(vm: AppViewModel, initial: WxTrendMetric = WxTrendMe
                     val flat = if (absolute) abs(change) < 0.05 else abs(change) < 1
                     val good = wxHigherIsBetter(metric)?.let { hb -> if (flat) null else (change > 0) == hb }
                     val c = when (good) { true -> Wx.recoveryHigh; false -> Wx.recoveryMid; null -> Wx.textSoft }
-                    val amount = if (absolute) wxMetricFormat(metric, abs(change), scale) + (wxMetricUnit(metric)?.let { " $it" } ?: "")
+                    val amount = if (absolute) wxMetricFormat(metric, abs(change), scale).removePrefix("+") + (wxMetricUnit(metric)?.let { " $it" } ?: "")
                                  else "${abs(change).roundToInt()}%"
                     // Fixed height, and the marker drawn as a shape, so the pill is the same size whatever the direction.
                     Row(
@@ -357,7 +359,7 @@ internal fun WxTrendsScreen(vm: AppViewModel, initial: WxTrendMetric = WxTrendMe
                             Text((cur?.let { wxMetricFormat(m, it, scale) } ?: "–") + (wxMetricUnit(m)?.let { " $it" } ?: ""),
                                 style = WxType.numberSmall, color = Wx.text)
                             Text(
-                                d?.let { (if (it >= 0) "▲ " else "▼ ") + wxMetricFormat(m, abs(it), scale) } ?: "",
+                                d?.let { (if (it >= 0) "▲ " else "▼ ") + wxMetricFormat(m, abs(it), scale).removePrefix("+") } ?: "",
                                 style = WxType.caption.copy(fontSize = 13.sp),
                                 color = when (good) { true -> Wx.recoveryHigh; false -> Wx.recoveryMid; null -> Wx.textMuted },
                                 modifier = Modifier.width(70.dp).padding(start = 10.dp),
@@ -400,7 +402,7 @@ private fun wxMetricUnit(m: WxTrendMetric): String? = when (m) {
     WxTrendMetric.Hrv -> "ms"
     WxTrendMetric.RestingHr -> "bpm"
     WxTrendMetric.Respiratory -> "rpm"
-    WxTrendMetric.SkinTemp -> "°C"
+    WxTrendMetric.SkinTemp -> "Δ°C"
     WxTrendMetric.Calories -> "kcal"
     WxTrendMetric.Sleep -> "h"
     else -> null
@@ -413,7 +415,8 @@ private fun wxHigherIsBetter(m: WxTrendMetric): Boolean? = when (m) {
 }
 
 private fun wxMetricFormat(m: WxTrendMetric, v: Double, scale: EffortScale): String = when (m) {
-    WxTrendMetric.Effort, WxTrendMetric.Respiratory, WxTrendMetric.SkinTemp -> String.format(Locale.US, "%.1f", v)
+    WxTrendMetric.Effort, WxTrendMetric.Respiratory -> String.format(Locale.US, "%.1f", v)
+    WxTrendMetric.SkinTemp -> String.format(Locale.US, "%+.1f", v)
     WxTrendMetric.Sleep -> wxHoursMinutes(v * 60)
     WxTrendMetric.Steps, WxTrendMetric.Calories -> String.format(Locale.US, "%,d", v.roundToInt())
     else -> "${v.roundToInt()}"
@@ -450,4 +453,31 @@ internal object WxTrendPrefs {
     private const val KEY = "wx.trends.chart"
     fun readChart(ctx: android.content.Context): Int = NoopPrefs.of(ctx).getInt(KEY, 0).coerceIn(0, 1)
     fun writeChart(ctx: android.content.Context, v: Int) { NoopPrefs.of(ctx).edit().putInt(KEY, v).apply() }
+}
+
+/**
+ * Skin temperature as one scale over all history: the change from the personal baseline (fork).
+ *
+ * NOOP's own nights store that change directly. Imported nights (the WHOOP export) store the absolute
+ * wrist temperature, so on their own they would draw a 33 °C line that drops to about 0 the day NOOP
+ * took over. Each absolute night is turned into a change from the median of the absolute nights in the
+ * 30 days before it (at least three; the first nights use the median of the first two weeks instead),
+ * the same kind of rolling baseline NOOP's own value is measured against.
+ */
+internal fun wxSkinDeviationByDay(days: List<DailyMetric>): Map<String, Double> {
+    val sorted = days.filter { it.skinTempDevC != null }.sortedBy { it.day }
+    val absolutes = sorted.filter { com.noop.analytics.VitalBands.isAbsoluteSkinTemp(it.skinTempDevC!!) }
+        .map { LocalDate.parse(it.day) to it.skinTempDevC!! }
+    fun median(xs: List<Double>): Double? = xs.sorted().let { if (it.isEmpty()) null else if (it.size % 2 == 1) it[it.size / 2] else (it[it.size / 2 - 1] + it[it.size / 2]) / 2 }
+    val opening = absolutes.firstOrNull()?.let { (d0, _) -> median(absolutes.filter { it.first < d0.plusDays(14) }.map { it.second }) }
+    val out = HashMap<String, Double>()
+    for (d in sorted) {
+        val v = d.skinTempDevC!!
+        if (!com.noop.analytics.VitalBands.isAbsoluteSkinTemp(v)) { out[d.day] = v; continue }
+        val day = LocalDate.parse(d.day)
+        val prior = absolutes.filter { it.first < day && it.first >= day.minusDays(30) }.map { it.second }
+        val base = (if (prior.size >= 3) median(prior) else opening) ?: continue
+        out[d.day] = Math.round((v - base) * 100.0) / 100.0
+    }
+    return out
 }

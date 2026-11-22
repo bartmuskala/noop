@@ -248,9 +248,20 @@ object StrainScorer {
     const val fittedCapP: Double = 8.0
     const val fittedFloorHrr: Double = 50.0
 
+    /**
+     * Fork: a personal calibration of the fitted curve against the wearer's own WHOOP history
+     * ([WxEffortCalibration]). [personalFloorHrr] replaces the 50 %HRR floor and [personalLoadScale]
+     * multiplies the load before the curve. Null / 1.0 is the published curve, which every test uses.
+     */
+    @Volatile var personalFloorHrr: Double? = null
+    @Volatile var personalLoadScale: Double = 1.0
+
     /** Weight of one minute at [pct] %HRR under the fitted curve; zero below [fittedFloorHrr]. */
-    fun fittedWeight(pct: Double): Double =
-        if (pct < fittedFloorHrr) 0.0 else kotlin.math.exp(fittedBeta * (pct - 55.0) / 10.0)
+    fun fittedWeight(pct: Double): Double = fittedWeight(pct, personalFloorHrr ?: fittedFloorHrr)
+
+    /** [fittedWeight] with an explicit floor, for the calibration's search. */
+    fun fittedWeight(pct: Double, floorHrr: Double): Double =
+        if (pct < floorHrr) 0.0 else kotlin.math.exp(fittedBeta * (pct - 55.0) / 10.0)
 
     /** Sum of weighted minutes over a sample stream, the fitted curve's load. */
     fun fittedLoad(hr: List<HrSample>, restingHR: Double, hrReserve: Double, durations: List<Double>): Double {
@@ -270,7 +281,7 @@ object StrainScorer {
 
     /** The fitted curve on NOOP's stored 0–100 axis, 2 dp like [trimpToStrain]. */
     fun fittedEffort(load: Double): Double =
-        kotlin.math.round(effortValueFromWhoopStrain(fittedCurve21(load)) * 100.0) / 100.0
+        kotlin.math.round(effortValueFromWhoopStrain(fittedCurve21(load * personalLoadScale)) * 100.0) / 100.0
 
     /** Strain calibration / fit errors. Mirrors Swift `StrainError`. */
     enum class StrainError { TOO_FEW_PAIRS, DEGENERATE }

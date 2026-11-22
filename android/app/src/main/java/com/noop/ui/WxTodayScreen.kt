@@ -582,7 +582,8 @@ private fun WxDial(
                     modifier = Modifier.padding(bottom = 5.dp))
             }
         }
-        Spacer(Modifier.height(6.dp))
+        // Room for the Effort target band, drawn just outside the ring; the same gap on every dial.
+        Spacer(Modifier.height(14.dp))
         WxLabel(label)
     }
 }

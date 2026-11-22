@@ -54,7 +54,7 @@ import kotlin.math.roundToInt
 // band behind it, and the hourly stress level as a coloured strip underneath. Works for any day: the
 // window is that day's local midnight to the next (or to now for today). Loaded off the main thread.
 
-private data class WxDayHeart(
+internal data class WxDayHeart(
     val points: List<Pair<Long, Double>>,
     val stressHours: List<DaytimeStress.HourPoint>,
     val from: Long,
@@ -69,24 +69,31 @@ internal fun WxDayHeartCard(
     liveBpm: Int?,
     onOpenStress: () -> Unit,
 ) {
-    var data by remember(date) { mutableStateOf<WxDayHeart?>(null) }
+    // Shown at once from the last read (fork): the cached day draws immediately, the heart-rate line
+    // refreshes first and the stress colours follow, so the card never sits empty while stress loads.
+    var data by remember(date) { mutableStateOf(WxDayHeartCache.get(date)) }
     val ctx = androidx.compose.ui.platform.LocalContext.current
     val personal = remember { NoopPrefs.stressPersonalBaseline(ctx) }
     LaunchedEffect(date) {
-        data = withContext(Dispatchers.Default) {
+        val zone = ZoneId.systemDefault()
+        val from = date.atStartOfDay(zone).toEpochSecond()
+        val end = date.plusDays(1).atStartOfDay(zone).toEpochSecond()
+        val cached = WxDayHeartCache.get(date)
+        if (cached != null && date != LocalDate.now()) return@LaunchedEffect
+        val buckets = withContext(Dispatchers.Default) {
             runCatching {
-                val zone = ZoneId.systemDefault()
-                val from = date.atStartOfDay(zone).toEpochSecond()
                 val now = System.currentTimeMillis() / 1000L
-                val to = minOf(date.plusDays(1).atStartOfDay(zone).toEpochSecond(), now)
-                val hr = vm.repo.hrSamplesUnion(vm.activeStrapId, from, to, limit = 200_000)
+                val hr = vm.repo.hrSamplesUnion(vm.activeStrapId, from, minOf(end, now), limit = 200_000)
                 // 5-minute means keep the line readable and the draw cheap.
-                val buckets = hr.groupBy { (it.ts - from) / 300L }.toSortedMap()
+                hr.groupBy { (it.ts - from) / 300L }.toSortedMap()
                     .map { (b, xs) -> (from + b * 300L + 150L) to xs.map { it.bpm }.average() }
-                val stress = runCatching { wxStressHours(vm, date, personal) }.getOrDefault(emptyList())
-                WxDayHeart(buckets, stress, from, date.plusDays(1).atStartOfDay(zone).toEpochSecond())
             }.getOrNull()
+        } ?: return@LaunchedEffect
+        data = WxDayHeart(buckets, cached?.stressHours.orEmpty(), from, end)
+        val stress = withContext(Dispatchers.Default) {
+            runCatching { wxStressHours(vm, date, personal) }.getOrDefault(emptyList())
         }
+        data = WxDayHeart(buckets, stress, from, end).also { WxDayHeartCache.put(date, it) }
     }
     val zone = ZoneId.systemDefault()
     val dayFrom = date.atStartOfDay(zone).toEpochSecond()
@@ -243,4 +250,13 @@ private fun WxDayHeartChart(d: WxDayHeart, workouts: List<WorkoutRow>, descripti
             drawText(label, topLeft = Offset(bx + padX, padY))
         }
     }
+}
+
+/** The last drawn day per date, so the card opens with its content (fork). */
+internal object WxDayHeartCache {
+    private val map = object : LinkedHashMap<LocalDate, WxDayHeart>(16, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<LocalDate, WxDayHeart>?) = size > 14
+    }
+    @Synchronized fun get(d: LocalDate): WxDayHeart? = map[d]
+    @Synchronized fun put(d: LocalDate, v: WxDayHeart) { map[d] = v }
 }

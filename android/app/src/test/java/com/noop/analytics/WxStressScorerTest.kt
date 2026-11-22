@@ -12,9 +12,10 @@ class WxStressScorerTest {
 
     @Test
     fun calmReferenceReadsLowAndMarginReadsHigh() {
-        assertEquals(0.5, WxStressScorer.level(60.0, 60.0), 1e-9)
-        assertEquals(1.0, WxStressScorer.level(65.0, 60.0), 1e-9)
-        assertEquals(2.0, WxStressScorer.level(75.0, 60.0), 1e-9)
+        assertEquals(0.0, WxStressScorer.level(60.0, 60.0), 1e-9)
+        assertEquals(0.4, WxStressScorer.level(65.0, 60.0), 1e-9)
+        assertEquals(1.0, WxStressScorer.level(72.5, 60.0), 1e-9)
+        assertEquals(2.0, WxStressScorer.level(85.0, 60.0), 1e-9)
         assertEquals(0.0, WxStressScorer.level(50.0, 60.0), 1e-9)
         assertEquals(3.0, WxStressScorer.level(120.0, 60.0), 1e-9)
     }
@@ -25,7 +26,7 @@ class WxStressScorerTest {
         assertEquals(2, day.hours.size)
         assertFalse(day.hours[0].lowConfidence)
         assertTrue(day.hours[1].lowConfidence)
-        assertEquals(1.5, day.hours[1].level, 1e-9)
+        assertEquals(0.8, day.hours[1].level, 1e-9)
         assertTrue(day.personal)
     }
 
@@ -36,6 +37,6 @@ class WxStressScorerTest {
         val day = WxStressScorer.score(hr, emptyList(), 0L, personalReference = null)
         assertEquals(60.6, day.reference!!, 0.01)
         assertTrue(day.hours.first().level < 1.0)
-        assertTrue(day.hours.last().level >= 2.0)
+        assertTrue(day.hours.last().level in 1.0..2.0)
     }
 }

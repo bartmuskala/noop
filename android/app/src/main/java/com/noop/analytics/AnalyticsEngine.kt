@@ -42,6 +42,14 @@ import kotlin.math.roundToLong
  * uses Int seconds.
  */
 object AnalyticsEngine {
+    /**
+     * Fork: score the daily resting HR as the primary night's mean HR rather than its lowest
+     * five-minute bin. Set by the app from its preference before a scoring pass; false keeps NOOP's
+     * shipped definition, which is also what every test exercises.
+     */
+    @Volatile
+    var wholeNightMeanRHR: Boolean = false
+
 
     /**
      * Skip the redundant calendar-day re-read in [IntelligenceEngine.analyzeRecent]'s per-day scan
@@ -631,7 +639,13 @@ object AnalyticsEngine {
         val primarySession = physiologySessions.maxByOrNull { it.end - it.start }
         val providedPrimaryRHR = primarySession
             ?.let { p -> providedSleep.firstOrNull { it.start == p.start && it.end == p.end }?.restingHR }
-        val restingHRDaily: Int? = providedPrimaryRHR ?: primarySession?.restingHR
+        // Fork: with [wholeNightMeanRHR] on, the primary night's mean HR (the #1169 definition that
+        // tracked the official WHOOP figure far better than the five-minute floor) instead of its floor.
+        val restingHRDaily: Int? = providedPrimaryRHR
+            ?: (if (wholeNightMeanRHR) primarySession?.let { p ->
+                primarySessionRestingHRWithCoverage(listOf(p), hr).first?.roundToInt()
+            } else null)
+            ?: primarySession?.restingHR
         // Daily avg HRV = in-bed-weighted mean of per-session avg HRV.
         val avgHRVDaily: Double? = if (deepHrvWindow) {
             // #141: WHOOP-style HRV — pool RMSSD over DEEP-stage 5-min windows only (slow-wave sleep),

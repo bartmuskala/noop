@@ -1187,6 +1187,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                     NoopPrefs.setTsHealPending(appContext, false)
                 }
             }.onFailure { if (it is kotlin.coroutines.cancellation.CancellationException) throw it }
+            // Fork: WHOOP-like resting HR and the personal Effort calibration, then one full-history
+            // rescore so every NOOP-scored day uses them (runs through the shared repair pass below).
+            runCatching { forkScoringUpgrade() }
+                .onFailure { if (it is kotlin.coroutines.cancellation.CancellationException) throw it }
             // One-shot shared Effort and sleep-wear repair: recompute strain from source across the FULL
             // history and replay pre-fix sleep once. Either pending flag triggers one pass; both flags
             // are set only after persistence returns. Cached-only days are preserved, changing Effort's
@@ -1213,6 +1217,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                     preserveUnscoredHistory = true,
                 )
             }.onFailure { if (it is kotlin.coroutines.cancellation.CancellationException) throw it }
+            if (NoopPrefs.effortRescoreDone(appContext)) NoopPrefs.of(appContext).edit().putBoolean(FORK_RESCORE_KEY, true).apply()
             while (isActive) {
                 // #547 RE-POLLUTION: a sync since the last tick may have flagged a re-heal (its ingest gate
                 // dropped bad-clock records). Re-run the purge BEFORE this tick's rescore so the affected days
@@ -2063,6 +2068,80 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     private val rescoreRunning = java.util.concurrent.atomic.AtomicBoolean(false)
 
     /**
+     * Fork scoring settings, applied before every scoring pass, and the one-time work they need.
+     *
+     * Resting HR: the main night's mean HR (WHOOP-like) unless switched off. Effort: the personal
+     * calibration of the fitted curve, fitted once from days holding both WHOOP's imported Effort and
+     * the strap's heart rate ([com.noop.analytics.WxEffortCalibration]); kept only when it beats the
+     * published curve. When either changes how days score, the full-history repair is re-armed so
+     * every NOOP-scored day is rescored once, and the workouts with it.
+     */
+    private suspend fun forkScoringUpgrade() {
+        val prefs = NoopPrefs.of(appContext)
+        com.noop.analytics.AnalyticsEngine.wholeNightMeanRHR = prefs.getBoolean(KEY_WHOLE_NIGHT_RHR, true)
+        if (!prefs.getBoolean(FORK_CALIBRATED_KEY, false)) {
+            val result = runCatching { fitEffortCalibration() }.getOrNull()
+            prefs.edit().apply {
+                putBoolean(FORK_CALIBRATED_KEY, true)
+                if (result != null) {
+                    putInt("wx.effort.calib.days", result.days)
+                    putFloat("wx.effort.calib.mae", result.mae.toFloat())
+                    putFloat("wx.effort.calib.maePublished", result.maePublished.toFloat())
+                    putFloat("wx.effort.calib.bias", result.biasPublished.toFloat())
+                    if (result.improves) {
+                        putFloat("wx.effort.calib.floor", result.floorHrr.toFloat())
+                        putFloat("wx.effort.calib.scale", result.loadScale.toFloat())
+                    }
+                } else {
+                    putInt("wx.effort.calib.days", 0)
+                }
+            }.apply()
+            ble.externalLog(
+                result?.let {
+                    "Effort calibration: ${it.days} WHOOP days, published curve MAE %.2f (bias %+.2f), fit floor %.0f%% scale %.2f MAE %.2f, %s"
+                        .format(java.util.Locale.US, it.maePublished, it.biasPublished, it.floorHrr, it.loadScale, it.mae,
+                            if (it.improves) "applied" else "not applied")
+                } ?: "Effort calibration: fewer than ${com.noop.analytics.WxEffortCalibration.MIN_DAYS} days with both WHOOP Effort and strap heart rate; published curve kept",
+            )
+        }
+        com.noop.analytics.StrainScorer.personalFloorHrr =
+            prefs.getFloat("wx.effort.calib.floor", -1f).takeIf { it > 0 }?.toDouble()
+        com.noop.analytics.StrainScorer.personalLoadScale =
+            prefs.getFloat("wx.effort.calib.scale", -1f).takeIf { it > 0 }?.toDouble() ?: 1.0
+        if (!prefs.getBoolean(FORK_RESCORE_KEY, false)) {
+            // Re-arm the shared full-history repair; the flag above is set once it completes.
+            prefs.edit().putBoolean(NoopPrefs.KEY_EFFORT_RESCORE_DONE, false).apply()
+        }
+    }
+
+    /** Days with WHOOP's imported Effort and at least 18 h of strap heart rate, fitted (fork). */
+    private suspend fun fitEffortCalibration(): com.noop.analytics.WxEffortCalibration.Result? {
+        val imported = repository.dailyMetrics(deviceId, "2000-01-01", "2100-01-01")
+            .filter { it.strain != null && it.strain > 0 }
+        val zone = java.time.ZoneId.systemDefault()
+        val hrMax = com.noop.analytics.StrainScorer.effortHRmax(
+            profileStore.hrMaxOverride.takeIf { it > 0 }?.toDouble(), profileStore.age.toDouble(),
+        ).first ?: com.noop.analytics.StrainScorer.defaultMaxHR().toDouble()
+        val days = ArrayList<com.noop.analytics.WxEffortCalibration.Day>()
+        for (d in imported.sortedByDescending { it.day }.take(120)) {
+            val date = runCatching { java.time.LocalDate.parse(d.day) }.getOrNull() ?: continue
+            val from = date.atStartOfDay(zone).toEpochSecond()
+            val to = date.plusDays(1).atStartOfDay(zone).toEpochSecond()
+            val hr = repository.hrSamplesUnion(activeStrapId, from, to, 200_000)
+            if (hr.size < com.noop.analytics.StrainScorer.minReadings) continue
+            val span = hr.last().ts - hr.first().ts
+            if (span < 18 * 3600L) continue
+            days += com.noop.analytics.WxEffortCalibration.Day(
+                hr = hr,
+                restingHR = d.restingHr?.toDouble() ?: com.noop.analytics.StrainScorer.defaultRestingHR,
+                maxHR = hrMax,
+                whoop21 = d.strain!! * 21.0 / 100.0,
+            )
+        }
+        return com.noop.analytics.WxEffortCalibration.fit(days)
+    }
+
+    /**
      * Rescore every workout with the fitted Effort curve (fork), from the strap heart rate inside the
      * workout window, scored exactly like a day (same max HR resolver, that day's resting HR, the same
      * method). Covers all sources and all history, imported WHOOP workouts included where strap heart
@@ -2072,10 +2151,12 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
      */
     fun rescoreWorkoutsWithFittedCurve() {
         if (!NoopPrefs.fittedEffort(appContext)) return
+        // Wait for the fork's scoring settings and their history rescore, so workouts score once, alike.
+        if (!NoopPrefs.of(appContext).getBoolean(FORK_RESCORE_KEY, false)) return
         if (!rescoreRunning.compareAndSet(false, true)) return
         viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) { try {
             val prefs = NoopPrefs.of(appContext)
-            val doneKey = "wx.workouts.fittedRescored.v2"
+            val doneKey = "wx.workouts.fittedRescored.v3"
             val done = prefs.getStringSet(doneKey, emptySet()).orEmpty().toMutableSet()
             val now = System.currentTimeMillis() / 1000
             val rows = runCatching {
@@ -3466,3 +3547,8 @@ internal fun elapsedClock(elapsedS: Long): String {
  */
 internal fun resolveSelectedModel(recorded: WhoopModel?, remembered: WhoopModel?): WhoopModel =
     recorded ?: remembered ?: WhoopModel.WHOOP4
+
+/** Fork preference: daily resting HR as the main night's mean HR (default on). */
+internal const val KEY_WHOLE_NIGHT_RHR = "wx.rhr.wholeNightMean"
+private const val FORK_CALIBRATED_KEY = "wx.effort.calibrated.v1"
+private const val FORK_RESCORE_KEY = "wx.history.rescored.v1"

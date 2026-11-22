@@ -9,13 +9,13 @@ import kotlin.math.floor
  * hours whose reading is less trustworthy are flagged instead of dropped, so the screens can draw them
  * dashed.
  *
- * Level (0–3) is the hour's mean HR against a calm reference, on a straight scale:
- *   level = (meanHr − reference + [CALM_OFFSET_BPM]) / [BPM_PER_LEVEL], clamped to 0–3
- * so the calm reference itself reads 0.5 (low), reference + 5 bpm is the low/medium border (1.0),
- * and reference + 15 bpm is the medium/high border (2.0). That last point is the validated
- * [DaytimeStress.baselineRelativeHighMarginBPM] margin, so "high" means the same as in NOOP's personal
- * baseline mode; what changes is that calm no longer lands mid-scale (the shared logistic curve maps
- * the reference to 1.5, i.e. medium, which is why a calm evening read medium).
+ * Level (0–3) is the hour's mean HR above a calm reference, on a straight scale:
+ *   level = (meanHr − reference) / [BPM_PER_LEVEL], clamped to 0–3
+ * so the calm reference reads 0, about 12 bpm above it is the low/medium border (1.0) and 25 bpm above
+ * it the medium/high border (2.0). An ordinary seated hour, a few beats above the calm floor, stays
+ * low; walking around reads medium; only a clearly raised hour reads high. (The first version put the
+ * calm reference at 0.5 and "high" at +15 bpm, NOOP's validated margin, and on real days that painted
+ * most of the waking day red: the calm reference is a floor, so ordinary hours sit well above it.)
  *
  * The reference is the personal daytime calm floor when NOOP has folded one (the setting
  * "personal baseline"), else the day's own calm floor: the 10th percentile of its hourly means.
@@ -25,8 +25,7 @@ import kotlin.math.floor
  * likely exertion rather than stress.
  */
 object WxStressScorer {
-    const val CALM_OFFSET_BPM = 5.0
-    const val BPM_PER_LEVEL = 10.0
+    const val BPM_PER_LEVEL = 12.5
     const val REFERENCE_PERCENTILE = 0.10
 
     data class Hour(
@@ -45,7 +44,7 @@ object WxStressScorer {
     }
 
     fun level(meanHr: Double, reference: Double): Double =
-        ((meanHr - reference + CALM_OFFSET_BPM) / BPM_PER_LEVEL).coerceIn(0.0, 3.0)
+        ((meanHr - reference) / BPM_PER_LEVEL).coerceIn(0.0, 3.0)
 
     /**
      * Score [hr] by local hour. [personalReference] is the folded daytime calm floor, or null to use the
