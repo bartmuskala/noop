@@ -62,6 +62,8 @@
     <string name="wx_effort_and_recovery">Effort et récupération</string>
     <string name="wx_effort_and_recovery_a11y">Récupération et Effort des sept derniers jours, en deux lignes</string>
     <string name="wx_effort_below">Sous l’objectif. %1$s en est le bas.</string>
+    <string name="wx_effort_built">Accumulé au fil de la journée</string>
+    <string name="wx_effort_built_span">depuis minuit</string>
     <string name="wx_effort_in_range">Dans la plage cible du jour.</string>
     <string name="wx_effort_sentence_empty">Un objectif apparaît une fois la récupération calculée.</string>
     <string name="wx_fitness_age_not_ready">Pas encore d\'âge physique. Il faut quelques semaines de FC au repos et d\'activité ; voir le calcul ci-dessous.</string>
@@ -177,6 +179,8 @@
     <string name="wx_resp_long">Fréquence respiratoire</string>
     <string name="wx_resp_rate">Fréq. resp.</string>
     <string name="wx_resp_short">Resp.</string>
+    <string name="wx_rest_of_day">Reste de la journée</string>
+    <string name="wx_rest_of_day_sub">Marche, trajets, vie quotidienne</string>
     <string name="wx_rest_up">Repose-toi</string>
     <string name="wx_resting_hr">FC au repos</string>
     <string name="wx_restorative">Réparateur</string>

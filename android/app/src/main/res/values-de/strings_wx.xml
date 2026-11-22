@@ -62,6 +62,8 @@
     <string name="wx_effort_and_recovery">Effort &amp; Erholung</string>
     <string name="wx_effort_and_recovery_a11y">Erholung und Effort der letzten sieben Tage als zwei Linien</string>
     <string name="wx_effort_below">Unter dem Tagesziel. %1$s ist die Untergrenze.</string>
+    <string name="wx_effort_built">Über den Tag aufgebaut</string>
+    <string name="wx_effort_built_span">ab Mitternacht</string>
     <string name="wx_effort_in_range">Im heutigen Zielbereich.</string>
     <string name="wx_effort_sentence_empty">Ein Ziel erscheint, sobald die Erholung bewertet ist.</string>
     <string name="wx_fitness_age_not_ready">Noch kein Fitnessalter. Es braucht einige Wochen Ruhepuls und Aktivität; unten steht, wie es berechnet wird.</string>
@@ -177,6 +179,8 @@
     <string name="wx_resp_long">Atemfrequenz</string>
     <string name="wx_resp_rate">Atemfreq.</string>
     <string name="wx_resp_short">Atem</string>
+    <string name="wx_rest_of_day">Rest des Tages</string>
+    <string name="wx_rest_of_day_sub">Gehen, Pendeln, Alltag</string>
     <string name="wx_rest_up">Erholen</string>
     <string name="wx_resting_hr">Ruhe-HF</string>
     <string name="wx_restorative">Erholsam</string>

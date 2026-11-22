@@ -183,7 +183,7 @@ internal fun WxScoreScreen(vm: AppViewModel, initial: WxScoreTab, initialOffset:
 
         when (tab) {
             WxScoreTab.Recovery -> WxRecoveryTab(night, nightBaseline, upToDate, date, onOpenMoves)
-            WxScoreTab.Effort -> WxEffortTab(row, date, workouts, effortScale, profile, onOpenWorkouts, onOpenProfile, upToDate, baseline, zones)
+            WxScoreTab.Effort -> WxEffortTab(vm, row, date, workouts, effortScale, profile, onOpenWorkouts, onOpenProfile, upToDate, baseline, zones)
             WxScoreTab.Sleep -> WxSleepTab(vm, night, upToDate, stages, sessions, nightHr, date, sleepPlan?.plan?.needMin)
         }
     }
@@ -341,6 +341,7 @@ private fun WxContributor(
 
 @Composable
 private fun WxEffortTab(
+    vm: AppViewModel,
     row: DailyMetric?,
     dayDate: LocalDate,
     workouts: List<com.noop.data.WorkoutRow>,
@@ -383,7 +384,10 @@ private fun WxEffortTab(
         sentence = sentence,
         bandFrom = range?.let { it.low / 21.0 }, bandTo = range?.let { it.high / 21.0 },
     )
+    var build by remember(dayDate) { mutableStateOf<WxEffortBuild?>(null) }
     WxCards {
+        // How the day's Effort accumulated, with its workouts marked.
+        WxEffortBuildCard(vm, dayDate, row, dayWorkouts, scale, onBuild = { build = it })
         // Today against a stated baseline: zones against the seven days ending today, steps and calories
         // against the last 30 days.
         WxCard(padding = 16.dp) {
@@ -416,7 +420,16 @@ private fun WxEffortTab(
                     accent = Wx.effort, title = wxSportName(w.sport),
                     subtitle = listOfNotNull(wxHoursMinutes(mins), w.avgHr?.let { "$it avg" }, w.maxHr?.let { "$it max" }).joinToString(" · "),
                     trailing = w.strain?.let { UnitFormatter.effortDisplay(it, scale) } ?: "–",
-                    onClick = onOpenWorkouts,
+                    onClick = { WxWorkoutNav.pending = WxWorkoutNav.key(w); onOpenWorkouts() },
+                )
+            }
+            // What the hours outside workouts added to the day's Effort.
+            build?.restOfDay?.let { rest ->
+                WxActivityRow(
+                    accent = Wx.lineStrong, title = uiString(R.string.wx_rest_of_day),
+                    subtitle = uiString(R.string.wx_rest_of_day_sub),
+                    trailing = "+" + UnitFormatter.effortDisplay(rest, scale),
+                    onClick = null,
                 )
             }
         }

@@ -62,6 +62,8 @@
     <string name="wx_effort_and_recovery">Effort y recuperación</string>
     <string name="wx_effort_and_recovery_a11y">Recuperación y Effort de los últimos siete días en dos líneas</string>
     <string name="wx_effort_below">Por debajo del objetivo. %1$s es su mínimo.</string>
+    <string name="wx_effort_built">Acumulado durante el día</string>
+    <string name="wx_effort_built_span">desde medianoche</string>
     <string name="wx_effort_in_range">Dentro del rango objetivo de hoy.</string>
     <string name="wx_effort_sentence_empty">El objetivo aparece cuando se puntúe la recuperación.</string>
     <string name="wx_fitness_age_not_ready">Aún no hay edad física. Necesita unas semanas de pulso en reposo y actividad; abajo verás cómo se calcula.</string>
@@ -177,6 +179,8 @@
     <string name="wx_resp_long">Frecuencia respiratoria</string>
     <string name="wx_resp_rate">Frec. resp.</string>
     <string name="wx_resp_short">Resp.</string>
+    <string name="wx_rest_of_day">Resto del día</string>
+    <string name="wx_rest_of_day_sub">Caminar, desplazamientos, vida diaria</string>
     <string name="wx_rest_up">Descansa</string>
     <string name="wx_resting_hr">FC en reposo</string>
     <string name="wx_restorative">Reparador</string>

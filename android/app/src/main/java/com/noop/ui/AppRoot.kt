@@ -61,6 +61,10 @@ import androidx.compose.material.icons.filled.Timeline
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.filled.WaterDrop
 import androidx.compose.material.icons.outlined.GridView
+import androidx.compose.material.icons.outlined.Home
+import androidx.compose.material.icons.outlined.BarChart
+import androidx.compose.material.icons.outlined.FitnessCenter
+import androidx.compose.material.icons.automirrored.outlined.MenuBook
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -252,7 +256,7 @@ internal data class DrawerGroup(
 internal val drawerGroups: List<DrawerGroup> = listOf(
     // The fork keeps only the screens it uses; the Wx More page lists exactly these (see wxMoreItems).
     DrawerGroup("Body", R.string.more_group_body, listOf(
-        Destination.Live, Destination.Stress, Destination.InsightsHub, Destination.FitnessAge,
+        Destination.Coach, Destination.Live, Destination.Stress, Destination.InsightsHub, Destination.FitnessAge,
     ), defaultExpanded = true),
     DrawerGroup("Data", R.string.more_group_data, listOf(
         Destination.Devices, Destination.DataSources, Destination.BackupSync,
@@ -723,7 +727,8 @@ fun AppRoot(viewModel: AppViewModel = viewModel()) {
                 composable(Destination.SmartAlarmClassic.route) { SmartAlarmScreen(viewModel) }
                 composable(Destination.Workouts.route) {
                     WxWorkoutsScreen(viewModel, onBack = null,
-                        onOpenFull = { nav.navigate(Destination.WorkoutsClassic.route) })
+                        onOpenFull = { nav.navigate(Destination.WorkoutsClassic.route) },
+                        onPop = { nav.popBackStack() })
                 }
                 composable(Destination.WorkoutsClassic.route) { WorkoutsScreen(viewModel) }
                 composable(Destination.Intelligence.route) { IntelligenceScreen(viewModel) }
@@ -1131,10 +1136,10 @@ internal data class BarTab(val dest: Destination, val icon: ImageVector, @String
 /** The nav slots in iOS order: Today · Trends · Sleep · Coach · More.
  *  More is special-cased (it opens the sheet rather than a route), so it is appended at the call site. */
 internal val barLeadingTabs = listOf(
-    BarTab(Destination.Today, Icons.Outlined.GridView, R.string.nav_today),
-    // chart.line.uptrend.xyaxis on iOS — the rising-trend glyph, not a flat bar chart.
-    BarTab(Destination.Trends, Icons.AutoMirrored.Filled.TrendingUp, R.string.nav_trends),
-    BarTab(Destination.Workouts, Icons.Filled.FitnessCenter, R.string.nav_workouts),
+    // Fork: the design's glyphs: a house, a bar chart, the dumbbell.
+    BarTab(Destination.Today, Icons.Outlined.Home, R.string.nav_today),
+    BarTab(Destination.Trends, Icons.Outlined.BarChart, R.string.nav_trends),
+    BarTab(Destination.Workouts, Icons.Outlined.FitnessCenter, R.string.nav_workouts),
 )
 /**
  * The trailing tabs, as shipped. [barTrailingTabsFor] is what the bar actually draws: Coach is
@@ -1145,9 +1150,8 @@ internal val barTrailingTabs = listOf(
     // the More list while the comment above claimed the two bars matched. AutoAwesome is the sparkles
     // glyph iOS uses, and the same one the More row already shows, so the entry a wearer has learned
     // keeps its face when it moves up.
-    BarTab(Destination.Coach, Icons.Filled.AutoAwesome, R.string.nav_coach),
-    // The journal (hosted in Insights) is a tab of its own in the fork.
-    BarTab(Destination.Insights, Icons.AutoMirrored.Filled.MenuBook, R.string.today_section_journal),
+    // Fork: Coach lives in More; the journal (hosted in Insights) is a tab of its own.
+    BarTab(Destination.Insights, Icons.AutoMirrored.Outlined.MenuBook, R.string.today_section_journal),
 )
 
 /**
@@ -1170,45 +1174,21 @@ private fun GlassBottomBar(
     // twice over: a second copy of "which tabs exist" is what let Coach light two slots at once, and a
     // conditional tab makes that failure available again to anyone who filters in one place only.
     val visibleTrailing = barTrailingTabsFor(BottomBarStyleStore.coachEnabled)
-    val barShape = RoundedCornerShape(50)
-    Box(
+    // Fork: the design's flat bar: full width on the canvas, a hairline on top, five equal slots.
+    Column(
         modifier = modifier
             .fillMaxWidth()
-            // Clear the gesture-nav bar (home indicator) first, then add breathing room so the capsule
-            // floats free of the bottom edge rather than jamming against it — iOS clears the home-indicator
-            // safe area + 4pt; here navigationBarsPadding + 12dp gives the same lift.
-            .navigationBarsPadding()
-            .padding(horizontal = 22.dp)
-            .padding(top = 4.dp, bottom = Metrics.space12),
-        contentAlignment = Alignment.Center,
+            .background(Wx.canvas.copy(alpha = 0.96f))
+            .navigationBarsPadding(),
     ) {
-        Surface(
-            shape = barShape,
-            // "Glass": a translucent raised surface — a frosted island, not a hard slab. Compose has no
-            // cheap blur, so translucency (≈0.80) + a hairline rim is the Liquid-Glass stand-in. A soft,
-            // low drop shadow reads as floating without a glow.
-            // The glass alpha is the user's transparency step; 0.80 was the shipped constant and remains
-            // the default (step 6), so an untouched install is unchanged.
-            color = Palette.surfaceRaised.copy(alpha = BottomBarStyleStore.barAlpha),
-            tonalElevation = 2.dp,
-            shadowElevation = 4.dp,
+        Box(Modifier.fillMaxWidth().height(1.dp).background(Wx.cardRaised))
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
-                // Cap the width so the pill stays a centred floating island on tablets, not a full-bleed bar.
-                .widthIn(max = 480.dp)
-                .border(0.5.dp, Palette.hairline.copy(alpha = 0.6f), barShape),
+                .padding(top = 8.dp * BottomBarStyleStore.scale, bottom = 10.dp * BottomBarStyleStore.scale),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    // Scaling the PADDING and the slot contents grows the bar honestly - the touch
-                    // targets grow with it, and `barHeight` is measured afterwards so screens keep
-                    // clearing the bar at any size. A graphics scale would blur it and leave the hit
-                    // areas behind.
-                    .padding(horizontal = 8.dp, vertical = 7.dp * BottomBarStyleStore.scale),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(2.dp),
-            ) {
+            run {
                 barLeadingTabs.forEach { tab ->
                     BarSlot(
                         icon = tab.icon,
@@ -1257,12 +1237,10 @@ private fun BarSlot(
     modifier: Modifier = Modifier,
     onClick: () -> Unit,
 ) {
-    // The active tab sits on a soft green pill with a green icon and label.
-    val tint = if (active) Wx.recoveryHigh else Palette.textSecondary
+    // Fork: as in the design, the active tab is white and the others grey; no pill.
+    val tint = if (active) Wx.text else Wx.textDim
     Column(
         modifier = modifier
-            .clip(RoundedCornerShape(14.dp))
-            .background(if (active) Wx.recoveryHigh.copy(alpha = 0.16f) else androidx.compose.ui.graphics.Color.Transparent)
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null,
@@ -1276,12 +1254,12 @@ private fun BarSlot(
         // Icon and label scale together with the padding above, so the slot grows as one piece rather
         // than a bigger box around the same small glyph.
         Icon(icon, contentDescription = null, tint = tint,
-             modifier = Modifier.size(Metrics.iconSmall * BottomBarStyleStore.scale))
+             modifier = Modifier.size(22.dp * BottomBarStyleStore.scale))
         Text(
             label,
             style = NoopType.footnote.copy(
-                fontSize = 10.sp * BottomBarStyleStore.scale,
-                fontWeight = if (active) FontWeight.SemiBold else FontWeight.Medium,
+                fontSize = 11.sp * BottomBarStyleStore.scale,
+                fontWeight = FontWeight.SemiBold,
             ),
             color = tint,
             // #2218: one line, always. A fifth slot takes about a fifth off every label's width, and the

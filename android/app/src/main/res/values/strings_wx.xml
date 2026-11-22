@@ -62,6 +62,8 @@
     <string name="wx_effort_and_recovery">Effort &amp; recovery</string>
     <string name="wx_effort_and_recovery_a11y">Recovery and Effort for the last seven days, as two lines</string>
     <string name="wx_effort_below">Below today\'s target. %1$s is the low end of it.</string>
+    <string name="wx_effort_built">Built through the day</string>
+    <string name="wx_effort_built_span">from midnight</string>
     <string name="wx_effort_in_range">In today\'s target range.</string>
     <string name="wx_effort_sentence_empty">A target appears once today\'s recovery is scored.</string>
     <string name="wx_fitness_age_not_ready">No Fitness Age yet. It needs a few weeks of resting heart rate and activity; see how it\'s calculated below.</string>
@@ -177,6 +179,8 @@
     <string name="wx_resp_long">Respiratory rate</string>
     <string name="wx_resp_rate">Resp. rate</string>
     <string name="wx_resp_short">Resp.</string>
+    <string name="wx_rest_of_day">Rest of the day</string>
+    <string name="wx_rest_of_day_sub">Walking, commuting, daily life</string>
     <string name="wx_rest_up">Rest up</string>
     <string name="wx_resting_hr">Resting HR</string>
     <string name="wx_restorative">Restorative</string>

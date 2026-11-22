@@ -38,6 +38,7 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import kotlin.math.abs
 import com.noop.R
+import com.noop.analytics.StrainScorer
 import com.noop.analytics.DaytimeStress
 import com.noop.data.WorkoutRow
 import kotlinx.coroutines.Dispatchers
@@ -74,6 +75,11 @@ internal fun WxDayHeartCard(
     var data by remember(date) { mutableStateOf(WxDayHeartCache.get(date)) }
     val ctx = androidx.compose.ui.platform.LocalContext.current
     val personal = remember { NoopPrefs.stressPersonalBaseline(ctx) }
+    val hrMax = remember {
+        val p = ProfileStore.from(ctx)
+        StrainScorer.effortHRmax(p.hrMaxOverride.takeIf { it > 0 }?.toDouble(), p.age.toDouble()).first
+            ?: StrainScorer.defaultMaxHR().toDouble()
+    }
     LaunchedEffect(date) {
         val zone = ZoneId.systemDefault()
         val from = date.atStartOfDay(zone).toEpochSecond()
@@ -132,13 +138,13 @@ internal fun WxDayHeartCard(
                 Text(uiString(R.string.wx_no_hr_day), style = WxType.caption, color = Wx.textMuted)
             }
         } else {
-            WxDayHeartChart(d, dayWorkouts, uiString(R.string.wx_heart_chart_a11y))
+            WxDayHeartChart(d, dayWorkouts, uiString(R.string.wx_heart_chart_a11y), hrMax)
         }
     }
 }
 
 @Composable
-private fun WxDayHeartChart(d: WxDayHeart, workouts: List<WorkoutRow>, description: String) {
+private fun WxDayHeartChart(d: WxDayHeart, workouts: List<WorkoutRow>, description: String, hrMax: Double?) {
     val measurer = rememberTextMeasurer()
     // Touch readout: the x position under the finger, null when nothing is touched.
     var touchX by remember(d) { mutableStateOf<Float?>(null) }
@@ -191,6 +197,8 @@ private fun WxDayHeartChart(d: WxDayHeart, workouts: List<WorkoutRow>, descripti
         }
         val unit = measurer.measure("bpm", axisStyle)
         drawText(unit, topLeft = Offset(0f, 0f))
+        // The design: heart-rate zone bands behind the line.
+        hrMax?.let { drawWxZoneBands(it, lo, hi, plotL, size.width, ::y, measurer) }
 
         // Workout bands with their sport name, drawn first so the line sits on top.
         workouts.forEach { w ->

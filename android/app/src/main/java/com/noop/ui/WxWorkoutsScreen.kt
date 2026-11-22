@@ -57,8 +57,17 @@ import kotlin.math.roundToInt
 // raw heart rate falls back to the imported zone split. Editing, merging and manual entries stay on
 // the full Workouts screen, one tap away.
 
+/**
+ * A workout to open straight away when the Workouts screen is next shown (fork): set by a day's
+ * activity row just before it navigates, consumed once by [WxWorkoutsScreen].
+ */
+internal object WxWorkoutNav {
+    @Volatile var pending: String? = null
+    fun key(w: WorkoutRow): String = "${w.source}:${w.startTs}"
+}
+
 @Composable
-internal fun WxWorkoutsScreen(vm: AppViewModel, onBack: (() -> Unit)?, onOpenFull: () -> Unit) {
+internal fun WxWorkoutsScreen(vm: AppViewModel, onBack: (() -> Unit)?, onOpenFull: () -> Unit, onPop: () -> Unit = {}) {
     val context = LocalContext.current
     val rows by vm.workouts.collectAsStateWithLifecycle()
     val effortScale = remember { UnitPrefs.effortScale(context) }
@@ -68,15 +77,31 @@ internal fun WxWorkoutsScreen(vm: AppViewModel, onBack: (() -> Unit)?, onOpenFul
         vm.rescoreWorkoutsWithFittedCurve()
     }
     var selected by remember { mutableStateOf<WorkoutRow?>(null) }
+    // Opened from a day's activity row: show that workout, and Back returns to where it was tapped.
+    val direct = remember { WxWorkoutNav.pending.also { WxWorkoutNav.pending = null } }
+    var directDone by remember { mutableStateOf(direct == null) }
+    LaunchedEffect(rows, direct) {
+        if (direct != null && !directDone) {
+            val hit = rows.firstOrNull { WxWorkoutNav.key(it) == direct }
+            if (hit != null) { selected = hit; directDone = true }
+            else if (rows.isNotEmpty()) { kotlinx.coroutines.delay(1500); directDone = true } // not found: show the list
+        }
+    }
     var showStart by remember { mutableStateOf(false) }
     var showAll by remember { mutableStateOf(false) }
     val sorted = remember(rows) { rows.sortedByDescending { it.startTs } }
 
     val sel = selected
+    val leave: () -> Unit = { if (direct != null) onPop() else selected = null }
     if (sel != null) {
-        BackHandler { selected = null }
-        WxWorkoutDetail(vm, sel, sorted, effortScale, is24h, onBack = { selected = null }, onEdit = onOpenFull,
+        BackHandler { leave() }
+        WxWorkoutDetail(vm, sel, sorted, effortScale, is24h, onBack = leave, onEdit = onOpenFull,
             onOpen = { selected = it })
+        return
+    }
+    if (!directDone) {
+        // Waiting for the list to load the tapped workout; a blank page rather than a flash of the list.
+        WxPage(title = uiString(R.string.wx_workouts), onBack = onPop) {}
         return
     }
 
@@ -225,7 +250,7 @@ private fun WxWorkoutDetail(
                     Text(uiString(R.string.wx_reading_today), style = WxType.caption, color = Wx.textMuted)
                 }
                 d.points.size < 2 -> Text(uiString(R.string.wx_no_hr_session), style = WxType.caption, color = Wx.textMuted)
-                else -> WxSessionChart(d.points, w.startTs, w.endTs, uiString(R.string.wx_heart_rate))
+                else -> WxSessionChart(d.points, w.startTs, w.endTs, uiString(R.string.wx_heart_rate), hrMax)
             }
         }
 
@@ -275,8 +300,9 @@ private fun WxWorkoutDetail(
 }
 
 @Composable
-private fun WxSessionChart(points: List<Pair<Long, Double>>, from: Long, to: Long, description: String) {
-    Canvas(Modifier.fillMaxWidth().height(150.dp).semantics { contentDescription = description }) {
+private fun WxSessionChart(points: List<Pair<Long, Double>>, from: Long, to: Long, description: String, hrMax: Double?) {
+    val measurer = androidx.compose.ui.text.rememberTextMeasurer()
+    Canvas(Modifier.fillMaxWidth().height(170.dp).semantics { contentDescription = description }) {
         val span = (to - from).coerceAtLeast(1L).toFloat()
         val lo = points.minOf { it.second } - 5
         val hi = (points.maxOf { it.second } + 5).coerceAtLeast(lo + 20)
@@ -288,10 +314,12 @@ private fun WxSessionChart(points: List<Pair<Long, Double>>, from: Long, to: Lon
             if (prev == null || ts - prev!! > 120L) path.moveTo(x(ts), y(bpm)) else path.lineTo(x(ts), y(bpm))
             prev = ts
         }
+        // The design: zone bands behind a light line.
+        hrMax?.let { drawWxZoneBands(it, lo, hi, 0f, size.width, ::y, measurer) }
         for (k in 1..3) {
             val yy = size.height * k / 4f
-            drawLine(Wx.line, Offset(0f, yy), Offset(size.width, yy), 1f)
+            drawLine(Wx.line.copy(alpha = 0.6f), Offset(0f, yy), Offset(size.width, yy), 1f)
         }
-        drawPath(path, Wx.heart, style = Stroke(2.dp.toPx(), cap = StrokeCap.Round))
+        drawPath(path, Wx.text, style = Stroke(2.dp.toPx(), cap = StrokeCap.Round))
     }
 }

@@ -44,6 +44,7 @@ import com.noop.R
 
 /** The destinations the More page lists, in order, with the accent each row's icon sits on. */
 internal val wxMoreItems: List<Pair<Destination, Color>> = listOf(
+    Destination.Coach to Wx.effort,
     Destination.Live to Wx.heart,
     Destination.Stress to Wx.stressLow,
     Destination.InsightsHub to Wx.recoveryHigh,
@@ -83,7 +84,7 @@ internal fun WxMoreScreen(vm: AppViewModel, onNavigate: (String) -> Unit) {
                 }
             }
             WxCard(padding = 0.dp) {
-                wxMoreItems.forEachIndexed { i, (dest, accent) ->
+                wxMoreItems.filter { it.first != Destination.Coach || BottomBarStyleStore.coachEnabled }.forEachIndexed { i, (dest, accent) ->
                     WxMoreRow(dest.icon, stringResource(dest.titleRes), accent, showDivider = i > 0) { onNavigate(dest.route) }
                 }
             }

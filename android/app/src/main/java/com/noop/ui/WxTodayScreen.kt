@@ -315,7 +315,7 @@ internal fun WxTodayScreen(vm: AppViewModel, onOpen: (WxTodayTarget) -> Unit) {
                         title = wxSportName(w.sport),
                         subtitle = wxWorkoutSubtitle(w, is24h),
                         trailing = w.strain?.let { UnitFormatter.effortDisplay(it, effortScale) } ?: "–",
-                        onClick = { onOpen(WxTodayTarget.Workouts) },
+                        onClick = { WxWorkoutNav.pending = WxWorkoutNav.key(w); onOpen(WxTodayTarget.Workouts) },
                     )
                 }
                 Spacer(Modifier.height(8.dp))

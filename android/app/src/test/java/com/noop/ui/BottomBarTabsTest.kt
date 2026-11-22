@@ -27,11 +27,11 @@ class BottomBarTabsTest {
         assertTrue("a bar tab must not also appear in the More sheet, found $both", both.isEmpty())
     }
 
-    /** The fork's bar: Today, Trends, Coach, Journal, then More, which the bar appends itself. */
+    /** The fork's bar: Today, Trends, Workouts, Journal, then More, which the bar appends itself. */
     @Test
     fun theBarCarriesTheForkTabs() {
         assertEquals(
-            listOf(Destination.Today, Destination.Trends, Destination.Workouts, Destination.Coach, Destination.Insights),
+            listOf(Destination.Today, Destination.Trends, Destination.Workouts, Destination.Insights),
             barTabs.map { it.dest },
         )
     }

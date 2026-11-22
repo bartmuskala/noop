@@ -499,3 +499,32 @@ internal fun WxLineChart(
         }
     }
 }
+
+/**
+ * The design's heart-rate zone bands (fork): five faint horizontal bands behind an HR line, Z1 to Z5 at
+ * 50/60/70/80/90–100 % of [hrMax] (the same split as the workout zone card), clipped to the plotted
+ * bpm range [lo]..[hi] and the plot rectangle. [y] maps bpm to the canvas. Labels sit at the right edge.
+ */
+internal fun androidx.compose.ui.graphics.drawscope.DrawScope.drawWxZoneBands(
+    hrMax: Double,
+    lo: Double,
+    hi: Double,
+    left: Float,
+    right: Float,
+    y: (Double) -> Float,
+    measurer: androidx.compose.ui.text.TextMeasurer? = null,
+) {
+    val colors = listOf(Wx.zone1, Wx.zone2, Wx.zone3, Wx.zone4, Wx.zone5)
+    for (i in 0 until 5) {
+        val a = (hrMax * (0.5 + 0.1 * i)).coerceIn(lo, hi)
+        val b = (hrMax * (0.6 + 0.1 * i)).coerceIn(lo, hi)
+        if (b - a < 0.5) continue
+        val top = y(b); val bottom = y(a)
+        drawRect(colors[i].copy(alpha = 0.09f), androidx.compose.ui.geometry.Offset(left, top),
+            androidx.compose.ui.geometry.Size(right - left, bottom - top))
+        if (measurer != null && bottom - top > 12f) {
+            val t = measurer.measure("Z${i + 1}", androidx.compose.ui.text.TextStyle(fontSize = 9.sp, color = colors[i].copy(alpha = 0.8f)))
+            drawText(t, topLeft = androidx.compose.ui.geometry.Offset(right - t.size.width - 4f, (top + bottom) / 2f - t.size.height / 2f))
+        }
+    }
+}
