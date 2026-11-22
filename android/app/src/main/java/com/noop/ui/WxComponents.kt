@@ -87,8 +87,8 @@ internal fun WxCardHeader(label: String, trailing: String? = null, labelColor: C
 
 /**
  * The score ring: a track plus a round-capped arc from 12 o'clock. [fraction] is clamped to 0..1;
- * null draws the track alone. An optional [bandFrom]..[bandTo] draws a thin outer arc, used for
- * Effort's target range.
+ * null draws the track alone. An optional [bandFrom]..[bandTo] draws a thin arc just outside the ring (beyond its bounds, so the ring
+ * keeps the same size as the others), used for Effort's target range.
  */
 @Composable
 internal fun WxRing(
@@ -104,8 +104,8 @@ internal fun WxRing(
     Box(modifier.size(size), contentAlignment = Alignment.Center) {
         Canvas(Modifier.size(size)) {
             val s = stroke.toPx()
-            val outer = if (bandFrom != null) s * 1.2f else 0f
-            val inset = s / 2 + outer
+            // The ring keeps its size whether or not a band is shown; the band is drawn just outside it.
+            val inset = s / 2
             val arcSize = Size(this.size.width - inset * 2, this.size.height - inset * 2)
             val topLeft = Offset(inset, inset)
             drawArc(Wx.cardRaised, -90f, 360f, false, topLeft, arcSize, style = Stroke(s))
@@ -115,7 +115,7 @@ internal fun WxRing(
                     style = Stroke(s, cap = StrokeCap.Round))
             }
             if (bandFrom != null && bandTo != null) {
-                val bInset = s * 0.25f
+                val bInset = -s * 0.75f
                 val bSize = Size(this.size.width - bInset * 2, this.size.height - bInset * 2)
                 drawArc(Wx.text.copy(alpha = 0.55f), -90f + (360.0 * bandFrom).toFloat(),
                     (360.0 * (bandTo - bandFrom)).toFloat(), false, Offset(bInset, bInset), bSize,

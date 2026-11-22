@@ -48,6 +48,10 @@
     <string name="wx_days_logged">%1$d jours sur 7 notés</string>
     <string name="wx_deep_plus_rem">profond + paradoxal</string>
     <string name="wx_deep_sleep">Profond</string>
+    <string name="wx_device_connected">Connecté</string>
+    <string name="wx_device_firmware">Firmware</string>
+    <string name="wx_device_heart_rate">Fréquence cardiaque</string>
+    <string name="wx_device_not_connected">Non connecté</string>
     <string name="wx_disturbances">Perturbations</string>
     <string name="wx_duration">Durée</string>
     <string name="wx_edit">Modifier</string>
@@ -69,6 +73,7 @@
     <string name="wx_heart_rate">Fréquence cardiaque</string>
     <string name="wx_heart_rate_by_stress">Fréquence cardiaque, colorée par le stress</string>
     <string name="wx_helps">Aide</string>
+    <string name="wx_hide_details">Masquer les détails</string>
     <string name="wx_high">Élevé</string>
     <string name="wx_history">Historique</string>
     <string name="wx_hours">Heures</string>
@@ -182,6 +187,7 @@
     <string name="wx_sessions">Séances</string>
     <string name="wx_set_alarm">Régler l’alarme</string>
     <string name="wx_show_all">Tout afficher</string>
+    <string name="wx_show_details">Afficher les détails</string>
     <string name="wx_showing_earlier_night">Nuit dernière pas encore calculée · nuit jusqu\'au %1$s affichée</string>
     <string name="wx_skin_temp">Temp. peau</string>
     <string name="wx_sleep">Sommeil</string>
@@ -204,7 +210,10 @@
     <string name="wx_streak_days">Série de %1$d jours</string>
     <string name="wx_strenuous">Soutenu</string>
     <string name="wx_stress_curve_a11y">Niveau de stress au fil de la journée</string>
+    <string name="wx_stress_dashed_note">Pointillés : en mouvement ou peu de fréquence cardiaque, à lire avec prudence</string>
     <string name="wx_stress_monitor">Suivi du stress</string>
+    <string name="wx_stress_ref_day">Comparé aux heures les plus calmes d\'aujourd\'hui</string>
+    <string name="wx_stress_ref_personal">Comparé à ta fréquence cardiaque calme personnelle</string>
     <string name="wx_stress_week_a11y">Niveau de stress quotidien des sept derniers jours</string>
     <string name="wx_sync_failed">Échec de la synchro Health Connect.</string>
     <string name="wx_sync_health_connect">Synchroniser depuis Health Connect</string>

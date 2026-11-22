@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.DirectionsRun
@@ -72,6 +73,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.noop.ble.SourceCoordinator
 import com.noop.analytics.AgreementState
@@ -185,10 +187,9 @@ fun DevicesScreen(
         // into the flat canvas behind the top of the screen so the frosted device cards float over it. The
         // static sky (LiquidSkyStatic inside the helper) carries no per-frame cost on this scrolling list.
         // Gated on the same "Day-cycle background" setting as Today; off passes null for the plain canvas.
-        topBackground = screenBackdropSlot(showDayCycleBackground, skyBehindCards),
-        // Sky-behind-cards fills the viewport so the transparent cards reveal the sky the whole way
-        // down (Today / Trends / Sleep / metric-detail parity - same two prefs, same two behaviours).
-        fullBleedBackground = screenBackdropFullBleed(showDayCycleBackground, skyBehindCards),
+        // Fork: the flat dark canvas of the new layout, like every Wx screen.
+        topBackground = null,
+        fullBleedBackground = false,
     ) {
         // #802: the re-pair guide belongs HERE too, not only on Live. A strap that connects but never
         // finishes bonding leaves the user on this screen — it is where you go to fix a device — while the
@@ -224,6 +225,22 @@ fun DevicesScreen(
             )
             }
             return@LazyScreenScaffold
+        }
+
+        // Fork: the active strap's state at a glance, in the new layout.
+        activeDevices.firstOrNull { it.status == DeviceStatus.active.name }?.let { active ->
+            item {
+                WxDeviceHero(
+                    name = displayName(active),
+                    model = deviceProfile(active).displayModel,
+                    connected = live.connected,
+                    batteryPct = (if (active.sourceKind == SourceKind.oura.name) ouraBatteryPct?.toDouble() else live.batteryPct)
+                        ?.takeIf { live.connected },
+                    heartRate = live.heartRate.takeIf { live.connected },
+                    firmware = live.strapFirmware.takeIf { live.connected },
+                    lastSeen = lastSeenLine(active, live.connected),
+                )
+            }
         }
 
         // #1300: a prominent switcher to flip which strap is active — the "switch, don't combine" option
@@ -806,7 +823,7 @@ private fun DeviceCard(
                 Icon(
                     imageVector = deviceIcon(device),
                     contentDescription = null,
-                    tint = if (isActive) Palette.accent else Palette.textSecondary,
+                    tint = if (isActive) Wx.recoveryHigh else Wx.textSoft,
                     modifier = Modifier.size(28.dp),
                 )
                 Column(
@@ -908,24 +925,19 @@ private fun DeviceCard(
         }
     }
 
-    if (isActive) {
-        Box(
-            modifier = cardModifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(LIQUID_HERO_RADIUS))
-                .background(Palette.heroFill.copy(alpha = Palette.heroFill.alpha * CardAppearance.opacity))
-                .border(1.dp, Palette.heroBorder.copy(alpha = Palette.heroBorder.alpha * CardAppearance.opacity), RoundedCornerShape(LIQUID_HERO_RADIUS))
-                .padding(18.dp),
-        ) {
-            body()
-        }
-    } else {
-        NoopCard(
-            modifier = cardModifier,
-            padding = 18.dp,
-        ) {
-            body()
-        }
+    // Fork: every device card on the flat Wx card surface; the active one carries a green hairline.
+    Box(
+        modifier = cardModifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(Wx.cardRadius))
+            .background(Wx.card)
+            .then(
+                if (isActive) Modifier.border(1.dp, Wx.recoveryHigh.copy(alpha = 0.45f), RoundedCornerShape(Wx.cardRadius))
+                else Modifier,
+            )
+            .padding(16.dp),
+    ) {
+        body()
     }
 }
 
@@ -945,7 +957,7 @@ private fun BatteryTube(pct: Int) {
         Text(uiString(R.string.l10n_devices_screen_battery_4a9be042), style = NoopType.footnote, color = Palette.textTertiary)
         LiquidTube(
             frac = clamped / 100.0,
-            tint = Palette.accent,
+            tint = Wx.recoveryColor(clamped.toDouble()),
             animated = false,
             modifier = Modifier.weight(1f),
         )
@@ -1896,3 +1908,67 @@ internal fun historyLayoutLine(version: Int?): String? =
  *  lives once. */
 internal fun brandGuess(name: String): String =
     com.noop.data.DeviceBrandCatalog.specForAdvertisedName(name)?.brand ?: "Heart-rate strap"
+
+/**
+ * Fork: the active strap's hero in the new layout. A battery ring (green/yellow/red by charge, the
+ * same bands as Recovery), the name and model, and what the link reports right now. Shows only values
+ * the connection reports; while disconnected the ring is empty and the last-seen line says why.
+ */
+@Composable
+private fun WxDeviceHero(
+    name: String,
+    model: String,
+    connected: Boolean,
+    batteryPct: Double?,
+    heartRate: Int?,
+    firmware: String?,
+    lastSeen: String,
+) {
+    WxCard {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            WxRing(
+                fraction = batteryPct?.let { (it / 100.0).coerceIn(0.0, 1.0) },
+                color = Wx.recoveryColor(batteryPct),
+                size = 96.dp,
+                stroke = 8.dp,
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(batteryPct?.let { "${it.toInt()}%" } ?: "—", style = WxType.number.copy(fontSize = 24.sp), color = Wx.text)
+                    Text(uiString(R.string.l10n_devices_screen_battery_4a9be042), style = WxType.caption.copy(fontSize = 10.sp), color = Wx.textMuted)
+                }
+            }
+            Spacer(Modifier.width(16.dp))
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(name, style = WxType.title, color = Wx.text, maxLines = 1)
+                Text(model, style = WxType.caption, color = Wx.textSoft, maxLines = 1)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(Modifier.size(8.dp).clip(CircleShape).background(if (connected) Wx.recoveryHigh else Wx.textDim))
+                    Spacer(Modifier.width(6.dp))
+                    Text(
+                        uiString(if (connected) R.string.wx_device_connected else R.string.wx_device_not_connected),
+                        style = WxType.bodyStrong.copy(fontSize = 13.sp),
+                        color = if (connected) Wx.recoveryHigh else Wx.textMuted,
+                    )
+                }
+                Text(lastSeen, style = WxType.caption, color = Wx.textMuted, maxLines = 2)
+            }
+        }
+        if (heartRate != null || firmware != null) {
+            Spacer(Modifier.height(14.dp))
+            Box(Modifier.fillMaxWidth().height(1.dp).background(Wx.line))
+            Spacer(Modifier.height(12.dp))
+            Row(Modifier.fillMaxWidth()) {
+                WxDeviceStat(uiString(R.string.wx_device_heart_rate), heartRate?.let { "$it" } ?: "—", Modifier.weight(1f))
+                WxDeviceStat(uiString(R.string.wx_device_firmware), firmware ?: "—", Modifier.weight(1f))
+            }
+        }
+    }
+}
+
+@Composable
+private fun WxDeviceStat(label: String, value: String, modifier: Modifier = Modifier) {
+    Column(modifier) {
+        WxLabel(label)
+        Text(value, style = WxType.numberSmall, color = Wx.text, maxLines = 1)
+    }
+}

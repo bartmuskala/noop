@@ -70,6 +70,8 @@ internal fun WxDayHeartCard(
     onOpenStress: () -> Unit,
 ) {
     var data by remember(date) { mutableStateOf<WxDayHeart?>(null) }
+    val ctx = androidx.compose.ui.platform.LocalContext.current
+    val personal = remember { NoopPrefs.stressPersonalBaseline(ctx) }
     LaunchedEffect(date) {
         data = withContext(Dispatchers.Default) {
             runCatching {
@@ -81,12 +83,7 @@ internal fun WxDayHeartCard(
                 // 5-minute means keep the line readable and the draw cheap.
                 val buckets = hr.groupBy { (it.ts - from) / 300L }.toSortedMap()
                     .map { (b, xs) -> (from + b * 300L + 150L) to xs.map { it.bpm }.average() }
-                val stress = if (hr.size < DaytimeStress.minHourHrSamples) emptyList() else {
-                    val tz = zone.rules.getOffset(Instant.ofEpochSecond(to)).totalSeconds.toLong()
-                    val rr = vm.repo.rrIntervalsUnion(vm.activeStrapId, from, to, limit = 200_000)
-                    val gravity = vm.repo.gravitySamplesUnion(vm.activeStrapId, from, to, limit = 200_000)
-                    DaytimeStress.analyze(hr, rr, gravity, tz).hours
-                }
+                val stress = runCatching { wxStressHours(vm, date, personal) }.getOrDefault(emptyList())
                 WxDayHeart(buckets, stress, from, date.plusDays(1).atStartOfDay(zone).toEpochSecond())
             }.getOrNull()
         }
@@ -215,7 +212,7 @@ private fun WxDayHeartChart(d: WxDayHeart, workouts: List<WorkoutRow>, descripti
         d.stressHours.forEach { h ->
             val lvl = h.level ?: return@forEach
             val x0 = x(h.startTs); val x1 = x(h.startTs + 3600L)
-            drawRoundRect(Wx.stressColor(lvl), Offset(x0 + 1f, stripTop), Size((x1 - x0 - 2f).coerceAtLeast(2f), stripH),
+            drawRoundRect(Wx.stressColor(lvl).copy(alpha = if (h.maskedForActivity) 0.45f else 1f), Offset(x0 + 1f, stripTop), Size((x1 - x0 - 2f).coerceAtLeast(2f), stripH),
                 androidx.compose.ui.geometry.CornerRadius(2.dp.toPx()))
         }
         // X axis: clock time every 6 hours.

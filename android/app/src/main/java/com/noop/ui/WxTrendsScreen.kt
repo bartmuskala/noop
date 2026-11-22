@@ -161,13 +161,26 @@ internal fun WxTrendsScreen(vm: AppViewModel, initial: WxTrendMetric = WxTrendMe
                     val c = when (good) { true -> Wx.recoveryHigh; false -> Wx.recoveryMid; null -> Wx.textSoft }
                     val amount = if (absolute) wxMetricFormat(metric, abs(change), scale) + (wxMetricUnit(metric)?.let { " $it" } ?: "")
                                  else "${abs(change).roundToInt()}%"
-                    Text(
-                        (if (flat) "● " else if (change > 0) "▲ " else "▼ ") +
-                            uiString(R.string.wx_pct_vs_prior, amount, wxPeriodName(period)),
-                        style = WxType.bodyStrong.copy(fontSize = 13.sp), color = c, maxLines = 1, softWrap = false,
-                        modifier = Modifier.padding(top = 4.dp).clip(RoundedCornerShape(6.dp)).background(c.copy(alpha = 0.14f))
-                            .padding(horizontal = 8.dp, vertical = 3.dp),
-                    )
+                    // Fixed height, and the marker drawn as a shape, so the pill is the same size whatever the direction.
+                    Row(
+                        Modifier.padding(top = 4.dp).height(26.dp).clip(RoundedCornerShape(6.dp)).background(c.copy(alpha = 0.14f))
+                            .padding(horizontal = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        androidx.compose.foundation.Canvas(Modifier.size(10.dp)) {
+                            val w = size.width; val h = size.height
+                            if (flat) drawCircle(c, w / 3)
+                            else {
+                                val p = androidx.compose.ui.graphics.Path()
+                                if (change > 0) { p.moveTo(w / 2, 0f); p.lineTo(w, h); p.lineTo(0f, h) }
+                                else { p.moveTo(0f, 0f); p.lineTo(w, 0f); p.lineTo(w / 2, h) }
+                                p.close(); drawPath(p, c)
+                            }
+                        }
+                        Spacer(Modifier.width(6.dp))
+                        Text(uiString(R.string.wx_pct_vs_prior, amount, wxPeriodName(period)),
+                            style = WxType.bodyStrong.copy(fontSize = 13.sp), color = c, maxLines = 1, softWrap = false)
+                    }
                 }
                 if (avg != null) {
                     val name = wxMetricName(metric)

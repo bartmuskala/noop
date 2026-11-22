@@ -48,6 +48,10 @@
     <string name="wx_days_logged">%1$d of 7 days logged</string>
     <string name="wx_deep_plus_rem">deep + REM</string>
     <string name="wx_deep_sleep">Deep</string>
+    <string name="wx_device_connected">Connected</string>
+    <string name="wx_device_firmware">Firmware</string>
+    <string name="wx_device_heart_rate">Heart rate</string>
+    <string name="wx_device_not_connected">Not connected</string>
     <string name="wx_disturbances">Disturbances</string>
     <string name="wx_duration">Duration</string>
     <string name="wx_edit">Edit</string>
@@ -69,6 +73,7 @@
     <string name="wx_heart_rate">Heart rate</string>
     <string name="wx_heart_rate_by_stress">Heart rate, coloured by stress</string>
     <string name="wx_helps">Helps</string>
+    <string name="wx_hide_details">Hide details</string>
     <string name="wx_high">High</string>
     <string name="wx_history">History</string>
     <string name="wx_hours">Hours</string>
@@ -182,6 +187,7 @@
     <string name="wx_sessions">Sessions</string>
     <string name="wx_set_alarm">Set alarm</string>
     <string name="wx_show_all">Show all</string>
+    <string name="wx_show_details">Show details</string>
     <string name="wx_showing_earlier_night">Last night isn\'t scored yet · showing the night to %1$s</string>
     <string name="wx_skin_temp">Skin temp</string>
     <string name="wx_sleep">Sleep</string>
@@ -204,7 +210,10 @@
     <string name="wx_streak_days">%1$d-day streak</string>
     <string name="wx_strenuous">Strenuous</string>
     <string name="wx_stress_curve_a11y">Stress level through today</string>
+    <string name="wx_stress_dashed_note">Dashed: you were moving or the strap had little heart rate, read with care</string>
     <string name="wx_stress_monitor">Stress monitor</string>
+    <string name="wx_stress_ref_day">Compared with today\'s calmest hours</string>
+    <string name="wx_stress_ref_personal">Compared with your personal calm heart rate</string>
     <string name="wx_stress_week_a11y">Daily stress level for the last seven days</string>
     <string name="wx_sync_failed">Health Connect sync failed.</string>
     <string name="wx_sync_health_connect">Sync from Health Connect</string>

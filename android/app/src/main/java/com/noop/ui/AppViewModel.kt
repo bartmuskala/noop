@@ -2060,49 +2060,59 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         }.onFailure { if (it is kotlin.coroutines.cancellation.CancellationException) throw it }
         IntelligenceEngine.stepsHasMotionSink = null
     }
+    private val rescoreRunning = java.util.concurrent.atomic.AtomicBoolean(false)
+
     /**
-     * Fork: score every non-WHOOP-imported workout of the last 180 days once with the fitted Effort curve,
-     * from the strap heart rate inside the session. WHOOP-imported rows keep WHOOP's own strain. Each row is
-     * done once (its source + start are remembered), so reopening Workouts costs nothing.
+     * Rescore every workout with the fitted Effort curve (fork), from the strap heart rate inside the
+     * workout window, scored exactly like a day (same max HR resolver, that day's resting HR, the same
+     * method). Covers all sources and all history, imported WHOOP workouts included where strap heart
+     * rate exists for them. A workout is marked done only once it actually scored, so one logged before
+     * its heart rate was offloaded is retried on the next visit. The done set carries a version so a
+     * change in how workouts are scored re-runs the whole history once.
      */
     fun rescoreWorkoutsWithFittedCurve() {
         if (!NoopPrefs.fittedEffort(appContext)) return
-        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+        if (!rescoreRunning.compareAndSet(false, true)) return
+        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) { try {
             val prefs = NoopPrefs.of(appContext)
-            val doneKey = "wx.workouts.fittedRescored"
+            val doneKey = "wx.workouts.fittedRescored.v2"
             val done = prefs.getStringSet(doneKey, emptySet()).orEmpty().toMutableSet()
             val now = System.currentTimeMillis() / 1000
-            val since = now - 180L * 86_400L
             val rows = runCatching {
-                repository.workoutsUnion(deviceId, since, now) +
-                    repository.workouts("health-connect", since, now) +
-                    repository.workouts("apple-health", since, now) +
-                    repository.workouts("activity-file", since, now) +
-                    repository.detectedWorkoutsUnion(deviceId, since, now)
+                repository.workoutsUnion(deviceId, 0L, now) +
+                    repository.workouts("health-connect", 0L, now) +
+                    repository.workouts("apple-health", 0L, now) +
+                    repository.workouts("activity-file", 0L, now) +
+                    repository.detectedWorkoutsUnion(deviceId, 0L, now)
             }.getOrDefault(emptyList())
             val hrMax = com.noop.analytics.StrainScorer.effortHRmax(
                 profileStore.hrMaxOverride.takeIf { it > 0 }?.toDouble(), profileStore.age.toDouble(),
             ).first
-            val rest = recentDays.value.lastOrNull { it.restingHr != null }?.restingHr?.toDouble()
+            val restByDay = recentDays.value.associate { it.day to it.restingHr }
+            val fallbackRest = recentDays.value.lastOrNull { it.restingHr != null }?.restingHr?.toDouble()
                 ?: com.noop.analytics.StrainScorer.defaultRestingHR
+            val zone = java.time.ZoneId.systemDefault()
             val updated = ArrayList<WorkoutRow>()
             for (row in rows) {
                 val key = "${row.source}:${row.startTs}"
-                if (key in done) continue
-                if (row.source == "my-whoop" || row.endTs <= row.startTs) { done += key; continue }
-                val samples = runCatching { repository.hrSamplesUnion(activeStrapId, row.startTs, row.endTs, 20_000) }
+                if (key in done || row.endTs <= row.startTs) continue
+                val samples = runCatching { repository.hrSamplesUnion(activeStrapId, row.startTs, row.endTs, 50_000) }
                     .getOrDefault(emptyList())
+                if (samples.isEmpty()) continue
+                val day = java.time.Instant.ofEpochSecond(row.startTs).atZone(zone).toLocalDate().toString()
+                val rest = restByDay[day]?.toDouble() ?: fallbackRest
                 val s = com.noop.analytics.StrainScorer.strain(
                     samples, maxHR = hrMax, restingHR = rest,
                     method = com.noop.analytics.StrainScorer.Method.FITTED, sex = profileStore.sex,
-                )
+                ) ?: continue
                 done += key
-                if (s != null && (row.strain == null || kotlin.math.abs(s - row.strain) > 0.5)) updated += row.copy(strain = s)
+                if (row.strain == null || kotlin.math.abs(s - row.strain) > 0.1) updated += row.copy(strain = s)
+                if (updated.size >= 50) { runCatching { repository.upsertWorkouts(updated.toList()) }; updated.clear() }
             }
             if (updated.isNotEmpty()) runCatching { repository.upsertWorkouts(updated) }
             prefs.edit().putStringSet(doneKey, done).apply()
-            if (updated.isNotEmpty()) loadWorkouts()
-        }
+            loadWorkouts()
+        } finally { rescoreRunning.set(false) } }
     }
 
     fun loadWorkouts() {

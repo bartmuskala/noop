@@ -50,7 +50,7 @@ internal fun rememberWxSleepPlan(vm: AppViewModel, forDay: LocalDate, wakeMinute
     LaunchedEffect(forDay, days.size, wakeMinute, illnessAlert, enabled) {
         if (!enabled) { plan = null; return@LaunchedEffect }
         plan = withContext(Dispatchers.Default) {
-            runCatching { buildWxSleepPlan(vm, days, forDay, wakeMinute, illnessAlert != null, profile.age) }.getOrNull()
+            runCatching { buildWxSleepPlan(vm, days, forDay, wakeMinute, illnessAlert != null, profile.age, personalStress = NoopPrefs.stressPersonalBaseline(context)) }.getOrNull()
         }
     }
     return if (enabled) plan else null
@@ -65,6 +65,7 @@ private suspend fun buildWxSleepPlan(
     age: Int,
     preloaded: List<com.noop.data.SleepSession>? = null,
     withStress: Boolean = true,
+    personalStress: Boolean = false,
 ): WxSleepPlan {
     val zone = ZoneId.systemDefault()
     val key = forDay.toString()
@@ -91,19 +92,10 @@ private suspend fun buildWxSleepPlan(
     val isToday = forDay == logicalDayNow()
 
     // The day's stress: computed from today's heart rate, or the stored daily level for past days.
-    val stress = if (!withStress) null else if (isToday) {
-        val from = forDay.atStartOfDay(zone).toEpochSecond()
-        val now = System.currentTimeMillis() / 1000L
-        val hr = vm.repo.hrSamplesUnion(vm.activeStrapId, from, now, limit = 200_000)
-        if (hr.size < DaytimeStress.minHourHrSamples) null else {
-            val tz = zone.rules.getOffset(Instant.ofEpochSecond(now)).totalSeconds.toLong()
-            val rr = vm.repo.rrIntervalsUnion(vm.activeStrapId, from, now, limit = 200_000)
-            val grav = vm.repo.gravitySamplesUnion(vm.activeStrapId, from, now, limit = 200_000)
-            DaytimeStress.analyze(hr, rr, grav, tz).hours.mapNotNull { it.level }.takeIf { it.isNotEmpty() }?.average()
-        }
-    } else {
-        runCatching { vm.repo.metricSeries("my-whoop", "stress", key, key).firstOrNull()?.value }.getOrNull()
-    }
+    // The day's stress, from the same hourly read the Stress screen shows.
+    val stress = if (!withStress) null else runCatching {
+        wxStressHours(vm, forDay, personalStress).mapNotNull { it.level }.takeIf { it.isNotEmpty() }?.average()
+    }.getOrNull()
 
     // The wearer's own Effort slope, from free nights (woke at least 30 min after the usual time).
     val free = (1L until 35L).mapNotNull { back ->

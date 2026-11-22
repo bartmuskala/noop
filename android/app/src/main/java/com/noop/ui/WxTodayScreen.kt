@@ -22,6 +22,8 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Alarm
 import androidx.compose.material.icons.filled.Bedtime
 import androidx.compose.material.icons.filled.Person
@@ -587,15 +589,28 @@ private fun WxDial(
 
 @Composable
 private fun WxTonightCard(bedtime: String, need: String, alarm: String?, onAlarm: () -> Unit, details: List<String> = emptyList()) {
+    var expanded by remember { mutableStateOf(false) }
     WxCard(background = Wx.sleepCardTop) {
         WxCardHeader(uiString(R.string.wx_tonights_sleep), labelColor = Wx.sleepSoft)
         Spacer(Modifier.height(12.dp))
         Row(Modifier.fillMaxWidth()) {
-            Column(Modifier.weight(1f).padding(end = 14.dp)) {
+            Column(
+                Modifier.weight(1f).clip(RoundedCornerShape(8.dp))
+                    .then(if (details.isNotEmpty()) Modifier.clickable { expanded = !expanded } else Modifier)
+                    .padding(end = 14.dp),
+            ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(Icons.Filled.Bedtime, null, tint = Wx.sleepSoft, modifier = Modifier.size(14.dp))
                     Spacer(Modifier.width(6.dp))
                     Text(uiString(R.string.wx_recommended_bedtime), style = WxType.caption, color = Wx.textSoft)
+                    if (details.isNotEmpty()) {
+                        Spacer(Modifier.width(4.dp))
+                        Icon(
+                            if (expanded) Icons.Filled.KeyboardArrowUp else Icons.Filled.KeyboardArrowDown,
+                            contentDescription = uiString(if (expanded) R.string.wx_hide_details else R.string.wx_show_details),
+                            tint = Wx.textMuted, modifier = Modifier.size(16.dp),
+                        )
+                    }
                 }
                 Text(bedtime, style = WxType.number.copy(fontSize = 36.sp), color = Wx.text)
                 Text(uiString(R.string.wx_for_full_sleep, need), style = WxType.caption, color = Wx.textMuted)
@@ -615,7 +630,7 @@ private fun WxTonightCard(bedtime: String, need: String, alarm: String?, onAlarm
                 )
             }
         }
-        if (details.isNotEmpty()) {
+        if (expanded && details.isNotEmpty()) {
             Spacer(Modifier.height(12.dp))
             Box(Modifier.fillMaxWidth().height(1.dp).background(Wx.sleepDivider))
             Spacer(Modifier.height(10.dp))
@@ -637,11 +652,15 @@ private fun WxTonightCard(bedtime: String, need: String, alarm: String?, onAlarm
     }
 }
 
-/** A small round avatar slot; the initials are not known to this screen, so it shows a person glyph. */
+/** The profile photo set in Settings, filling the round slot; a person glyph when none is set. */
 @Composable
 private fun ProfileAvatarOrInitials() {
-    Icon(Icons.Filled.Person, contentDescription = uiString(R.string.nav_settings),
-        tint = Wx.textSoft, modifier = Modifier.size(22.dp))
+    if (ProfileAvatarStore.bitmap != null) {
+        ProfileAvatar(size = 40.dp, contentDescription = uiString(R.string.nav_settings))
+    } else {
+        Icon(Icons.Filled.Person, contentDescription = uiString(R.string.nav_settings),
+            tint = Wx.textSoft, modifier = Modifier.size(22.dp))
+    }
 }
 
 // MARK: - Tiles

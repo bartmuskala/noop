@@ -48,6 +48,10 @@
     <string name="wx_days_logged">%1$d von 7 Tagen erfasst</string>
     <string name="wx_deep_plus_rem">Tief + REM</string>
     <string name="wx_deep_sleep">Tief</string>
+    <string name="wx_device_connected">Verbunden</string>
+    <string name="wx_device_firmware">Firmware</string>
+    <string name="wx_device_heart_rate">Herzfrequenz</string>
+    <string name="wx_device_not_connected">Nicht verbunden</string>
     <string name="wx_disturbances">Störungen</string>
     <string name="wx_duration">Dauer</string>
     <string name="wx_edit">Bearbeiten</string>
@@ -69,6 +73,7 @@
     <string name="wx_heart_rate">Herzfrequenz</string>
     <string name="wx_heart_rate_by_stress">Herzfrequenz, nach Stress gefärbt</string>
     <string name="wx_helps">Hilft</string>
+    <string name="wx_hide_details">Details ausblenden</string>
     <string name="wx_high">Hoch</string>
     <string name="wx_history">Verlauf</string>
     <string name="wx_hours">Stunden</string>
@@ -182,6 +187,7 @@
     <string name="wx_sessions">Einheiten</string>
     <string name="wx_set_alarm">Wecker stellen</string>
     <string name="wx_show_all">Alle zeigen</string>
+    <string name="wx_show_details">Details anzeigen</string>
     <string name="wx_showing_earlier_night">Letzte Nacht noch nicht bewertet · zeige die Nacht bis %1$s</string>
     <string name="wx_skin_temp">Hauttemp.</string>
     <string name="wx_sleep">Schlaf</string>
@@ -204,7 +210,10 @@
     <string name="wx_streak_days">%1$d Tage in Folge</string>
     <string name="wx_strenuous">Anstrengend</string>
     <string name="wx_stress_curve_a11y">Stresslevel im Tagesverlauf</string>
+    <string name="wx_stress_dashed_note">Gestrichelt: Bewegung oder wenig Herzfrequenz, mit Vorsicht lesen</string>
     <string name="wx_stress_monitor">Stressmonitor</string>
+    <string name="wx_stress_ref_day">Verglichen mit den ruhigsten Stunden von heute</string>
+    <string name="wx_stress_ref_personal">Verglichen mit deiner persönlichen Ruheherzfrequenz am Tag</string>
     <string name="wx_stress_week_a11y">Täglicher Stresslevel der letzten sieben Tage</string>
     <string name="wx_sync_failed">Health-Connect-Sync fehlgeschlagen.</string>
     <string name="wx_sync_health_connect">Aus Health Connect synchronisieren</string>

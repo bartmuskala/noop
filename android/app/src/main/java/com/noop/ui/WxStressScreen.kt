@@ -65,6 +65,7 @@ import java.util.Locale
 
 @Composable
 internal fun WxStressScreen(vm: AppViewModel, onBack: () -> Unit, onBreathe: () -> Unit) {
+    val context = androidx.compose.ui.platform.LocalContext.current
     val today = LocalDate.now()
     var daily by remember { mutableStateOf<Map<String, Double>>(emptyMap()) }
     var hours by remember { mutableStateOf<List<DaytimeStress.HourPoint>?>(null) }
@@ -73,49 +74,27 @@ internal fun WxStressScreen(vm: AppViewModel, onBack: () -> Unit, onBreathe: () 
         daily = runCatching { vm.repo.metricSeries("my-whoop", "stress", from, today.toString()) }
             .getOrDefault(emptyList()).associate { it.day to it.value.coerceIn(0.0, 3.0) }
     }
+    val personal = remember { NoopPrefs.stressPersonalBaseline(context) }
     LaunchedEffect(Unit) {
         hours = withContext(Dispatchers.Default) {
-            runCatching {
-                val now = System.currentTimeMillis() / 1000L
-                val zone = ZoneId.systemDefault()
-                val from = stressLocalDayWindowContaining(now, zone).fromEpochSecond
-                val tz = zone.rules.getOffset(Instant.ofEpochSecond(now)).totalSeconds.toLong()
-                val hr = vm.repo.hrSamplesUnion(vm.activeStrapId, from, now, limit = 200_000)
-                if (hr.size < DaytimeStress.minHourHrSamples) emptyList()
-                else {
-                    val rr = vm.repo.rrIntervalsUnion(vm.activeStrapId, from, now, limit = 200_000)
-                    val gravity = vm.repo.gravitySamplesUnion(vm.activeStrapId, from, now, limit = 200_000)
-                    DaytimeStress.analyze(hr, rr, gravity, tz).hours
-                }
-            }.getOrDefault(emptyList())
+            runCatching { wxStressHours(vm, today, personal) }.getOrDefault(emptyList())
         }
     }
     var computedDaily by remember { mutableStateOf<Map<String, Double>>(emptyMap()) }
     LaunchedEffect(Unit) {
         computedDaily = withContext(Dispatchers.Default) {
-            val zone = ZoneId.systemDefault()
             val out = HashMap<String, Double>()
             for (back in 1L..6L) {
                 val d = today.minusDays(back)
-                runCatching {
-                    val from = d.atStartOfDay(zone).toEpochSecond()
-                    val to = d.plusDays(1).atStartOfDay(zone).toEpochSecond()
-                    val hr = vm.repo.hrSamplesUnion(vm.activeStrapId, from, to, limit = 200_000)
-                    if (hr.size >= DaytimeStress.minHourHrSamples) {
-                        val tz = zone.rules.getOffset(Instant.ofEpochSecond(to)).totalSeconds.toLong()
-                        val rr = vm.repo.rrIntervalsUnion(vm.activeStrapId, from, to, limit = 200_000)
-                        val grav = vm.repo.gravitySamplesUnion(vm.activeStrapId, from, to, limit = 200_000)
-                        DaytimeStress.analyze(hr, rr, grav, tz).hours.mapNotNull { it.level }
-                            .takeIf { it.isNotEmpty() }?.average()?.let { out[d.toString()] = it }
-                    }
-                }
+                runCatching { wxStressHours(vm, d, personal) }.getOrNull()
+                    ?.mapNotNull { it.level }?.takeIf { it.isNotEmpty() }?.average()?.let { out[d.toString()] = it }
             }
             out
         }
     }
     val scored = hours.orEmpty().mapNotNull { it.level }
-    val now = hours?.lastOrNull { it.level != null }?.level ?: daily[today.toString()]
-    val dayMean = if (scored.isNotEmpty()) scored.average() else daily[today.toString()]
+    val now = hours?.lastOrNull { it.level != null }?.level
+    val dayMean = if (scored.isNotEmpty()) scored.average() else null
 
     Column(
         Modifier
@@ -165,6 +144,12 @@ internal fun WxStressScreen(vm: AppViewModel, onBack: () -> Unit, onBreathe: () 
                     }
                     else -> WxStressCurve(hours.orEmpty(), uiString(R.string.wx_stress_curve_a11y))
                 }
+                if (hours.orEmpty().any { it.maskedForActivity }) {
+                    Text(uiString(R.string.wx_stress_dashed_note), style = WxType.caption, color = Wx.textDim,
+                        modifier = Modifier.padding(top = 8.dp))
+                }
+                Text(uiString(if (personal) R.string.wx_stress_ref_personal else R.string.wx_stress_ref_day),
+                    style = WxType.caption, color = Wx.textDim, modifier = Modifier.padding(top = 4.dp))
             }
 
             // Time in each level.
@@ -190,7 +175,7 @@ internal fun WxStressScreen(vm: AppViewModel, onBack: () -> Unit, onBreathe: () 
             // today's curve, averaged over each day's scored hours. Hidden when no day has a level.
             val week = (6 downTo 0).map { today.minusDays(it.toLong()) }
             val weekValues = week.map { d ->
-                daily[d.toString()] ?: if (d == today) dayMean else computedDaily[d.toString()]
+                if (d == today) dayMean else computedDaily[d.toString()] ?: daily[d.toString()]
             }
             if (weekValues.any { it != null }) WxCard {
                 WxLabel(uiString(R.string.wx_last_7_days))
@@ -225,7 +210,8 @@ private fun WxStressCurve(hours: List<DaytimeStress.HourPoint>, description: Str
         val last = hours.last().hour.coerceAtLeast(first + 1)
         fun x(h: Int) = w * (h - first).toFloat() / (last - first)
         fun y(v: Double) = (plotH - (v / 3.0) * plotH).toFloat()
-        val pts = hours.filter { it.level != null }.map { Offset(x(it.hour), y(it.level!!)) }
+        val scoredHours = hours.filter { it.level != null }
+        val pts = scoredHours.map { Offset(x(it.hour), y(it.level!!)) }
         if (pts.size >= 2) {
             val path = Path().apply {
                 moveTo(pts[0].x, pts[0].y)
@@ -240,11 +226,22 @@ private fun WxStressCurve(hours: List<DaytimeStress.HourPoint>, description: Str
                 lineTo(pts.last().x, plotH); lineTo(pts.first().x, plotH); close()
             }
             drawPath(fill, Brush.verticalGradient(listOf(Wx.stressMid.copy(alpha = 0.35f), Wx.stressLow.copy(alpha = 0f)), 0f, plotH))
-            // The line takes the colour of the level it is at: low at the bottom, high at the top.
-            drawPath(path, Brush.verticalGradient(
+            // The line takes the colour of the level it is at; a stretch touching a low-confidence hour
+            // (moving, or little heart rate) is dashed.
+            val brush = Brush.verticalGradient(
                 0f to Wx.stressHigh, 0.33f to Wx.stressHigh, 0.5f to Wx.stressMid, 0.67f to Wx.stressLow, 1f to Wx.stressLow,
                 startY = 0f, endY = plotH,
-            ), style = Stroke(2.5.dp.toPx(), cap = StrokeCap.Round))
+            )
+            val dash = androidx.compose.ui.graphics.PathEffect.dashPathEffect(floatArrayOf(10f, 8f))
+            for (i in 1 until pts.size) {
+                val p0 = pts[i - 1]; val p1 = pts[i]
+                val cx = (p0.x + p1.x) / 2
+                val seg = Path().apply { moveTo(p0.x, p0.y); cubicTo(cx, p0.y, cx, p1.y, p1.x, p1.y) }
+                val unsure = scoredHours[i - 1].maskedForActivity || scoredHours[i].maskedForActivity
+                drawPath(seg, brush, style = Stroke(2.5.dp.toPx(), cap = StrokeCap.Round, pathEffect = if (unsure) dash else null))
+            }
+        } else if (pts.size == 1) {
+            drawCircle(Wx.stressColor(scoredHours[0].level), 4.dp.toPx(), pts[0])
         }
         val step = if (last - first > 12) 3 else 2
         var h = first
