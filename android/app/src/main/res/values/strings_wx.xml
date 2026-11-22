@@ -4,6 +4,8 @@
     <string name="wx_30_day_avg_value">30-day avg %1$s</string>
     <string name="wx_7_day_avg_value">7-day avg %1$s</string>
     <string name="wx_activities">Activities</string>
+    <string name="wx_adaptive_target">Adaptive sleep target</string>
+    <string name="wx_adaptive_target_body">Tonight\'s need follows your effort, sleep debt, naps and illness</string>
     <string name="wx_alarm">Alarm</string>
     <string name="wx_alarm_set">Set for tomorrow</string>
     <string name="wx_all_alarm_options">Wake window, day overrides &amp; more</string>
@@ -135,6 +137,15 @@
     <string name="wx_period_year">year</string>
     <string name="wx_phone_alarm">Phone alarm</string>
     <string name="wx_phone_alarm_body">Wakes you in your lightest sleep before the time</string>
+    <string name="wx_plan_base">%1$s base</string>
+    <string name="wx_plan_carried">%1$s more carried to the next nights</string>
+    <string name="wx_plan_debt">+%1$s debt</string>
+    <string name="wx_plan_effort">+%1$s effort</string>
+    <string name="wx_plan_illness">+%1$s illness</string>
+    <string name="wx_plan_in_bed">%1$s in bed at %2$d%% efficiency</string>
+    <string name="wx_plan_nap">−%1$s nap</string>
+    <string name="wx_plan_personal">Effort factor fitted to your own free nights</string>
+    <string name="wx_plan_wind_down">High stress today: start winding down at %1$s</string>
     <string name="wx_prev_day">Previous day</string>
     <string name="wx_reading_today">Reading today…</string>
     <string name="wx_recent_workouts">Recent workouts</string>

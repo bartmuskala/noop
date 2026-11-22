@@ -16,6 +16,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -49,6 +51,9 @@ internal fun WxAlarmScreen(vm: AppViewModel, onBack: () -> Unit, onOpenFull: () 
     val live = vm.live.collectAsStateWithLifecycle().value
     val probesOn = remember { PuffinExperiment.from(context).isEnabled }
     val next = rememberWxNextWake(vm)
+    var planRefresh by remember { mutableStateOf(0) }
+    var adaptive by remember { mutableStateOf(WxSleepPlanPrefs.enabled(context)) }
+    val sleepPlan = rememberWxSleepPlan(vm, logicalDayNow(), next?.minuteOfDay ?: WX_DEFAULT_WAKE_MIN, planRefresh)
 
     WxPage(title = uiString(R.string.wx_alarm), onBack = onBack) {
         // Next wake + tonight's bedtime.
@@ -70,15 +75,36 @@ internal fun WxAlarmScreen(vm: AppViewModel, onBack: () -> Unit, onOpenFull: () 
                 }
                 val key = today?.day
                 val history = days.filter { key == null || it.day <= key }
-                val need = sleepNeedForDay(today, history.takeLast(30), emptyMap())
+                val need = sleepPlan?.plan?.needMin ?: sleepNeedForDay(today, history.takeLast(30), emptyMap())
+                val bed = sleepPlan?.plan?.bedMinute ?: wxBedtimeMinutes(need, next?.minuteOfDay ?: WX_DEFAULT_WAKE_MIN)
                 Column(Modifier.weight(1f), horizontalAlignment = Alignment.End) {
                     WxLabel(uiString(R.string.wx_recommended_bedtime), color = Wx.sleepSoft)
                     Spacer(Modifier.height(6.dp))
-                    Text(wxClock(wxBedtimeMinutes(need, next?.minuteOfDay ?: WX_DEFAULT_WAKE_MIN), is24h),
+                    Text(wxClock(bed, is24h),
                         style = WxType.number.copy(fontSize = 40.sp), color = Wx.text)
                     Text(uiString(R.string.wx_sleep_need_value, wxHoursMinutes(need)), style = WxType.caption,
                         color = Wx.textMuted, textAlign = TextAlign.End)
                 }
+            }
+        }
+
+        // The adaptive sleep target: how tonight's need is built, and the switch back to a fixed need.
+        WxCard {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text(uiString(R.string.wx_adaptive_target), style = WxType.bodyStrong, color = Wx.text)
+                    Text(uiString(R.string.wx_adaptive_target_body), style = WxType.caption, color = Wx.textMuted)
+                }
+                Spacer(Modifier.width(12.dp))
+                Switch(
+                    checked = adaptive,
+                    onCheckedChange = { adaptive = it; WxSleepPlanPrefs.setEnabled(context, it); planRefresh++ },
+                    colors = SwitchDefaults.colors(checkedTrackColor = Wx.recoveryHigh, checkedThumbColor = Wx.text),
+                )
+            }
+            sleepPlan?.let { p ->
+                Spacer(Modifier.height(10.dp))
+                wxPlanLines(p, is24h).forEach { Text(it, style = WxType.caption, color = Wx.textSoft) }
             }
         }
 

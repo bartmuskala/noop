@@ -127,6 +127,10 @@ internal fun WxScoreScreen(vm: AppViewModel, initial: WxScoreTab, initialOffset:
         today = maxOf(date.toString(), LocalDate.now().toString()),
     ) else null
     val night = if (row?.recovery == null && carried != null) carried else row
+    // The need for the night shown, from the same adaptive target as Today's tonight card, planned on
+    // the evening before it (the wake time does not change the need).
+    val planDay = (night?.day?.let { runCatching { LocalDate.parse(it) }.getOrNull() } ?: date).minusDays(1)
+    val sleepPlan = rememberWxSleepPlan(vm, planDay, WX_DEFAULT_WAKE_MIN)
     val nightBaseline = days.filter { it.day < (night?.day ?: dateKey) }.takeLast(30)
     val baseline = days.filter { it.day < dateKey }.takeLast(30)
 
@@ -180,7 +184,7 @@ internal fun WxScoreScreen(vm: AppViewModel, initial: WxScoreTab, initialOffset:
         when (tab) {
             WxScoreTab.Recovery -> WxRecoveryTab(night, nightBaseline, upToDate, date, onOpenMoves)
             WxScoreTab.Effort -> WxEffortTab(row, date, workouts, effortScale, profile, onOpenWorkouts, onOpenProfile, upToDate, baseline, zones)
-            WxScoreTab.Sleep -> WxSleepTab(night, upToDate, stages, sessions, nightHr, date)
+            WxScoreTab.Sleep -> WxSleepTab(night, upToDate, stages, sessions, nightHr, date, sleepPlan?.plan?.needMin)
         }
     }
 }
@@ -453,11 +457,12 @@ private fun WxSleepTab(
     sessions: List<com.noop.data.SleepSession>,
     nightHr: List<Pair<Long, Double>>,
     date: LocalDate,
+    plannedNeedMin: Double? = null,
 ) {
     val context = LocalContext.current
     val is24h = remember { android.text.format.DateFormat.is24HourFormat(context) }
     val perf = row?.let { RestScorer.restFromDaily(it) }
-    val needMin = sleepNeedForDay(row, days.takeLast(30), emptyMap())
+    val needMin = plannedNeedMin ?: sleepNeedForDay(row, days.takeLast(30), emptyMap())
     val slept = row?.totalSleepMin
     val short = if (slept != null) needMin - slept else null
     val eff = wxEfficiencyPct(row?.efficiency)

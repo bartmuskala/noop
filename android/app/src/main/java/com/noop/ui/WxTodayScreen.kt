@@ -362,15 +362,19 @@ internal fun WxTodayScreen(vm: AppViewModel, onOpen: (WxTodayTarget) -> Unit) {
                 }
             }
             // Tonight's sleep: recommended bedtime on the left, the alarm on the right.
-            val needMin = sleepNeedForDay(row, history.takeLast(30), emptyMap())
             // The next alarm that will actually fire, from the one resolver the Alarms screen shares.
             val alarmMin: Int? = nextWake?.minuteOfDay
-            val bedMin = wxBedtimeMinutes(needMin, alarmMin ?: WX_DEFAULT_WAKE_MIN)
+            // Tonight's plan from the adaptive target (same resolver as the Alarms screen); the fixed
+            // need when it is switched off or still loading.
+            val sleepPlan = rememberWxSleepPlan(vm, logicalDayNow(), alarmMin ?: WX_DEFAULT_WAKE_MIN)
+            val needMin = sleepPlan?.plan?.needMin ?: sleepNeedForDay(row, history.takeLast(30), emptyMap())
+            val bedMin = sleepPlan?.plan?.bedMinute ?: wxBedtimeMinutes(needMin, alarmMin ?: WX_DEFAULT_WAKE_MIN)
             WxTonightCard(
                 bedtime = wxClock(bedMin, is24h),
                 need = wxHoursMinutes(needMin),
                 alarm = alarmMin?.let { wxClock(it, is24h) },
                 onAlarm = { onOpen(WxTodayTarget.Alarms) },
+                details = sleepPlan?.let { wxPlanLines(it, is24h) }.orEmpty(),
             )
 
             // Metric tiles: today's value, change vs the N-day average, and the average itself.
@@ -577,7 +581,7 @@ private fun WxDial(
 }
 
 @Composable
-private fun WxTonightCard(bedtime: String, need: String, alarm: String?, onAlarm: () -> Unit) {
+private fun WxTonightCard(bedtime: String, need: String, alarm: String?, onAlarm: () -> Unit, details: List<String> = emptyList()) {
     WxCard(background = Wx.sleepCardTop) {
         WxCardHeader(uiString(R.string.wx_tonights_sleep), labelColor = Wx.sleepSoft)
         Spacer(Modifier.height(12.dp))
@@ -604,6 +608,15 @@ private fun WxTonightCard(bedtime: String, need: String, alarm: String?, onAlarm
                     uiString(if (alarm != null) R.string.wx_alarm_set else R.string.wx_no_alarm),
                     style = WxType.caption, color = if (alarm != null) Wx.textMuted else Wx.recoveryMid,
                 )
+            }
+        }
+        if (details.isNotEmpty()) {
+            Spacer(Modifier.height(12.dp))
+            Box(Modifier.fillMaxWidth().height(1.dp).background(Wx.sleepDivider))
+            Spacer(Modifier.height(10.dp))
+            details.forEachIndexed { i, line ->
+                Text(line, style = WxType.caption.copy(fontSize = if (i == 0) 13.sp else 12.sp),
+                    color = if (i == 0) Wx.textSoft else Wx.textMuted)
             }
         }
         Spacer(Modifier.height(14.dp))

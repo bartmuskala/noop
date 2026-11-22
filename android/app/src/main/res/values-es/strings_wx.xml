@@ -4,6 +4,8 @@
     <string name="wx_30_day_avg_value">Media 30 días %1$s</string>
     <string name="wx_7_day_avg_value">Media 7 días %1$s</string>
     <string name="wx_activities">Actividades</string>
+    <string name="wx_adaptive_target">Objetivo de sueño adaptable</string>
+    <string name="wx_adaptive_target_body">La necesidad de esta noche sigue tu esfuerzo, deuda de sueño, siestas y enfermedad</string>
     <string name="wx_alarm">Alarma</string>
     <string name="wx_alarm_set">Puesta para mañana</string>
     <string name="wx_all_alarm_options">Ventana, excepciones por día y más</string>
@@ -135,6 +137,15 @@
     <string name="wx_period_year">año</string>
     <string name="wx_phone_alarm">Alarma del móvil</string>
     <string name="wx_phone_alarm_body">Te despierta en el sueño más ligero antes de la hora</string>
+    <string name="wx_plan_base">%1$s base</string>
+    <string name="wx_plan_carried">%1$s más pasan a las próximas noches</string>
+    <string name="wx_plan_debt">+%1$s deuda</string>
+    <string name="wx_plan_effort">+%1$s esfuerzo</string>
+    <string name="wx_plan_illness">+%1$s enfermedad</string>
+    <string name="wx_plan_in_bed">%1$s en cama con %2$d%% de eficiencia</string>
+    <string name="wx_plan_nap">−%1$s siesta</string>
+    <string name="wx_plan_personal">Factor de esfuerzo ajustado a tus noches libres</string>
+    <string name="wx_plan_wind_down">Mucho estrés hoy: empieza a relajarte a las %1$s</string>
     <string name="wx_prev_day">Día anterior</string>
     <string name="wx_reading_today">Leyendo hoy…</string>
     <string name="wx_recent_workouts">Entrenos recientes</string>

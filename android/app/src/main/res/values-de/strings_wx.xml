@@ -4,6 +4,8 @@
     <string name="wx_30_day_avg_value">30-Tage-Ø %1$s</string>
     <string name="wx_7_day_avg_value">7-Tage-Ø %1$s</string>
     <string name="wx_activities">Aktivitäten</string>
+    <string name="wx_adaptive_target">Adaptives Schlafziel</string>
+    <string name="wx_adaptive_target_body">Der heutige Bedarf richtet sich nach Belastung, Schlafschuld, Nickerchen und Krankheit</string>
     <string name="wx_alarm">Wecker</string>
     <string name="wx_alarm_set">Für morgen gestellt</string>
     <string name="wx_all_alarm_options">Weckfenster, Tagesausnahmen &amp; mehr</string>
@@ -135,6 +137,15 @@
     <string name="wx_period_year">Jahr</string>
     <string name="wx_phone_alarm">Handy-Wecker</string>
     <string name="wx_phone_alarm_body">Weckt dich im leichtesten Schlaf vor der Zeit</string>
+    <string name="wx_plan_base">%1$s Basis</string>
+    <string name="wx_plan_carried">%1$s mehr auf die nächsten Nächte verschoben</string>
+    <string name="wx_plan_debt">+%1$s Schlafschuld</string>
+    <string name="wx_plan_effort">+%1$s Belastung</string>
+    <string name="wx_plan_illness">+%1$s Krankheit</string>
+    <string name="wx_plan_in_bed">%1$s im Bett bei %2$d%% Effizienz</string>
+    <string name="wx_plan_nap">−%1$s Nickerchen</string>
+    <string name="wx_plan_personal">Belastungsfaktor an deine freien Nächte angepasst</string>
+    <string name="wx_plan_wind_down">Viel Stress heute: ab %1$s runterfahren</string>
     <string name="wx_prev_day">Vorheriger Tag</string>
     <string name="wx_reading_today">Lese heute…</string>
     <string name="wx_recent_workouts">Letzte Workouts</string>
