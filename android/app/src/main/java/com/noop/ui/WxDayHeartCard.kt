@@ -110,7 +110,7 @@ internal fun WxDayHeartCard(
         )
         Spacer(Modifier.height(10.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(14.dp), verticalAlignment = Alignment.CenterVertically) {
-            WxLegend(Wx.heart, uiString(R.string.wx_heart_rate), "")
+            WxLegend(Wx.stressLow, uiString(R.string.wx_heart_rate_by_stress), "")
             if (dayWorkouts.isNotEmpty()) WxLegend(Wx.effort, uiString(R.string.wx_workouts), "${dayWorkouts.size}")
             if (stressNow != null || scored.isNotEmpty()) {
                 WxLegend(Wx.stressColor(stressNow), uiString(R.string.wx_stress_monitor),
@@ -198,14 +198,17 @@ private fun WxDayHeartChart(d: WxDayHeart, workouts: List<WorkoutRow>, descripti
                 drawText(label, topLeft = Offset((x0 + 3f).coerceAtMost(size.width - label.size.width), topPad))
             }
         }
-        // Heart rate line; a gap of more than 20 minutes breaks it.
-        val path = Path()
-        var prev: Long? = null
-        d.points.forEach { (ts, bpm) ->
-            if (prev == null || ts - prev!! > 1200L) path.moveTo(x(ts), y(bpm)) else path.lineTo(x(ts), y(bpm))
-            prev = ts
+        // Heart rate line, each stretch coloured by that hour's stress level (grey where the hour was not
+        // scored); a gap of more than 20 minutes breaks it.
+        fun colorAt(ts: Long): androidx.compose.ui.graphics.Color {
+            val h = d.stressHours.lastOrNull { it.startTs <= ts && ts < it.startTs + 3600L }
+            return h?.level?.let { Wx.stressColor(it) } ?: Wx.textMuted
         }
-        drawPath(path, Wx.heart, style = Stroke(1.8.dp.toPx(), cap = StrokeCap.Round))
+        for (i in 1 until d.points.size) {
+            val (t0, v0) = d.points[i - 1]; val (t1, v1) = d.points[i]
+            if (t1 - t0 > 1200L) continue
+            drawLine(colorAt(t1), Offset(x(t0), y(v0)), Offset(x(t1), y(v1)), 1.8.dp.toPx(), StrokeCap.Round)
+        }
 
         // Hourly stress strip.
         val stripTop = plotH + gap

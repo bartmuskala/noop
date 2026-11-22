@@ -1195,7 +1195,7 @@ fun SettingsScreen(
                         onCheckedChange = { mutate { profile.setCustomHrZonesEnabled(it) } },
                         colors = SwitchDefaults.colors(
                             checkedThumbColor = Palette.surfaceBase,
-                            checkedTrackColor = Palette.accent,
+                            checkedTrackColor = Wx.recoveryHigh,
                             uncheckedThumbColor = Palette.textSecondary,
                             uncheckedTrackColor = Palette.surfaceInset,
                             uncheckedBorderColor = Palette.hairline,
@@ -1447,7 +1447,7 @@ fun SettingsScreen(
                         },
                         colors = SwitchDefaults.colors(
                             checkedThumbColor = Palette.surfaceBase,
-                            checkedTrackColor = Palette.accent,
+                            checkedTrackColor = Wx.recoveryHigh,
                             uncheckedThumbColor = Palette.textSecondary,
                             uncheckedTrackColor = Palette.surfaceInset,
                             uncheckedBorderColor = Palette.hairline,
@@ -1734,7 +1734,7 @@ fun SettingsScreen(
                     },
                     colors = SwitchDefaults.colors(
                         checkedThumbColor = Palette.surfaceBase,
-                        checkedTrackColor = Palette.accent,
+                        checkedTrackColor = Wx.recoveryHigh,
                         uncheckedThumbColor = Palette.textSecondary,
                         uncheckedTrackColor = Palette.surfaceInset,
                         uncheckedBorderColor = Palette.hairline,
@@ -1771,7 +1771,7 @@ fun SettingsScreen(
                     },
                     colors = SwitchDefaults.colors(
                         checkedThumbColor = Palette.surfaceBase,
-                        checkedTrackColor = Palette.accent,
+                        checkedTrackColor = Wx.recoveryHigh,
                         uncheckedThumbColor = Palette.textSecondary,
                         uncheckedTrackColor = Palette.surfaceInset,
                         uncheckedBorderColor = Palette.hairline,
@@ -1806,7 +1806,7 @@ fun SettingsScreen(
                     },
                     colors = SwitchDefaults.colors(
                         checkedThumbColor = Palette.surfaceBase,
-                        checkedTrackColor = Palette.accent,
+                        checkedTrackColor = Wx.recoveryHigh,
                         uncheckedThumbColor = Palette.textSecondary,
                         uncheckedTrackColor = Palette.surfaceInset,
                         uncheckedBorderColor = Palette.hairline,
@@ -1876,8 +1876,7 @@ fun SettingsScreen(
             SettingsFormRow(label = uiString(R.string.l10n_settings_screen_ai_coach_130c3eab)) {
                 Switch(
                     checked = BottomBarStyleStore.coachEnabled,
-                    onCheckedChange = { BottomBarStyleStore.setCoachEnabled(context, it) },
-                )
+                    onCheckedChange = { BottomBarStyleStore.setCoachEnabled(context, it) }, colors = noopSwitchColors())
             }
             SettingsRowDivider()
             // #1836: which bottom-bar layout to draw. Default OFF — the shipped reserved slot. The
@@ -1886,8 +1885,7 @@ fun SettingsScreen(
             SettingsFormRow(label = uiString(R.string.l10n_settings_screen_bottom_bar_overlay_f257c96f)) {
                 Switch(
                     checked = BottomBarStyleStore.overlay,
-                    onCheckedChange = { BottomBarStyleStore.set(context, it) },
-                )
+                    onCheckedChange = { BottomBarStyleStore.set(context, it) }, colors = noopSwitchColors())
             }
             SettingsRowDivider()
             // #1839: hide the bar while scrolling down, bring it back on scrolling up. Only does anything
@@ -1902,8 +1900,7 @@ fun SettingsScreen(
                 Switch(
                     checked = BottomBarStyleStore.autoHide,
                     enabled = autoHideAvailable,
-                    onCheckedChange = { BottomBarStyleStore.setAutoHide(context, it) },
-                )
+                    onCheckedChange = { BottomBarStyleStore.setAutoHide(context, it) }, colors = noopSwitchColors())
             }
             // Reaching either control below means scrolling DOWN, which auto-hide reads as "hide the
             // bar" - so a change made here landed on a bar the user could not see, and neither a slider
@@ -2283,7 +2280,7 @@ fun SettingsScreen(
                         },
                         colors = SwitchDefaults.colors(
                             checkedThumbColor = Palette.surfaceBase,
-                            checkedTrackColor = Palette.accent,
+                            checkedTrackColor = Wx.recoveryHigh,
                             uncheckedThumbColor = Palette.textSecondary,
                             uncheckedTrackColor = Palette.surfaceInset,
                             uncheckedBorderColor = Palette.hairline,
@@ -2320,7 +2317,7 @@ fun SettingsScreen(
                         },
                         colors = SwitchDefaults.colors(
                             checkedThumbColor = Palette.surfaceBase,
-                            checkedTrackColor = Palette.accent,
+                            checkedTrackColor = Wx.recoveryHigh,
                             uncheckedThumbColor = Palette.textSecondary,
                             uncheckedTrackColor = Palette.surfaceInset,
                             uncheckedBorderColor = Palette.hairline,
@@ -2359,7 +2356,7 @@ fun SettingsScreen(
                         },
                         colors = SwitchDefaults.colors(
                             checkedThumbColor = Palette.surfaceBase,
-                            checkedTrackColor = Palette.accent,
+                            checkedTrackColor = Wx.recoveryHigh,
                             uncheckedThumbColor = Palette.textSecondary,
                             uncheckedTrackColor = Palette.surfaceInset,
                             uncheckedBorderColor = Palette.hairline,
@@ -2517,7 +2514,7 @@ fun SettingsScreen(
                         },
                         colors = SwitchDefaults.colors(
                             checkedThumbColor = Palette.surfaceBase,
-                            checkedTrackColor = Palette.accent,
+                            checkedTrackColor = Wx.recoveryHigh,
                             uncheckedThumbColor = Palette.textSecondary,
                             uncheckedTrackColor = Palette.surfaceInset,
                             uncheckedBorderColor = Palette.hairline,
@@ -2554,7 +2551,7 @@ fun SettingsScreen(
                             },
                             colors = SwitchDefaults.colors(
                                 checkedThumbColor = Palette.surfaceBase,
-                                checkedTrackColor = Palette.accent,
+                                checkedTrackColor = Wx.recoveryHigh,
                                 uncheckedThumbColor = Palette.textSecondary,
                                 uncheckedTrackColor = Palette.surfaceInset,
                                 uncheckedBorderColor = Palette.hairline,
@@ -2721,7 +2718,7 @@ fun SettingsScreen(
                         },
                         colors = SwitchDefaults.colors(
                             checkedThumbColor = Palette.surfaceBase,
-                            checkedTrackColor = Palette.accent,
+                            checkedTrackColor = Wx.recoveryHigh,
                             uncheckedThumbColor = Palette.textSecondary,
                             uncheckedTrackColor = Palette.surfaceInset,
                             uncheckedBorderColor = Palette.hairline,
@@ -2758,7 +2755,7 @@ fun SettingsScreen(
                         },
                         colors = SwitchDefaults.colors(
                             checkedThumbColor = Palette.surfaceBase,
-                            checkedTrackColor = Palette.accent,
+                            checkedTrackColor = Wx.recoveryHigh,
                             uncheckedThumbColor = Palette.textSecondary,
                             uncheckedTrackColor = Palette.surfaceInset,
                             uncheckedBorderColor = Palette.hairline,
@@ -2794,7 +2791,7 @@ fun SettingsScreen(
                         },
                         colors = SwitchDefaults.colors(
                             checkedThumbColor = Palette.surfaceBase,
-                            checkedTrackColor = Palette.accent,
+                            checkedTrackColor = Wx.recoveryHigh,
                             uncheckedThumbColor = Palette.textSecondary,
                             uncheckedTrackColor = Palette.surfaceInset,
                             uncheckedBorderColor = Palette.hairline,
@@ -2828,7 +2825,7 @@ fun SettingsScreen(
                         },
                         colors = SwitchDefaults.colors(
                             checkedThumbColor = Palette.surfaceBase,
-                            checkedTrackColor = Palette.accent,
+                            checkedTrackColor = Wx.recoveryHigh,
                             uncheckedThumbColor = Palette.textSecondary,
                             uncheckedTrackColor = Palette.surfaceInset,
                             uncheckedBorderColor = Palette.hairline,
@@ -2863,7 +2860,7 @@ fun SettingsScreen(
                         },
                         colors = SwitchDefaults.colors(
                             checkedThumbColor = Palette.surfaceBase,
-                            checkedTrackColor = Palette.accent,
+                            checkedTrackColor = Wx.recoveryHigh,
                             uncheckedThumbColor = Palette.textSecondary,
                             uncheckedTrackColor = Palette.surfaceInset,
                             uncheckedBorderColor = Palette.hairline,
@@ -2899,7 +2896,7 @@ fun SettingsScreen(
                         },
                         colors = SwitchDefaults.colors(
                             checkedThumbColor = Palette.surfaceBase,
-                            checkedTrackColor = Palette.accent,
+                            checkedTrackColor = Wx.recoveryHigh,
                             uncheckedThumbColor = Palette.textSecondary,
                             uncheckedTrackColor = Palette.surfaceInset,
                             uncheckedBorderColor = Palette.hairline,
@@ -2973,7 +2970,7 @@ fun SettingsScreen(
                         },
                         colors = SwitchDefaults.colors(
                             checkedThumbColor = Palette.surfaceBase,
-                            checkedTrackColor = Palette.accent,
+                            checkedTrackColor = Wx.recoveryHigh,
                             uncheckedThumbColor = Palette.textSecondary,
                             uncheckedTrackColor = Palette.surfaceInset,
                             uncheckedBorderColor = Palette.hairline,
@@ -3119,7 +3116,7 @@ fun SettingsScreen(
                         },
                         colors = SwitchDefaults.colors(
                             checkedThumbColor = Palette.surfaceBase,
-                            checkedTrackColor = Palette.accent,
+                            checkedTrackColor = Wx.recoveryHigh,
                             uncheckedThumbColor = Palette.textSecondary,
                             uncheckedTrackColor = Palette.surfaceInset,
                             uncheckedBorderColor = Palette.hairline,
@@ -3155,7 +3152,7 @@ fun SettingsScreen(
                         },
                         colors = SwitchDefaults.colors(
                             checkedThumbColor = Palette.surfaceBase,
-                            checkedTrackColor = Palette.accent,
+                            checkedTrackColor = Wx.recoveryHigh,
                             uncheckedThumbColor = Palette.textSecondary,
                             uncheckedTrackColor = Palette.surfaceInset,
                             uncheckedBorderColor = Palette.hairline,
@@ -3202,7 +3199,7 @@ fun SettingsScreen(
                         },
                         colors = SwitchDefaults.colors(
                             checkedThumbColor = Palette.surfaceBase,
-                            checkedTrackColor = Palette.accent,
+                            checkedTrackColor = Wx.recoveryHigh,
                             uncheckedThumbColor = Palette.textSecondary,
                             uncheckedTrackColor = Palette.surfaceInset,
                             uncheckedBorderColor = Palette.hairline,
@@ -3248,7 +3245,7 @@ fun SettingsScreen(
                         },
                         colors = SwitchDefaults.colors(
                             checkedThumbColor = Palette.surfaceBase,
-                            checkedTrackColor = Palette.accent,
+                            checkedTrackColor = Wx.recoveryHigh,
                             uncheckedThumbColor = Palette.textSecondary,
                             uncheckedTrackColor = Palette.surfaceInset,
                             uncheckedBorderColor = Palette.hairline,
@@ -3888,7 +3885,7 @@ fun SettingsScreen(
                             },
                             colors = SwitchDefaults.colors(
                                 checkedThumbColor = Palette.surfaceBase,
-                                checkedTrackColor = Palette.accent,
+                                checkedTrackColor = Wx.recoveryHigh,
                                 uncheckedThumbColor = Palette.textSecondary,
                                 uncheckedTrackColor = Palette.surfaceInset,
                                 uncheckedBorderColor = Palette.hairline,

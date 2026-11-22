@@ -513,7 +513,7 @@ private fun DeveloperToggleRow(
             Text(title, style = NoopType.subhead, color = Palette.textPrimary)
             Text(detail, style = NoopType.caption, color = Palette.textSecondary)
         }
-        Switch(checked = checked, onCheckedChange = onCheckedChange)
+        Switch(checked = checked, onCheckedChange = onCheckedChange, colors = noopSwitchColors())
     }
 }
 
@@ -1334,7 +1334,7 @@ private fun SettingsSectionTC(
 @Composable
 private fun settingsSwitchColors() = SwitchDefaults.colors(
     checkedThumbColor = Palette.surfaceBase,
-    checkedTrackColor = Palette.accent,
+    checkedTrackColor = Wx.recoveryHigh,
     uncheckedThumbColor = Palette.textSecondary,
     uncheckedTrackColor = Palette.surfaceInset,
     uncheckedBorderColor = Palette.hairline,

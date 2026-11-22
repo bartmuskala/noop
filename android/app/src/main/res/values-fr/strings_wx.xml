@@ -24,6 +24,7 @@
     <string name="wx_bars_a11y">%1$s par période en barres</string>
     <string name="wx_behaviour_insights">Effets des habitudes</string>
     <string name="wx_behaviour_insights_body">Voyez le lien entre vos réponses au journal et votre récupération</string>
+    <string name="wx_below_zones">Sous la zone 1</string>
     <string name="wx_best_day">Meilleur : %1$s</string>
     <string name="wx_bpm_avg">moy. %1$d bpm</string>
     <string name="wx_bpm_now">%1$d bpm maintenant</string>
@@ -40,6 +41,7 @@
     <string name="wx_compared_to_previous">Comparé à la période précédente (%1$s)</string>
     <string name="wx_connect">Connecter</string>
     <string name="wx_connect_to_arm">Connectez votre bracelet pour l\'armer.</string>
+    <string name="wx_connected">Connecté</string>
     <string name="wx_consistent">constant</string>
     <string name="wx_daily_level">Niveau du jour</string>
     <string name="wx_day">Jour</string>
@@ -65,6 +67,7 @@
     <string name="wx_heart_and_stress">Fréquence cardiaque et stress</string>
     <string name="wx_heart_chart_a11y">Fréquence cardiaque de la journée avec séances marquées et stress horaire dessous</string>
     <string name="wx_heart_rate">Fréquence cardiaque</string>
+    <string name="wx_heart_rate_by_stress">Fréquence cardiaque, colorée par le stress</string>
     <string name="wx_helps">Aide</string>
     <string name="wx_high">Élevé</string>
     <string name="wx_history">Historique</string>
@@ -84,6 +87,7 @@
     <string name="wx_journal_working">Votre journal porte ses fruits</string>
     <string name="wx_keep_logging">Continuez quelques semaines pour voir ce qui fait bouger vos scores.</string>
     <string name="wx_last_30_days">30 derniers jours</string>
+    <string name="wx_last_5_min">5 dernières minutes</string>
     <string name="wx_last_7_days">7 derniers jours</string>
     <string name="wx_last_night">la nuit dernière</string>
     <string name="wx_last_week">Semaine dernière</string>
@@ -93,10 +97,12 @@
     <string name="wx_line">Ligne</string>
     <string name="wx_linked_to_recovery">%1$s est lié à %2$s de récupération chez vous.</string>
     <string name="wx_live">Direct</string>
+    <string name="wx_live_console">Console du signal et commandes</string>
     <string name="wx_log_today">Noter aujourd’hui · 30 s</string>
     <string name="wx_log_today_to_keep">notez aujourd\'hui pour continuer</string>
     <string name="wx_low">Faible</string>
     <string name="wx_maintaining">Stable</string>
+    <string name="wx_manage_devices">Gérer les appareils</string>
     <string name="wx_manage_workouts">Ajouter, modifier ou fusionner des séances</string>
     <string name="wx_max_hr">FC max</string>
     <string name="wx_max_hr_age">D’après ton âge (%1$d) · Tanaka</string>
@@ -123,7 +129,9 @@
     <string name="wx_no_hr_night">Pas de données cardiaques pour cette nuit.</string>
     <string name="wx_no_hr_session">Pas de données cardiaques pour cette séance.</string>
     <string name="wx_no_workouts">Aucun entraînement ce jour-là.</string>
+    <string name="wx_not_connected">Non connecté</string>
     <string name="wx_not_enough_today">Pas encore assez de données cardiaques aujourd’hui.</string>
+    <string name="wx_not_worn">Non porté</string>
     <string name="wx_of_three">sur 3,0</string>
     <string name="wx_off">Désactivée</string>
     <string name="wx_ok">ok</string>
@@ -131,6 +139,7 @@
     <string name="wx_over_time">Dans le temps</string>
     <string name="wx_pct_impact">% impact</string>
     <string name="wx_pct_of_max">%% de la FC max %1$d</string>
+    <string name="wx_pct_of_max_short">%1$d%% de la FC max</string>
     <string name="wx_pct_vs_prior">%1$s vs %2$s précédent(e)</string>
     <string name="wx_period_3_months">3 mois</string>
     <string name="wx_period_6_months">6 mois</string>
@@ -223,6 +232,7 @@
     <string name="wx_vs_baseline_title">Par rapport à d\'habitude</string>
     <string name="wx_vs_last_week">Vs semaine dernière</string>
     <string name="wx_vs_previous">vs précédent</string>
+    <string name="wx_waiting_for_live">En attente de la FC en direct…</string>
     <string name="wx_wake_at">Réveil à</string>
     <string name="wx_wake_events">Réveils</string>
     <string name="wx_wake_window">Fenêtre de réveil</string>
@@ -235,6 +245,7 @@
     <string name="wx_what_drove_it">Ce qui a compté · vs moy. 30 jours</string>
     <string name="wx_what_moves_you">Ce qui vous influence</string>
     <string name="wx_workouts">Séances</string>
+    <string name="wx_worn">Porté</string>
     <string name="wx_years_older">%1$s ans de plus</string>
     <string name="wx_years_younger">%1$s ans de moins</string>
     <string name="wx_yellow_days">%1$d jaunes</string>

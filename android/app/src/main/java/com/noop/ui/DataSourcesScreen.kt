@@ -548,7 +548,7 @@ fun DataSourcesScreen(vm: AppViewModel) {
                         },
                         colors = SwitchDefaults.colors(
                             checkedThumbColor = Palette.surfaceBase,
-                            checkedTrackColor = Palette.accent,
+                            checkedTrackColor = Wx.recoveryHigh,
                             uncheckedThumbColor = Palette.textSecondary,
                             uncheckedTrackColor = Palette.surfaceInset,
                             uncheckedBorderColor = Palette.hairline,
@@ -606,7 +606,7 @@ fun DataSourcesScreen(vm: AppViewModel) {
                         },
                         colors = SwitchDefaults.colors(
                             checkedThumbColor = Palette.surfaceBase,
-                            checkedTrackColor = Palette.accent,
+                            checkedTrackColor = Wx.recoveryHigh,
                             uncheckedThumbColor = Palette.textSecondary,
                             uncheckedTrackColor = Palette.surfaceInset,
                             uncheckedBorderColor = Palette.hairline,
@@ -852,7 +852,7 @@ fun DataSourcesScreen(vm: AppViewModel) {
                     },
                     colors = SwitchDefaults.colors(
                         checkedThumbColor = Palette.surfaceBase,
-                        checkedTrackColor = Palette.accent,
+                        checkedTrackColor = Wx.recoveryHigh,
                         uncheckedThumbColor = Palette.textSecondary,
                         uncheckedTrackColor = Palette.surfaceInset,
                         uncheckedBorderColor = Palette.hairline,
@@ -936,7 +936,7 @@ fun DataSourcesScreen(vm: AppViewModel) {
                     },
                     colors = SwitchDefaults.colors(
                         checkedThumbColor = Palette.surfaceBase,
-                        checkedTrackColor = Palette.accent,
+                        checkedTrackColor = Wx.recoveryHigh,
                         uncheckedThumbColor = Palette.textSecondary,
                         uncheckedTrackColor = Palette.surfaceInset,
                         uncheckedBorderColor = Palette.hairline,

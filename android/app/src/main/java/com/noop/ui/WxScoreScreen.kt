@@ -92,7 +92,7 @@ internal fun WxScoreScreen(vm: AppViewModel, initial: WxScoreTab, initialOffset:
     LaunchedEffect(date) {
         val zone = ZoneId.systemDefault()
         val to = date.atTime(14, 0).atZone(zone).toEpochSecond()
-        val all = runCatching { vm.repo.sleepSessionsUnion(vm.activeStrapId, to - 42 * 86_400L, to) }.getOrDefault(emptyList())
+        val all = runCatching { wxSleepSessions(vm, to - 42 * 86_400L, to) }.getOrDefault(emptyList())
         sessions = all
         val night = wxMainNight(all, date)
         stages = com.noop.analytics.AnalyticsEngine.decodeStages(night?.stagesJSON)
@@ -184,7 +184,7 @@ internal fun WxScoreScreen(vm: AppViewModel, initial: WxScoreTab, initialOffset:
         when (tab) {
             WxScoreTab.Recovery -> WxRecoveryTab(night, nightBaseline, upToDate, date, onOpenMoves)
             WxScoreTab.Effort -> WxEffortTab(row, date, workouts, effortScale, profile, onOpenWorkouts, onOpenProfile, upToDate, baseline, zones)
-            WxScoreTab.Sleep -> WxSleepTab(night, upToDate, stages, sessions, nightHr, date, sleepPlan?.plan?.needMin)
+            WxScoreTab.Sleep -> WxSleepTab(vm, night, upToDate, stages, sessions, nightHr, date, sleepPlan?.plan?.needMin)
         }
     }
 }
@@ -451,6 +451,7 @@ private fun WxEffortTab(
 
 @Composable
 private fun WxSleepTab(
+    vm: AppViewModel,
     row: DailyMetric?,
     days: List<DailyMetric>,
     stages: List<com.noop.analytics.StageSegment>,
@@ -486,7 +487,7 @@ private fun WxSleepTab(
     val night = wxMainNight(sessions, nightDate)
     val base = days.filter { it.day < nightDate.toString() }.takeLast(30)
     fun avg(sel: (DailyMetric) -> Double?): Double? = base.mapNotNull(sel).takeIf { it.isNotEmpty() }?.average()
-    val awakeMin = stages.filter { it.stage == "wake" }.sumOf { (it.end - it.start) / 60.0 }
+    val awakeMin = stages.filter { it.stage == "wake" || it.stage == "awake" }.sumOf { (it.end - it.start) / 60.0 }
     val light = row?.lightMin ?: 0.0
     val deep = row?.deepMin ?: 0.0
     val rem = row?.remMin ?: 0.0
@@ -574,7 +575,8 @@ private fun WxSleepTab(
                 needHours = RestScorer.personalizedNeedHours(days.mapNotNull { it.totalSleepMin?.let { m -> m / 60.0 } }, null),
             ).toMap()
         }
-        WxSleepWeek(days, nightDate, sessions, needMin, debtByDay, is24h)
+        val plannedNeeds = rememberWxPlannedNeeds(vm, wxWeekDates(nightDate))
+        WxSleepWeek(days, nightDate, sessions, needMin, debtByDay, is24h, plannedNeeds)
     }
 }
 
@@ -622,7 +624,7 @@ private fun WxHypnogram(stages: List<com.noop.analytics.StageSegment>, descripti
             drawText(t, topLeft = androidx.compose.ui.geometry.Offset(0f, i * rowH + (barH - t.size.height) / 2 + 4))
         }
         stages.forEach { seg ->
-            val r = rows.indexOfFirst { it.first == seg.stage }.takeIf { it >= 0 } ?: return@forEach
+            val r = rows.indexOfFirst { it.first == (if (seg.stage == "awake") "wake" else seg.stage) }.takeIf { it >= 0 } ?: return@forEach
             val x0 = labelW + plotW * ((seg.start - start).toFloat() / (end - start))
             val x1 = labelW + plotW * ((seg.end - start).toFloat() / (end - start))
             drawRoundRect(rows[r].second, androidx.compose.ui.geometry.Offset(x0, r * rowH + 4),

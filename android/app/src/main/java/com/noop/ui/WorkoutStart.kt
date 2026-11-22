@@ -127,7 +127,7 @@ fun StartWorkoutSheet(vm: AppViewModel, onDismiss: () -> Unit) {
                 ) {
                     Text(uiString(R.string.l10n_workout_start_track_gps_route_133861c5), style = NoopType.body, color = Palette.textPrimary)
                     Spacer(Modifier.weight(1f))
-                    Switch(checked = gpsOn, onCheckedChange = { gpsOn = it })
+                    Switch(checked = gpsOn, onCheckedChange = { gpsOn = it }, colors = noopSwitchColors())
                 }
             }
         },

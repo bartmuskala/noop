@@ -24,6 +24,7 @@
     <string name="wx_bars_a11y">%1$s pro Zeitraum als Balken</string>
     <string name="wx_behaviour_insights">Verhaltens-Einblicke</string>
     <string name="wx_behaviour_insights_body">Sieh, wie deine Journal-Antworten mit deiner Erholung zusammenhängen</string>
+    <string name="wx_below_zones">Unter Zone 1</string>
     <string name="wx_best_day">Bester: %1$s</string>
     <string name="wx_bpm_avg">Ø %1$d bpm</string>
     <string name="wx_bpm_now">%1$d bpm jetzt</string>
@@ -40,6 +41,7 @@
     <string name="wx_compared_to_previous">Verglichen mit vorheriger Periode (%1$s)</string>
     <string name="wx_connect">Verbinden</string>
     <string name="wx_connect_to_arm">Verbinde dein Band, um ihn zu stellen.</string>
+    <string name="wx_connected">Verbunden</string>
     <string name="wx_consistent">konsistent</string>
     <string name="wx_daily_level">Tageswert</string>
     <string name="wx_day">Tag</string>
@@ -65,6 +67,7 @@
     <string name="wx_heart_and_stress">Herzfrequenz &amp; Stress</string>
     <string name="wx_heart_chart_a11y">Herzfrequenz im Tagesverlauf mit markierten Workouts und stündlichem Stress darunter</string>
     <string name="wx_heart_rate">Herzfrequenz</string>
+    <string name="wx_heart_rate_by_stress">Herzfrequenz, nach Stress gefärbt</string>
     <string name="wx_helps">Hilft</string>
     <string name="wx_high">Hoch</string>
     <string name="wx_history">Verlauf</string>
@@ -84,6 +87,7 @@
     <string name="wx_journal_working">Dein Journal wirkt</string>
     <string name="wx_keep_logging">Ein paar Wochen weiter eintragen, um zu sehen, was deine Werte bewegt.</string>
     <string name="wx_last_30_days">Letzte 30 Tage</string>
+    <string name="wx_last_5_min">Letzte 5 Minuten</string>
     <string name="wx_last_7_days">Letzte 7 Tage</string>
     <string name="wx_last_night">letzte Nacht</string>
     <string name="wx_last_week">Letzte Woche</string>
@@ -93,10 +97,12 @@
     <string name="wx_line">Linie</string>
     <string name="wx_linked_to_recovery">%1$s hängt bei dir mit %2$s Erholung zusammen.</string>
     <string name="wx_live">Live</string>
+    <string name="wx_live_console">Signalkonsole &amp; Sitzungssteuerung</string>
     <string name="wx_log_today">Heute eintragen · 30 s</string>
     <string name="wx_log_today_to_keep">heute eintragen, um dranzubleiben</string>
     <string name="wx_low">Niedrig</string>
     <string name="wx_maintaining">Stabil</string>
+    <string name="wx_manage_devices">Geräte verwalten</string>
     <string name="wx_manage_workouts">Workouts hinzufügen, bearbeiten, zusammenführen</string>
     <string name="wx_max_hr">Max. HF</string>
     <string name="wx_max_hr_age">Aus deinem Alter (%1$d) · Tanaka</string>
@@ -123,7 +129,9 @@
     <string name="wx_no_hr_night">Keine Herzfrequenzdaten für diese Nacht.</string>
     <string name="wx_no_hr_session">Keine Herzfrequenzdaten für diese Einheit.</string>
     <string name="wx_no_workouts">Keine Workouts an diesem Tag.</string>
+    <string name="wx_not_connected">Nicht verbunden</string>
     <string name="wx_not_enough_today">Heute noch zu wenig Herzfrequenzdaten.</string>
+    <string name="wx_not_worn">Nicht getragen</string>
     <string name="wx_of_three">von 3,0</string>
     <string name="wx_off">Aus</string>
     <string name="wx_ok">ok</string>
@@ -131,6 +139,7 @@
     <string name="wx_over_time">Im Verlauf</string>
     <string name="wx_pct_impact">% Einfluss</string>
     <string name="wx_pct_of_max">%% der max. HF %1$d</string>
+    <string name="wx_pct_of_max_short">%1$d%% der max. HF</string>
     <string name="wx_pct_vs_prior">%1$s vs. vorherige %2$s</string>
     <string name="wx_period_3_months">3 Monate</string>
     <string name="wx_period_6_months">6 Monate</string>
@@ -223,6 +232,7 @@
     <string name="wx_vs_baseline_title">Im Vergleich zu sonst</string>
     <string name="wx_vs_last_week">Vs. letzte Woche</string>
     <string name="wx_vs_previous">vs. vorher</string>
+    <string name="wx_waiting_for_live">Warte auf Live-Herzfrequenz…</string>
     <string name="wx_wake_at">Wecken um</string>
     <string name="wx_wake_events">Wachphasen</string>
     <string name="wx_wake_window">Weckfenster</string>
@@ -235,6 +245,7 @@
     <string name="wx_what_drove_it">Was es bestimmt hat · vs. 30-Tage-Ø</string>
     <string name="wx_what_moves_you">Was dich bewegt</string>
     <string name="wx_workouts">Workouts</string>
+    <string name="wx_worn">Getragen</string>
     <string name="wx_years_older">%1$s Jahre älter</string>
     <string name="wx_years_younger">%1$s Jahre jünger</string>
     <string name="wx_yellow_days">%1$d gelb</string>

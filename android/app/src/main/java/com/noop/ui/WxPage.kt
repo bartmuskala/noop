@@ -168,3 +168,14 @@ internal fun rememberWxNextWake(vm: AppViewModel): WxNextWake? {
 @Composable
 private fun <T> kotlinx.coroutines.flow.StateFlow<T>.collectAsStateWithLifecycleValue(): T =
     collectAsStateWithLifecycle().value
+
+/** The one switch colour set for the whole app: green when on, matching the active nav tab. */
+@Composable
+internal fun noopSwitchColors(): androidx.compose.material3.SwitchColors =
+    androidx.compose.material3.SwitchDefaults.colors(
+        checkedThumbColor = Palette.surfaceBase,
+        checkedTrackColor = Wx.recoveryHigh,
+        checkedBorderColor = Wx.recoveryHigh,
+        uncheckedThumbColor = Palette.textSecondary,
+        uncheckedTrackColor = Palette.surfaceInset,
+    )

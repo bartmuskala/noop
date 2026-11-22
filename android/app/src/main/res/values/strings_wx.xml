@@ -24,6 +24,7 @@
     <string name="wx_bars_a11y">%1$s per period as bars</string>
     <string name="wx_behaviour_insights">Behaviour insights</string>
     <string name="wx_behaviour_insights_body">See how your journal answers line up with your recovery</string>
+    <string name="wx_below_zones">Below zone 1</string>
     <string name="wx_best_day">Best: %1$s</string>
     <string name="wx_bpm_avg">avg %1$d bpm</string>
     <string name="wx_bpm_now">%1$d bpm now</string>
@@ -40,6 +41,7 @@
     <string name="wx_compared_to_previous">Compared to previous %1$s</string>
     <string name="wx_connect">Connect</string>
     <string name="wx_connect_to_arm">Connect your strap to arm it.</string>
+    <string name="wx_connected">Connected</string>
     <string name="wx_consistent">consistent</string>
     <string name="wx_daily_level">Daily level</string>
     <string name="wx_day">Day</string>
@@ -65,6 +67,7 @@
     <string name="wx_heart_and_stress">Heart rate &amp; stress</string>
     <string name="wx_heart_chart_a11y">Heart rate through the day with workouts marked and hourly stress below</string>
     <string name="wx_heart_rate">Heart rate</string>
+    <string name="wx_heart_rate_by_stress">Heart rate, coloured by stress</string>
     <string name="wx_helps">Helps</string>
     <string name="wx_high">High</string>
     <string name="wx_history">History</string>
@@ -84,6 +87,7 @@
     <string name="wx_journal_working">Your journal is working</string>
     <string name="wx_keep_logging">Keep logging for a couple of weeks to see what moves your scores.</string>
     <string name="wx_last_30_days">Last 30 days</string>
+    <string name="wx_last_5_min">Last 5 minutes</string>
     <string name="wx_last_7_days">Last 7 days</string>
     <string name="wx_last_night">last night</string>
     <string name="wx_last_week">Last week</string>
@@ -93,10 +97,12 @@
     <string name="wx_line">Line</string>
     <string name="wx_linked_to_recovery">%1$s is linked to %2$s recovery for you.</string>
     <string name="wx_live">Live</string>
+    <string name="wx_live_console">Signal console &amp; session controls</string>
     <string name="wx_log_today">Log today · 30 sec</string>
     <string name="wx_log_today_to_keep">log today to keep it going</string>
     <string name="wx_low">Low</string>
     <string name="wx_maintaining">Maintaining</string>
+    <string name="wx_manage_devices">Manage devices</string>
     <string name="wx_manage_workouts">Add, edit or merge workouts</string>
     <string name="wx_max_hr">Max HR</string>
     <string name="wx_max_hr_age">From your age (%1$d) · Tanaka</string>
@@ -123,7 +129,9 @@
     <string name="wx_no_hr_night">No heart-rate data for this night.</string>
     <string name="wx_no_hr_session">No heart-rate data for this session.</string>
     <string name="wx_no_workouts">No workouts on this day.</string>
+    <string name="wx_not_connected">Not connected</string>
     <string name="wx_not_enough_today">Not enough heart-rate data yet today.</string>
+    <string name="wx_not_worn">Not worn</string>
     <string name="wx_of_three">of 3.0</string>
     <string name="wx_off">Off</string>
     <string name="wx_ok">ok</string>
@@ -131,6 +139,7 @@
     <string name="wx_over_time">Over time</string>
     <string name="wx_pct_impact">% impact</string>
     <string name="wx_pct_of_max">%% of max HR %1$d</string>
+    <string name="wx_pct_of_max_short">%1$d%% of max HR</string>
     <string name="wx_pct_vs_prior">%1$s vs prior %2$s</string>
     <string name="wx_period_3_months">3 months</string>
     <string name="wx_period_6_months">6 months</string>
@@ -223,6 +232,7 @@
     <string name="wx_vs_baseline_title">Compared with your usual</string>
     <string name="wx_vs_last_week">Vs last week</string>
     <string name="wx_vs_previous">vs previous</string>
+    <string name="wx_waiting_for_live">Waiting for live heart rate…</string>
     <string name="wx_wake_at">Wake at</string>
     <string name="wx_wake_events">Wake events</string>
     <string name="wx_wake_window">Wake window</string>
@@ -235,6 +245,7 @@
     <string name="wx_what_drove_it">What drove it · vs 30-day avg</string>
     <string name="wx_what_moves_you">What moves you</string>
     <string name="wx_workouts">Workouts</string>
+    <string name="wx_worn">Worn</string>
     <string name="wx_years_older">%1$s years older</string>
     <string name="wx_years_younger">%1$s years younger</string>
     <string name="wx_yellow_days">%1$d yellow</string>

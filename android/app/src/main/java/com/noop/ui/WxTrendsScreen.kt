@@ -130,40 +130,44 @@ internal fun WxTrendsScreen(vm: AppViewModel, initial: WxTrendMetric = WxTrendMe
             // and one sentence placing the average against the typical range or the previous period.
             val typical = wxTypicalRange(windowValues(metric, start.minusDays(30), start.minusDays(1)).map { it.second })
             WxCard {
-                Row(verticalAlignment = Alignment.Top) {
-                    Column(Modifier.weight(1f)) {
-                        WxLabel(uiString(R.string.wx_average))
-                        Row(verticalAlignment = Alignment.Bottom) {
-                            Text(avg?.let { wxMetricFormat(metric, it, scale) } ?: "–", style = WxType.hero.copy(fontSize = 52.sp), color = Wx.text)
-                            wxMetricUnit(metric)?.let { Text(" $it", style = WxType.numberSmall, color = Wx.textSoft, modifier = Modifier.padding(bottom = 8.dp)) }
-                        }
-                        if (avg != null && prevAvg != null && prevAvg != 0.0) {
-                            val pct = (avg - prevAvg) / abs(prevAvg) * 100
-                            val good = wxHigherIsBetter(metric)?.let { hb -> if (abs(pct) < 1) null else (pct > 0) == hb }
-                            val c = when (good) { true -> Wx.recoveryHigh; false -> Wx.recoveryMid; null -> Wx.textSoft }
-                            Text(
-                                (if (abs(pct) < 1) "● " else if (pct > 0) "▲ " else "▼ ") +
-                                    uiString(R.string.wx_pct_vs_prior, "${abs(pct).roundToInt()}%", wxPeriodName(period)),
-                                style = WxType.bodyStrong.copy(fontSize = 13.sp), color = c,
-                                modifier = Modifier.clip(RoundedCornerShape(6.dp)).background(c.copy(alpha = 0.14f))
-                                    .padding(horizontal = 8.dp, vertical = 3.dp),
-                            )
-                        }
+                // Label and dates on one line, then the value with its unit on one line, then the change.
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    WxLabel(uiString(R.string.wx_average), Modifier.weight(1f))
+                    androidx.compose.material3.IconButton(onClick = { page += 1 }) {
+                        androidx.compose.material3.Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft,
+                            uiString(R.string.wx_prev_day), tint = Wx.text)
                     }
-                    Column(horizontalAlignment = Alignment.End) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            androidx.compose.material3.IconButton(onClick = { page += 1 }) {
-                                androidx.compose.material3.Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft,
-                                    uiString(R.string.wx_prev_day), tint = Wx.text)
-                            }
-                            val rf = DateTimeFormatter.ofPattern("d MMM", Locale.getDefault())
-                            Text("${start.format(rf)} – ${today.format(rf)}".uppercase(), style = WxType.label, color = Wx.text)
-                            androidx.compose.material3.IconButton(onClick = { if (page > 0) page -= 1 }, enabled = page > 0) {
-                                androidx.compose.material3.Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                                    uiString(R.string.wx_next_day), tint = if (page > 0) Wx.text else Wx.lineStrong)
-                            }
-                        }
+                    val rf = DateTimeFormatter.ofPattern("d MMM", Locale.getDefault())
+                    Text("${start.format(rf)} – ${today.format(rf)}".uppercase(), style = WxType.label, color = Wx.text, maxLines = 1)
+                    androidx.compose.material3.IconButton(onClick = { if (page > 0) page -= 1 }, enabled = page > 0) {
+                        androidx.compose.material3.Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                            uiString(R.string.wx_next_day), tint = if (page > 0) Wx.text else Wx.lineStrong)
                     }
+                }
+                Row(verticalAlignment = Alignment.Bottom) {
+                    Text(avg?.let { wxMetricFormat(metric, it, scale) } ?: "–", style = WxType.hero.copy(fontSize = 52.sp),
+                        color = Wx.text, maxLines = 1, softWrap = false)
+                    wxMetricUnit(metric)?.let {
+                        Text(" $it", style = WxType.numberSmall, color = Wx.textSoft, maxLines = 1, softWrap = false,
+                            modifier = Modifier.padding(bottom = 8.dp))
+                    }
+                }
+                if (avg != null && prevAvg != null) {
+                    // A deviation around zero (skin temperature) changes by degrees, not by percent.
+                    val absolute = metric == WxTrendMetric.SkinTemp || prevAvg == 0.0
+                    val change = if (absolute) avg - prevAvg else (avg - prevAvg) / abs(prevAvg) * 100
+                    val flat = if (absolute) abs(change) < 0.05 else abs(change) < 1
+                    val good = wxHigherIsBetter(metric)?.let { hb -> if (flat) null else (change > 0) == hb }
+                    val c = when (good) { true -> Wx.recoveryHigh; false -> Wx.recoveryMid; null -> Wx.textSoft }
+                    val amount = if (absolute) wxMetricFormat(metric, abs(change), scale) + (wxMetricUnit(metric)?.let { " $it" } ?: "")
+                                 else "${abs(change).roundToInt()}%"
+                    Text(
+                        (if (flat) "● " else if (change > 0) "▲ " else "▼ ") +
+                            uiString(R.string.wx_pct_vs_prior, amount, wxPeriodName(period)),
+                        style = WxType.bodyStrong.copy(fontSize = 13.sp), color = c, maxLines = 1, softWrap = false,
+                        modifier = Modifier.padding(top = 4.dp).clip(RoundedCornerShape(6.dp)).background(c.copy(alpha = 0.14f))
+                            .padding(horizontal = 8.dp, vertical = 3.dp),
+                    )
                 }
                 if (avg != null) {
                     val name = wxMetricName(metric)
@@ -290,6 +294,7 @@ internal fun WxTrendsScreen(vm: AppViewModel, initial: WxTrendMetric = WxTrendMe
                         description = uiString(R.string.wx_bars_a11y, wxMetricName(metric)), height = 280.dp,
                         fixedMin = if (metric == WxTrendMetric.Recovery) 0.0 else null,
                         fixedMax = if (metric == WxTrendMetric.Recovery) 100.0 else null,
+                        colorFor = if (metric == WxTrendMetric.Recovery) ({ v: Double -> wxMetricColor(metric, v) }) else null,
                     )
                     if (typical != null) {
                         Text(uiString(R.string.wx_typical_range_note), style = WxType.caption, color = Wx.textDim,

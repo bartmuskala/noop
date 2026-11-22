@@ -90,6 +90,29 @@ internal fun WxStressScreen(vm: AppViewModel, onBack: () -> Unit, onBreathe: () 
             }.getOrDefault(emptyList())
         }
     }
+    var computedDaily by remember { mutableStateOf<Map<String, Double>>(emptyMap()) }
+    LaunchedEffect(Unit) {
+        computedDaily = withContext(Dispatchers.Default) {
+            val zone = ZoneId.systemDefault()
+            val out = HashMap<String, Double>()
+            for (back in 1L..6L) {
+                val d = today.minusDays(back)
+                runCatching {
+                    val from = d.atStartOfDay(zone).toEpochSecond()
+                    val to = d.plusDays(1).atStartOfDay(zone).toEpochSecond()
+                    val hr = vm.repo.hrSamplesUnion(vm.activeStrapId, from, to, limit = 200_000)
+                    if (hr.size >= DaytimeStress.minHourHrSamples) {
+                        val tz = zone.rules.getOffset(Instant.ofEpochSecond(to)).totalSeconds.toLong()
+                        val rr = vm.repo.rrIntervalsUnion(vm.activeStrapId, from, to, limit = 200_000)
+                        val grav = vm.repo.gravitySamplesUnion(vm.activeStrapId, from, to, limit = 200_000)
+                        DaytimeStress.analyze(hr, rr, grav, tz).hours.mapNotNull { it.level }
+                            .takeIf { it.isNotEmpty() }?.average()?.let { out[d.toString()] = it }
+                    }
+                }
+            }
+            out
+        }
+    }
     val scored = hours.orEmpty().mapNotNull { it.level }
     val now = hours?.lastOrNull { it.level != null }?.level ?: daily[today.toString()]
     val dayMean = if (scored.isNotEmpty()) scored.average() else daily[today.toString()]
@@ -163,13 +186,17 @@ internal fun WxStressScreen(vm: AppViewModel, onBack: () -> Unit, onBreathe: () 
                 }
             }
 
-            // Last seven days.
+            // Last seven days: the stored daily level where there is one, else the same hourly analysis as
+            // today's curve, averaged over each day's scored hours. Hidden when no day has a level.
             val week = (6 downTo 0).map { today.minusDays(it.toLong()) }
-            WxCard {
+            val weekValues = week.map { d ->
+                daily[d.toString()] ?: if (d == today) dayMean else computedDaily[d.toString()]
+            }
+            if (weekValues.any { it != null }) WxCard {
                 WxLabel(uiString(R.string.wx_last_7_days))
                 Spacer(Modifier.height(12.dp))
                 WxBars(
-                    values = week.map { daily[it.toString()] }, labels = week.map { wxWeekdayShort(it) },
+                    values = weekValues, labels = week.map { wxWeekdayShort(it) },
                     colorFor = { Wx.stressColor(it) }, format = { String.format(Locale.US, "%.1f", it) }, max = 3.0,
                     description = uiString(R.string.wx_stress_week_a11y), height = 130.dp,
                 )
@@ -213,7 +240,11 @@ private fun WxStressCurve(hours: List<DaytimeStress.HourPoint>, description: Str
                 lineTo(pts.last().x, plotH); lineTo(pts.first().x, plotH); close()
             }
             drawPath(fill, Brush.verticalGradient(listOf(Wx.stressMid.copy(alpha = 0.35f), Wx.stressLow.copy(alpha = 0f)), 0f, plotH))
-            drawPath(path, Wx.text, style = Stroke(2.dp.toPx(), cap = StrokeCap.Round))
+            // The line takes the colour of the level it is at: low at the bottom, high at the top.
+            drawPath(path, Brush.verticalGradient(
+                0f to Wx.stressHigh, 0.33f to Wx.stressHigh, 0.5f to Wx.stressMid, 0.67f to Wx.stressLow, 1f to Wx.stressLow,
+                startY = 0f, endY = plotH,
+            ), style = Stroke(2.5.dp.toPx(), cap = StrokeCap.Round))
         }
         val step = if (last - first > 12) 3 else 2
         var h = first

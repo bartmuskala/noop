@@ -215,6 +215,7 @@ internal enum class Destination(
     InsightsHubClassic("insights_hub_classic", R.string.nav_insights_hub, Icons.Filled.Insights),
     WorkoutsClassic("workouts_classic", R.string.nav_workouts, Icons.Filled.FitnessCenter),
     SmartAlarmClassic("smart_alarm_classic", R.string.nav_alarms, Icons.Filled.Alarm),
+    LiveClassic("live_classic", R.string.wx_live, Icons.Filled.MonitorHeart),
     FitnessAgeClassic("fitness_age_classic", R.string.today_card_fitness_age, Icons.Filled.Cake),
 
     // The "More" tab: its own navigated page (mirroring the iOS More tab) that hosts the full
@@ -670,6 +671,11 @@ fun AppRoot(viewModel: AppViewModel = viewModel()) {
                     WxFitnessAgeDetailsScreen(viewModel, onOpenSettings = { nav.navigate(Destination.Settings.route) })
                 }
                 composable(Destination.Live.route) {
+                    WxLiveScreen(viewModel, onBack = { nav.popBackStack() },
+                        onOpenConsole = { nav.navigate(Destination.LiveClassic.route) },
+                        onOpenDevices = { nav.navigate(Destination.Devices.route) })
+                }
+                composable(Destination.LiveClassic.route) {
                     LiveScreen(
                         viewModel = viewModel,
                         onManageDevices = { nav.navigateTopLevel(Destination.Devices.route) },

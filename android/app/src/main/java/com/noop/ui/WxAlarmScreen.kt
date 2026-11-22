@@ -109,7 +109,7 @@ internal fun WxAlarmScreen(vm: AppViewModel, onBack: () -> Unit, onOpenFull: () 
                 Switch(
                     checked = adaptive,
                     onCheckedChange = { adaptive = it; WxSleepPlanPrefs.setEnabled(context, it); planRefresh++ },
-                    colors = SwitchDefaults.colors(checkedTrackColor = Wx.recoveryHigh, checkedThumbColor = Wx.text),
+                    colors = noopSwitchColors(),
                 )
             }
             sleepPlan?.let { p ->
@@ -188,7 +188,7 @@ private fun WxAlarmHeader(title: String, body: String, checked: Boolean, onChang
         }
         Spacer(Modifier.width(12.dp))
         Switch(checked = checked, onCheckedChange = onChange,
-            colors = SwitchDefaults.colors(checkedTrackColor = Wx.recoveryHigh, checkedThumbColor = Wx.text))
+            colors = noopSwitchColors())
     }
 }
 

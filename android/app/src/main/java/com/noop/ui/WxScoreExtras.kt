@@ -396,6 +396,7 @@ internal fun WxSleepWeek(
     needMin: Double,
     debtByDay: Map<String, Double>,
     is24h: Boolean,
+    plannedNeeds: Map<String, Double> = emptyMap(),
 ) {
     val dates = wxWeekDates(end)
     val labels = wxWeekLabels(dates)
@@ -408,7 +409,10 @@ internal fun WxSleepWeek(
     }
     WxTrendCard(uiString(R.string.wx_hours_vs_needed)) {
         val slept = col { it.totalSleepMin }
-        val all = slept.filterNotNull() + needMin
+        // Each night's own planned need (it moves with that day's effort, debt and naps); the fixed need
+        // only where no plan exists.
+        val needs = dates.map { plannedNeeds[it.toString()] ?: needMin }
+        val all = slept.filterNotNull() + needs
         val lo = (all.minOrNull()!! - 60).coerceAtLeast(0.0); val hi = all.maxOrNull()!! + 60
         Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
             WxLegend(Wx.sleepSoft, uiString(R.string.wx_hours), "")
@@ -417,7 +421,7 @@ internal fun WxSleepWeek(
         Spacer(Modifier.height(8.dp))
         WxTwoLineChart(
             WxSeries(slept, Wx.sleepSoft, lo, hi, { wxHoursMinutes(it) }),
-            WxSeries(dates.map { needMin }, Wx.recoveryHigh, lo, hi, { "" }),
+            WxSeries(needs, Wx.recoveryHigh, lo, hi, { wxHoursMinutes(it) }),
             labels, uiString(R.string.wx_hours_vs_needed), height = 200.dp,
         )
     }
@@ -445,4 +449,19 @@ internal fun WxZoneLegendNamed(items: List<Pair<String, Color>>) {
     Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
         items.forEach { (n, c) -> WxLegend(c, n, "") }
     }
+}
+
+/**
+ * Sleep sessions between [from] and [to] the way the classic Sleep screen reads them: imported nights
+ * merged with NOOP's own detected ("-noop") nights per local wake day, imported winning unless it has
+ * no stages. Reading the imported union alone misses every night NOOP scored itself.
+ */
+internal suspend fun wxSleepSessions(vm: AppViewModel, from: Long, to: Long): List<SleepSession> {
+    val imported = vm.repo.sleepSessionsUnion(vm.activeStrapId, from, to)
+    val computed = vm.repo.computedSleepSessionsUnion(vm.activeStrapId, from, to)
+    fun localEndDay(ts: Long): String {
+        val offsetSec = (java.util.TimeZone.getDefault().getOffset(ts * 1000) / 1000).toLong()
+        return com.noop.analytics.AnalyticsEngine.dayString(ts, offsetSec)
+    }
+    return com.noop.data.WhoopRepository.mergeSleepRichness(imported, computed) { localEndDay(it.endTs) }
 }

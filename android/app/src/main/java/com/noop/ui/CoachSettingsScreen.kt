@@ -161,8 +161,7 @@ private fun CoachConsentCard(vm: CoachViewModel) {
             }
             androidx.compose.material3.Switch(
                 checked = consent,
-                onCheckedChange = { vm.setConsent(context, it) },
-            )
+                onCheckedChange = { vm.setConsent(context, it) }, colors = noopSwitchColors())
         }
     }
 }
@@ -194,8 +193,7 @@ private fun MorningBriefCard(vm: CoachViewModel) {
                 }
                 androidx.compose.material3.Switch(
                     checked = enabled,
-                    onCheckedChange = { vm.setBriefEnabled(context, it) },
-                )
+                    onCheckedChange = { vm.setBriefEnabled(context, it) }, colors = noopSwitchColors())
             }
             if (enabled) {
                 Row(verticalAlignment = Alignment.CenterVertically) {

@@ -63,13 +63,15 @@ private suspend fun buildWxSleepPlan(
     wakeMinute: Int,
     illnessRaised: Boolean,
     age: Int,
+    preloaded: List<com.noop.data.SleepSession>? = null,
+    withStress: Boolean = true,
 ): WxSleepPlan {
     val zone = ZoneId.systemDefault()
     val key = forDay.toString()
     val days = allDays.filter { it.day <= key }
     val byDay = days.associateBy { it.day }
     val to = forDay.plusDays(1).atTime(14, 0).atZone(zone).toEpochSecond()
-    val sessions = vm.repo.sleepSessionsUnion(vm.activeStrapId, to - 40 * 86_400L, to)
+    val sessions = preloaded ?: wxSleepSessions(vm, to - 40 * 86_400L, to)
 
     // Usual bed and wake: medians over the main nights of the last 14 days.
     val mains = (0L until 14L).mapNotNull { wxMainNight(sessions, forDay.minusDays(it)) }
@@ -89,7 +91,7 @@ private suspend fun buildWxSleepPlan(
     val isToday = forDay == logicalDayNow()
 
     // The day's stress: computed from today's heart rate, or the stored daily level for past days.
-    val stress = if (isToday) {
+    val stress = if (!withStress) null else if (isToday) {
         val from = forDay.atStartOfDay(zone).toEpochSecond()
         val now = System.currentTimeMillis() / 1000L
         val hr = vm.repo.hrSamplesUnion(vm.activeStrapId, from, now, limit = 200_000)
@@ -150,4 +152,34 @@ internal fun wxPlanLines(p: WxSleepPlan, is24h: Boolean): List<String> {
         if (pl.highStress) add(uiString(R.string.wx_plan_wind_down, wxClock(pl.windDownMinute, is24h)))
         if (p.personalSlope) add(uiString(R.string.wx_plan_personal))
     }
+}
+
+/**
+ * The planned need (minutes) for each night ending on [dates], each planned on the evening before it,
+ * with the same planner as tonight's target. Empty while loading or when the adaptive target is off.
+ */
+@Composable
+internal fun rememberWxPlannedNeeds(vm: AppViewModel, dates: List<LocalDate>): Map<String, Double> {
+    val context = LocalContext.current
+    val days by vm.recentDays.collectAsStateWithLifecycle()
+    val enabled = remember { WxSleepPlanPrefs.enabled(context) }
+    val profile = remember { ProfileStore.from(context) }
+    var needs by remember { mutableStateOf<Map<String, Double>>(emptyMap()) }
+    val key = dates.joinToString(",")
+    LaunchedEffect(key, days.size, enabled) {
+        if (!enabled || dates.isEmpty()) { needs = emptyMap(); return@LaunchedEffect }
+        needs = withContext(Dispatchers.Default) {
+            runCatching {
+                val zone = ZoneId.systemDefault()
+                val last = dates.maxOrNull()!!
+                val to = last.plusDays(1).atTime(14, 0).atZone(zone).toEpochSecond()
+                val sessions = wxSleepSessions(vm, to - 50 * 86_400L, to)
+                dates.associate { d ->
+                    d.toString() to buildWxSleepPlan(vm, days, d.minusDays(1), WX_DEFAULT_WAKE_MIN, false, profile.age,
+                        preloaded = sessions, withStress = false).plan.needMin
+                }
+            }.getOrDefault(emptyMap())
+        }
+    }
+    return needs
 }

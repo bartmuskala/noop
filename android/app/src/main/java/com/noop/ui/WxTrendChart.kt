@@ -58,6 +58,8 @@ internal fun WxTrendChart(
     height: Dp = 260.dp,
     fixedMin: Double? = null,
     fixedMax: Double? = null,
+    /** Per-value colour (e.g. Recovery green/yellow/red); the line fades between neighbouring points. */
+    colorFor: ((Double) -> Color)? = null,
 ) {
     val measurer = rememberTextMeasurer()
     val present = values.filterNotNull()
@@ -103,8 +105,16 @@ internal fun WxTrendChart(
         if (started) {
             fill.lineTo(lastX, plotB); fill.lineTo(firstX, plotB); fill.close()
             if (!faint) drawPath(fill, Brush.verticalGradient(listOf(color.copy(alpha = 0.22f), Color.Transparent), top, plotB))
-            drawPath(line, if (faint) color.copy(alpha = 0.35f) else color,
-                style = Stroke((if (faint) 1.2 else 2.5).dp.toPx(), cap = StrokeCap.Round))
+            if (colorFor != null && !faint) {
+                for (i in 1 until values.size) {
+                    val v0 = values[i - 1] ?: continue; val v1 = values[i] ?: continue
+                    val p0 = Offset(x(i - 1), y(v0)); val p1 = Offset(x(i), y(v1))
+                    drawLine(Brush.linearGradient(listOf(colorFor(v0), colorFor(v1)), p0, p1), p0, p1, 2.5.dp.toPx(), StrokeCap.Round)
+                }
+            } else {
+                drawPath(line, if (faint) color.copy(alpha = 0.35f) else color,
+                    style = Stroke((if (faint) 1.2 else 2.5).dp.toPx(), cap = StrokeCap.Round))
+            }
         }
         // Points and values when the series is short.
         val showValues = !faint && n <= 10
@@ -113,8 +123,9 @@ internal fun WxTrendChart(
                 if (v == null) return@forEachIndexed
                 val p = Offset(x(i), y(v))
                 drawCircle(Wx.canvas, 5.dp.toPx(), p)
-                drawCircle(color, 5.dp.toPx(), p, style = Stroke(2.dp.toPx()))
-                val t = measurer.measure(format(v), TextStyle(fontSize = 14.sp, color = color, fontFeatureSettings = "tnum"))
+                val pc = colorFor?.invoke(v) ?: color
+                drawCircle(pc, 5.dp.toPx(), p, style = Stroke(2.dp.toPx()))
+                val t = measurer.measure(format(v), TextStyle(fontSize = 14.sp, color = pc, fontFeatureSettings = "tnum"))
                 val bx = (p.x - t.size.width / 2f - 4.dp.toPx()).coerceIn(0f, size.width - t.size.width - 8.dp.toPx())
                 drawRoundRect(Wx.cardRaised, Offset(bx, p.y - t.size.height - 12.dp.toPx()),
                     Size(t.size.width + 8.dp.toPx(), t.size.height + 2.dp.toPx()), CornerRadius(4.dp.toPx()))
@@ -126,9 +137,12 @@ internal fun WxTrendChart(
             val v = values[i]!!
             val p = Offset(x(i), y(v))
             drawCircle(Wx.canvas, 5.dp.toPx(), p)
-            drawCircle(color, 5.dp.toPx(), p, style = Stroke(2.dp.toPx()))
-            val t = measurer.measure(format(v), TextStyle(fontSize = 14.sp, color = color))
-            drawText(t, topLeft = Offset((p.x - t.size.width / 2f).coerceAtMost(size.width - t.size.width), p.y - t.size.height - 8.dp.toPx()))
+            val pc = colorFor?.invoke(v) ?: color
+            drawCircle(pc, 5.dp.toPx(), p, style = Stroke(2.dp.toPx()))
+            val t = measurer.measure(format(v), TextStyle(fontSize = 14.sp, color = pc))
+            // Above the point, or below it when the point sits near the top.
+            val ty = if (p.y - t.size.height - 8.dp.toPx() < 0f) p.y + 8.dp.toPx() else p.y - t.size.height - 8.dp.toPx()
+            drawText(t, topLeft = Offset((p.x - t.size.width - 8.dp.toPx()).coerceAtLeast(0f), ty))
         }
         // Period-average segments with their change.
         segments.forEach { s ->
@@ -148,7 +162,7 @@ internal fun WxTrendChart(
         val every = if (n <= 8) 1 else (n + 5) / 6
         labels.forEachIndexed { i, l ->
             if (i % every != 0 && i != n - 1) return@forEachIndexed
-            if (i != n - 1 && n - 1 - i < every / 2) return@forEachIndexed
+            if (i != n - 1 && n - 1 - i < every) return@forEachIndexed
             val t = measurer.measure(l, TextStyle(fontSize = 11.sp, color = Wx.textMuted))
             drawText(t, topLeft = Offset((x(i) - t.size.width / 2f).coerceIn(0f, size.width - t.size.width), size.height - t.size.height))
         }

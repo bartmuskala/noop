@@ -1565,7 +1565,7 @@ internal fun WorkoutDetailSheet(vm: AppViewModel, row: WorkoutRow, onDismiss: ()
                     Overline("Heart rate", modifier = Modifier.weight(1f))
                     Text(uiString(R.string.l10n_workouts_screen_hr_zones_293d7175), style = NoopType.footnote, color = Palette.textSecondary)
                     Spacer(Modifier.width(Metrics.space8))
-                    Switch(checked = zoneColorsEnabled, onCheckedChange = { zoneColorsEnabled = it })
+                    Switch(checked = zoneColorsEnabled, onCheckedChange = { zoneColorsEnabled = it }, colors = noopSwitchColors())
                 }
                 val lo = hrValues.minOrNull()?.roundToInt() ?: 0
                 val hi = hrValues.maxOrNull()?.roundToInt() ?: 0
