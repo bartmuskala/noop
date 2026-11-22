@@ -256,6 +256,9 @@ internal fun WxTodayScreen(vm: AppViewModel, onOpen: (WxTodayTarget) -> Unit) {
                 value = effortStored?.let { UnitFormatter.effortDisplay(it, effortScale) } ?: "–",
                 unit = null,
                 modifier = Modifier.weight(1f),
+                // The suggested range for the day's recovery, the same band as the Effort detail page.
+                bandFrom = optimalStrainRange(recovery)?.let { it.low / 21.0 },
+                bandTo = optimalStrainRange(recovery)?.let { it.high / 21.0 },
                 onClick = { onOpen(WxTodayTarget.Score(WxScoreTab.Effort, dayOffset)) },
             )
             WxDial(
@@ -562,13 +565,15 @@ private fun WxDial(
     value: String,
     unit: String?,
     modifier: Modifier = Modifier,
+    bandFrom: Double? = null,
+    bandTo: Double? = null,
     onClick: () -> Unit,
 ) {
     Column(
         modifier.clip(RoundedCornerShape(16.dp)).clickable(onClick = onClick).padding(vertical = 6.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        WxRing(fraction = fraction, color = color, size = 104.dp, stroke = 8.dp) {
+        WxRing(fraction = fraction, color = color, size = 104.dp, stroke = 8.dp, bandFrom = bandFrom, bandTo = bandTo) {
             Row(verticalAlignment = Alignment.Bottom) {
                 Text(value, style = WxType.dial.copy(fontSize = 34.sp), color = Wx.text)
                 if (unit != null) Text(unit, style = WxType.dial.copy(fontSize = 18.sp), color = Wx.text,
