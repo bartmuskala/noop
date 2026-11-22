@@ -4,15 +4,14 @@ import com.noop.data.HrSample
 import kotlin.math.abs
 
 /**
- * Fork: fit the Effort curve to the wearer's own WHOOP history.
+ * Fork: compare the Effort curve with the wearer's own WHOOP history. MEASUREMENT ONLY: nothing here
+ * changes a score.
  *
- * The fitted curve was tuned on published workout examples and counts nothing below 50 % of heart-rate
- * reserve, so a day of ordinary life without a workout scores very low where WHOOP gives it several
- * points. Where a day has both WHOOP's own Effort (imported) and NOOP's strap heart rate, this searches
- * a small grid of two settings, the floor below which a minute counts nothing and a scale on the day's
- * load, for the pair whose scores sit closest to WHOOP's (mean absolute error on WHOOP's 0–21 axis).
- * Nothing is invented: with too few such days, or no improvement over the published curve, the result
- * says so and the published curve stays.
+ * Where a day has both WHOOP's own Effort (imported) and NOOP's strap heart rate, this reports how far
+ * the published curve sits from WHOOP (mean absolute error and mean signed bias on WHOOP's 0–21 axis),
+ * and which floor / load scale would come closest. The wearer judged WHOOP to overrate low-effort days,
+ * so the closest fit is logged for reference and deliberately not applied: matching WHOOP would lift
+ * exactly the days NOOP scores more honestly.
  */
 object WxEffortCalibration {
     const val MIN_DAYS = 7
