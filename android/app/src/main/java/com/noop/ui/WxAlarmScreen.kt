@@ -1,6 +1,11 @@
 package com.noop.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -48,6 +53,11 @@ internal fun WxAlarmScreen(vm: AppViewModel, onBack: () -> Unit, onOpenFull: () 
     val strapDays by vm.smartAlarmWeekdays.collectAsStateWithLifecycle()
     val phoneOn by vm.phoneAlarmEnabled.collectAsStateWithLifecycle()
     val phoneMin by vm.phoneAlarmTargetMinutes.collectAsStateWithLifecycle()
+    val phoneDays by vm.phoneAlarmWeekdays.collectAsStateWithLifecycle()
+    val phoneOverrides by vm.phoneAlarmDayOverrides.collectAsStateWithLifecycle()
+    val phoneWindow by vm.phoneAlarmWindowMinutes.collectAsStateWithLifecycle()
+    val strapOverrides by vm.smartAlarmDayOverrides.collectAsStateWithLifecycle()
+    var canSchedule by remember { mutableStateOf(vm.canScheduleExactAlarms()) }
     val live = vm.live.collectAsStateWithLifecycle().value
     val probesOn = remember { PuffinExperiment.from(context).isEnabled }
     val next = rememberWxNextWake(vm)
@@ -108,32 +118,15 @@ internal fun WxAlarmScreen(vm: AppViewModel, onBack: () -> Unit, onOpenFull: () 
             }
         }
 
-        // Strap buzz alarm.
+        // Strap buzz alarm: on/off, then the week as it will actually ring.
         WxCard {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f)) {
-                    Text(uiString(R.string.wx_strap_buzz), style = WxType.bodyStrong, color = Wx.text)
-                    Text(uiString(R.string.wx_strap_buzz_body), style = WxType.caption, color = Wx.textMuted)
-                }
-                Spacer(Modifier.width(12.dp))
-                Switch(
-                    checked = strapOn,
-                    onCheckedChange = { vm.setSmartAlarmEnabled(it) },
-                    colors = SwitchDefaults.colors(checkedTrackColor = Wx.effort, checkedThumbColor = Wx.text),
-                )
-            }
+            WxAlarmHeader(uiString(R.string.wx_strap_buzz), uiString(R.string.wx_strap_buzz_body), strapOn) { vm.setSmartAlarmEnabled(it) }
             if (strapOn) {
-                Spacer(Modifier.height(12.dp))
-                Box(Modifier.fillMaxWidth().height(1.dp).background(Wx.line))
-                Row(Modifier.fillMaxWidth().padding(vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Text(uiString(R.string.wx_wake_at), style = WxType.body, color = Wx.text, modifier = Modifier.weight(1f))
-                    TimeChip(minutes = strapMin, accessibilityLabel = uiString(R.string.wx_wake_at), onPicked = { vm.setSmartAlarmMinutes(it) })
-                }
-                Box(Modifier.fillMaxWidth().height(1.dp).background(Wx.line))
-                Spacer(Modifier.height(12.dp))
-                AlarmWeekdayPicker(
-                    selected = strapDays,
-                    onToggle = { dow -> vm.setSmartAlarmWeekdays(toggledSmartAlarmWeekday(dow, strapDays)) },
+                WxWeekSchedule(
+                    defaultMinutes = strapMin, weekdays = strapDays, overrides = strapOverrides, is24h = is24h,
+                    onDefault = { vm.setSmartAlarmMinutes(it) },
+                    onToggleDay = { dow -> vm.setSmartAlarmWeekdays(toggledSmartAlarmWeekday(dow, strapDays)) },
+                    onOverride = { dow, m -> vm.setSmartAlarmDayOverride(dow, m) },
                 )
                 if (live.whoop5Detected && !probesOn) {
                     Spacer(Modifier.height(10.dp))
@@ -146,19 +139,135 @@ internal fun WxAlarmScreen(vm: AppViewModel, onBack: () -> Unit, onOpenFull: () 
             }
         }
 
-        // Phone alarm: state only; its window and permissions live on the full screen.
-        WxCard(onClick = onOpenFull) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f)) {
-                    Text(uiString(R.string.wx_phone_alarm), style = WxType.bodyStrong, color = Wx.text)
-                    Text(uiString(R.string.wx_phone_alarm_body), style = WxType.caption, color = Wx.textMuted)
+        // Phone alarm: the same week, plus the light-sleep window that can wake you earlier.
+        WxCard {
+            WxAlarmHeader(uiString(R.string.wx_phone_alarm), uiString(R.string.wx_phone_alarm_body), phoneOn) { want ->
+                if (want && !vm.canScheduleExactAlarms()) {
+                    requestExactAlarmAccess(context)
+                } else if (!vm.setPhoneAlarmEnabled(want)) {
+                    requestExactAlarmAccess(context)
                 }
-                Text(if (phoneOn) wxClock(phoneMin, is24h) else uiString(R.string.wx_off),
-                    style = WxType.numberSmall, color = if (phoneOn) Wx.text else Wx.textMuted)
+                canSchedule = vm.canScheduleExactAlarms()
+            }
+            if (phoneOn && !canSchedule) {
+                Spacer(Modifier.height(8.dp))
+                Text(uiString(R.string.wx_allow_exact_alarms), style = WxType.caption, color = Wx.recoveryMid,
+                    modifier = Modifier.clickable { requestExactAlarmAccess(context); canSchedule = vm.canScheduleExactAlarms() })
+            }
+            if (phoneOn) {
+                WxWeekSchedule(
+                    defaultMinutes = phoneMin, weekdays = phoneDays, overrides = phoneOverrides, is24h = is24h,
+                    onDefault = { vm.setPhoneAlarmTargetMinutes(it) },
+                    onToggleDay = { dow -> vm.setPhoneAlarmWeekdays(toggledSmartAlarmWeekday(dow, phoneDays)) },
+                    onOverride = { dow, m -> vm.setPhoneAlarmDayOverride(dow, m) },
+                )
+                Box(Modifier.fillMaxWidth().height(1.dp).background(Wx.line))
+                Row(Modifier.fillMaxWidth().padding(top = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text(uiString(R.string.wx_wake_window), style = WxType.body, color = Wx.text)
+                        Text(uiString(R.string.wx_wake_window_body, phoneWindow), style = WxType.caption, color = Wx.textMuted)
+                    }
+                    WxMiniStepper("${phoneWindow} min",
+                        onMinus = { vm.setPhoneAlarmWindowMinutes((phoneWindow - 5).coerceAtLeast(5)) },
+                        onPlus = { vm.setPhoneAlarmWindowMinutes((phoneWindow + 5).coerceAtMost(60)) })
+                }
             }
         }
         Text(uiString(R.string.wx_backup_alarm_note), style = WxType.caption, color = Wx.textDim,
             modifier = Modifier.padding(horizontal = 4.dp))
-        WxLinkRow(uiString(R.string.wx_all_alarm_options), onOpenFull)
+        WxLinkRow(uiString(R.string.wx_more_alarm_options), onOpenFull)
+    }
+}
+
+@Composable
+private fun WxAlarmHeader(title: String, body: String, checked: Boolean, onChange: (Boolean) -> Unit) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Column(Modifier.weight(1f)) {
+            Text(title, style = WxType.bodyStrong, color = Wx.text)
+            Text(body, style = WxType.caption, color = Wx.textMuted)
+        }
+        Spacer(Modifier.width(12.dp))
+        Switch(checked = checked, onCheckedChange = onChange,
+            colors = SwitchDefaults.colors(checkedTrackColor = Wx.recoveryHigh, checkedThumbColor = Wx.text))
+    }
+}
+
+/** Calendar.DAY_OF_WEEK, Monday first. */
+private val WX_WEEK = intArrayOf(2, 3, 4, 5, 6, 7, 1)
+
+private fun wxDayName(dow: Int): String =
+    java.time.DayOfWeek.of(if (dow == 1) 7 else dow - 1)
+        .getDisplayName(java.time.format.TextStyle.FULL, java.util.Locale.getDefault())
+        .replaceFirstChar { it.titlecase(java.util.Locale.getDefault()) }
+
+/**
+ * The alarm's week exactly as it will ring: the usual time, then one row per day with its own on/off
+ * and the time that day really uses (a per-day time is marked and can be reset to the usual one).
+ * Same stores as the full Alarms screen, so the two can never show a different week.
+ */
+@Composable
+private fun WxWeekSchedule(
+    defaultMinutes: Int,
+    weekdays: Set<Int>,
+    overrides: Map<Int, Int>,
+    is24h: Boolean,
+    onDefault: (Int) -> Unit,
+    onToggleDay: (Int) -> Unit,
+    onOverride: (Int, Int?) -> Unit,
+) {
+    Spacer(Modifier.height(12.dp))
+    Box(Modifier.fillMaxWidth().height(1.dp).background(Wx.line))
+    Row(Modifier.fillMaxWidth().padding(vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+        Column(Modifier.weight(1f)) {
+            Text(uiString(R.string.wx_usual_time), style = WxType.body, color = Wx.text)
+            Text(uiString(R.string.wx_usual_time_body), style = WxType.caption, color = Wx.textMuted)
+        }
+        TimeChip(minutes = defaultMinutes, accessibilityLabel = uiString(R.string.wx_usual_time), onPicked = onDefault)
+    }
+    Box(Modifier.fillMaxWidth().height(1.dp).background(Wx.line))
+    WX_WEEK.forEach { dow ->
+        val on = smartAlarmWeekdayIsSelected(dow, weekdays)
+        val custom = overrides[dow]
+        Row(Modifier.fillMaxWidth().height(48.dp), verticalAlignment = Alignment.CenterVertically) {
+            Box(
+                Modifier.size(22.dp).clip(androidx.compose.foundation.shape.CircleShape)
+                    .background(if (on) Wx.recoveryHigh else Wx.cardRaised)
+                    .clickable { onToggleDay(dow) },
+                contentAlignment = Alignment.Center,
+            ) {
+                if (on) androidx.compose.material3.Icon(androidx.compose.material.icons.Icons.Filled.Check, null,
+                    tint = Wx.canvas, modifier = Modifier.size(14.dp))
+            }
+            Spacer(Modifier.width(12.dp))
+            Text(wxDayName(dow), style = WxType.body, color = if (on) Wx.text else Wx.textDim, modifier = Modifier.weight(1f))
+            if (!on) {
+                Text(uiString(R.string.wx_off), style = WxType.caption, color = Wx.textDim)
+            } else {
+                if (custom != null) {
+                    Text(uiString(R.string.wx_reset), style = WxType.caption, color = Wx.textMuted,
+                        modifier = Modifier.clip(RoundedCornerShape(8.dp)).clickable { onOverride(dow, null) }
+                            .padding(horizontal = 8.dp, vertical = 4.dp))
+                    Spacer(Modifier.width(4.dp))
+                }
+                TimeChip(
+                    minutes = custom ?: defaultMinutes,
+                    accessibilityLabel = wxDayName(dow),
+                    onPicked = { m -> onOverride(dow, if (m == defaultMinutes) null else m) },
+                )
+            }
+        }
+    }
+    Text(uiString(R.string.wx_week_schedule_note), style = WxType.caption, color = Wx.textDim,
+        modifier = Modifier.padding(bottom = 8.dp))
+}
+
+@Composable
+private fun WxMiniStepper(value: String, onMinus: () -> Unit, onPlus: () -> Unit) {
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Box(Modifier.size(32.dp).clip(androidx.compose.foundation.shape.CircleShape).background(Wx.cardRaised).clickable(onClick = onMinus),
+            contentAlignment = Alignment.Center) { Text("−", style = WxType.bodyStrong, color = Wx.text) }
+        Text(value, style = WxType.numberSmall.copy(fontSize = 16.sp), color = Wx.text)
+        Box(Modifier.size(32.dp).clip(androidx.compose.foundation.shape.CircleShape).background(Wx.cardRaised).clickable(onClick = onPlus),
+            contentAlignment = Alignment.Center) { Text("+", style = WxType.bodyStrong, color = Wx.text) }
     }
 }

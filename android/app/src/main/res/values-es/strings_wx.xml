@@ -10,6 +10,7 @@
     <string name="wx_alarm_set">Puesta para mañana</string>
     <string name="wx_all_alarm_options">Ventana, excepciones por día y más</string>
     <string name="wx_all_out">Al máximo</string>
+    <string name="wx_allow_exact_alarms">Permite alarmas exactas para que suene. Toca para abrir el ajuste.</string>
     <string name="wx_asleep">Dormido</string>
     <string name="wx_average">Media</string>
     <string name="wx_average_over">Media %1$s · %2$s</string>
@@ -105,6 +106,7 @@
     <string name="wx_medium">Medio</string>
     <string name="wx_moderate">Moderado</string>
     <string name="wx_month">Mes</string>
+    <string name="wx_more_alarm_options">Vibración WHOOP 4.0, recordatorio y más</string>
     <string name="wx_more_analysis">Más análisis</string>
     <string name="wx_moves_heading">Cómo te afectan tus hábitos</string>
     <string name="wx_moves_intro">%1$s los días que respondiste sí, frente a los días que respondiste no. Basado en %2$d días registrados.</string>
@@ -157,6 +159,7 @@
     <string name="wx_recovery_sentence_empty">La recuperación se calcula tras sincronizar la noche.</string>
     <string name="wx_red_days">%1$d rojos</string>
     <string name="wx_rem_sleep">REM</string>
+    <string name="wx_reset">Restablecer</string>
     <string name="wx_resp_long">Frecuencia respiratoria</string>
     <string name="wx_resp_rate">Frec. resp.</string>
     <string name="wx_resp_short">Resp.</string>
@@ -213,6 +216,8 @@
     <string name="wx_trend_within_range">Tu media de %1$s en estos 7 días (%2$s) estuvo dentro de su rango habitual (%3$s – %4$s).</string>
     <string name="wx_typical_range">Rango habitual</string>
     <string name="wx_typical_range_note">Rango habitual: la mitad central de tus valores en los 30 días previos a este periodo.</string>
+    <string name="wx_usual_time">Hora habitual</string>
+    <string name="wx_usual_time_body">Cada día sin hora propia</string>
     <string name="wx_vo2max">VO₂ máx.</string>
     <string name="wx_vs_baseline">vs. referencia</string>
     <string name="wx_vs_baseline_title">Comparado con lo habitual</string>
@@ -220,7 +225,10 @@
     <string name="wx_vs_previous">vs. anterior</string>
     <string name="wx_wake_at">Despertar a las</string>
     <string name="wx_wake_events">Despertares</string>
+    <string name="wx_wake_window">Ventana de despertar</string>
+    <string name="wx_wake_window_body">Puede despertarte en sueño ligero hasta %1$d min antes</string>
     <string name="wx_week">Semana</string>
+    <string name="wx_week_schedule_note">Toca una hora para dar a ese día la suya; Restablecer vuelve a la habitual.</string>
     <string name="wx_weekday_a11y">Media de %1$s por día de la semana</string>
     <string name="wx_weekly">Semanal</string>
     <string name="wx_weekly_trends">Tendencias semanales</string>

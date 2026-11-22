@@ -600,7 +600,7 @@ private fun hhmm(minutes: Int): String {
 
 /** Open the system page where the user grants the exact-alarm special-access permission (API 31+).
  *  There's no runtime dialog for this; the user toggles it in Settings and returns. */
-private fun requestExactAlarmAccess(context: android.content.Context) {
+internal fun requestExactAlarmAccess(context: android.content.Context) {
     if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return
     runCatching {
         context.startActivity(

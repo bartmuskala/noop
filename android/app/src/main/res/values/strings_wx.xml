@@ -10,6 +10,7 @@
     <string name="wx_alarm_set">Set for tomorrow</string>
     <string name="wx_all_alarm_options">Wake window, day overrides &amp; more</string>
     <string name="wx_all_out">All out</string>
+    <string name="wx_allow_exact_alarms">Allow exact alarms so this can ring. Tap to open the setting.</string>
     <string name="wx_asleep">Asleep</string>
     <string name="wx_average">Average</string>
     <string name="wx_average_over">Average %1$s · %2$s</string>
@@ -105,6 +106,7 @@
     <string name="wx_medium">Medium</string>
     <string name="wx_moderate">Moderate</string>
     <string name="wx_month">Month</string>
+    <string name="wx_more_alarm_options">WHOOP 4.0 buzz, wind-down reminder &amp; more</string>
     <string name="wx_more_analysis">More analysis</string>
     <string name="wx_moves_heading">How your behaviours affect you</string>
     <string name="wx_moves_intro">%1$s on days you answered yes, compared with days you answered no. Based on %2$d logged days.</string>
@@ -157,6 +159,7 @@
     <string name="wx_recovery_sentence_empty">Recovery is scored after the night is synced.</string>
     <string name="wx_red_days">%1$d red</string>
     <string name="wx_rem_sleep">REM</string>
+    <string name="wx_reset">Reset</string>
     <string name="wx_resp_long">Respiratory rate</string>
     <string name="wx_resp_rate">Resp. rate</string>
     <string name="wx_resp_short">Resp.</string>
@@ -213,6 +216,8 @@
     <string name="wx_trend_within_range">Your average %1$s during this 7-day period (%2$s) was within its typical range (%3$s – %4$s).</string>
     <string name="wx_typical_range">Typical range</string>
     <string name="wx_typical_range_note">Typical range: the middle half of your values in the 30 days before this period.</string>
+    <string name="wx_usual_time">Usual time</string>
+    <string name="wx_usual_time_body">Every day without its own time</string>
     <string name="wx_vo2max">VO₂ max</string>
     <string name="wx_vs_baseline">vs baseline</string>
     <string name="wx_vs_baseline_title">Compared with your usual</string>
@@ -220,7 +225,10 @@
     <string name="wx_vs_previous">vs previous</string>
     <string name="wx_wake_at">Wake at</string>
     <string name="wx_wake_events">Wake events</string>
+    <string name="wx_wake_window">Wake window</string>
+    <string name="wx_wake_window_body">Can wake you in light sleep up to %1$d min before</string>
     <string name="wx_week">Week</string>
+    <string name="wx_week_schedule_note">Tap a time to give that day its own; Reset returns it to the usual time.</string>
     <string name="wx_weekday_a11y">%1$s average per weekday</string>
     <string name="wx_weekly">Weekly</string>
     <string name="wx_weekly_trends">Weekly trends</string>

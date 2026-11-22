@@ -10,6 +10,7 @@
     <string name="wx_alarm_set">Réglée pour demain</string>
     <string name="wx_all_alarm_options">Fenêtre de réveil, exceptions par jour et plus</string>
     <string name="wx_all_out">À fond</string>
+    <string name="wx_allow_exact_alarms">Autorisez les alarmes exactes pour qu\'elle sonne. Touchez pour ouvrir le réglage.</string>
     <string name="wx_asleep">Endormi</string>
     <string name="wx_average">Moyenne</string>
     <string name="wx_average_over">Moyenne %1$s · %2$s</string>
@@ -105,6 +106,7 @@
     <string name="wx_medium">Moyen</string>
     <string name="wx_moderate">Modéré</string>
     <string name="wx_month">Mois</string>
+    <string name="wx_more_alarm_options">Vibration WHOOP 4.0, rappel et plus</string>
     <string name="wx_more_analysis">Plus d\'analyses</string>
     <string name="wx_moves_heading">L\'effet de vos habitudes</string>
     <string name="wx_moves_intro">%1$s les jours où vous avez répondu oui, comparé aux jours où vous avez répondu non. Sur %2$d jours notés.</string>
@@ -157,6 +159,7 @@
     <string name="wx_recovery_sentence_empty">La récupération est calculée après la synchro de la nuit.</string>
     <string name="wx_red_days">%1$d rouges</string>
     <string name="wx_rem_sleep">Paradoxal</string>
+    <string name="wx_reset">Réinitialiser</string>
     <string name="wx_resp_long">Fréquence respiratoire</string>
     <string name="wx_resp_rate">Fréq. resp.</string>
     <string name="wx_resp_short">Resp.</string>
@@ -213,6 +216,8 @@
     <string name="wx_trend_within_range">Votre moyenne de %1$s sur ces 7 jours (%2$s) était dans sa plage habituelle (%3$s – %4$s).</string>
     <string name="wx_typical_range">Plage habituelle</string>
     <string name="wx_typical_range_note">Plage habituelle : la moitié centrale de vos valeurs des 30 jours avant cette période.</string>
+    <string name="wx_usual_time">Heure habituelle</string>
+    <string name="wx_usual_time_body">Chaque jour sans heure propre</string>
     <string name="wx_vo2max">VO₂ max</string>
     <string name="wx_vs_baseline">vs référence</string>
     <string name="wx_vs_baseline_title">Par rapport à d\'habitude</string>
@@ -220,7 +225,10 @@
     <string name="wx_vs_previous">vs précédent</string>
     <string name="wx_wake_at">Réveil à</string>
     <string name="wx_wake_events">Réveils</string>
+    <string name="wx_wake_window">Fenêtre de réveil</string>
+    <string name="wx_wake_window_body">Peut vous réveiller en sommeil léger jusqu\'à %1$d min avant</string>
     <string name="wx_week">Semaine</string>
+    <string name="wx_week_schedule_note">Touchez une heure pour donner au jour la sienne ; Réinitialiser revient à l\'heure habituelle.</string>
     <string name="wx_weekday_a11y">Moyenne %1$s par jour de semaine</string>
     <string name="wx_weekly">Hebdomadaire</string>
     <string name="wx_weekly_trends">Tendances de la semaine</string>
