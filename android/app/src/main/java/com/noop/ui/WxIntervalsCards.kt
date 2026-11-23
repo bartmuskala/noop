@@ -1,6 +1,9 @@
 package com.noop.ui
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.Arrangement
@@ -169,11 +172,19 @@ internal fun WxIcuActivityDetail(vm: AppViewModel, a: IntervalsParse.Activity, r
         val st = streams
         val watts = st?.get("watts")?.takeIf { w -> w.count { it != null && it > 0 } > 30 }
         val hr = st?.get("heartrate")?.takeIf { h -> h.count { it != null } > 30 }
-        if (watts != null || hr != null) {
+        val alt = st?.get("altitude")?.takeIf { a -> a.count { it != null } > 30 }
+        if (watts != null || hr != null || alt != null) {
             WxCard(padding = 16.dp) {
                 WxCardHeader(uiString(if (watts != null) R.string.wx_icu_power_hr else R.string.wx_heart_rate))
+                Spacer(Modifier.height(4.dp))
+                // Legend: power, heart rate, elevation (shaded behind).
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (watts != null) { WxLegendDot(Wx.effort); Text(" W   ", style = WxType.caption, color = Wx.textMuted) }
+                    if (hr != null) { WxLegendDot(Wx.heart); Text(" bpm   ", style = WxType.caption, color = Wx.textMuted) }
+                    if (alt != null) { WxLegendDot(Wx.lineStrong); Text(" " + uiString(R.string.wx_elevation), style = WxType.caption, color = Wx.textMuted) }
+                }
                 Spacer(Modifier.height(8.dp))
-                WxIcuStreamChart(watts, hr, st["time"].orEmpty())
+                WxIcuStreamChart(watts, hr, alt, st["time"].orEmpty(), st["distance"].orEmpty())
             }
         }
         if (a.avgWatts != null || watts != null) {
@@ -214,39 +225,103 @@ internal fun WxIcuActivityDetail(vm: AppViewModel, a: IntervalsParse.Activity, r
     }
 }
 
-/** Power (and heart rate on its own scale) through the session, from its streams. */
 @Composable
-private fun WxIcuStreamChart(watts: List<Double?>?, hr: List<Double?>?, time: List<Double?>) {
+private fun WxLegendDot(c: Color) = Box(Modifier.size(8.dp).clip(CircleShape).background(c))
+
+/** One point of the session chart: a ~10-second mean of each stream. */
+private data class WxStreamPoint(val t: Double, val km: Double?, val w: Double?, val hr: Double?, val alt: Double?)
+
+/**
+ * Power and heart rate through the session, each on its own scale, over the elevation profile shaded
+ * behind them. Drag a finger across it for the time, distance, power, heart rate and elevation there.
+ */
+@Composable
+private fun WxIcuStreamChart(watts: List<Double?>?, hr: List<Double?>?, alt: List<Double?>?, time: List<Double?>, dist: List<Double?>) {
     val measurer = rememberTextMeasurer()
-    Canvas(Modifier.fillMaxWidth().height(170.dp)) {
-        val axisH = 14.dp.toPx(); val plotH = size.height - axisH
-        val n = maxOf(watts?.size ?: 0, hr?.size ?: 0)
-        if (n < 2) return@Canvas
-        // ~300 points: 30-second-ish means keep the line readable.
-        val bucket = (n / 300).coerceAtLeast(1)
-        fun series(v: List<Double?>): List<Double?> = (0 until n step bucket).map { s ->
-            v.subList(s, minOf(s + bucket, v.size)).filterNotNull().takeIf { it.isNotEmpty() }?.average()
+    val n = maxOf(watts?.size ?: 0, hr?.size ?: 0, alt?.size ?: 0)
+    val pts = remember(watts, hr, alt, time, dist) {
+        if (n < 2) emptyList() else {
+            val bucket = (n / 360).coerceAtLeast(1)
+            fun mean(v: List<Double?>?, s: Int, e: Int) = v?.subList(minOf(s, v.size), minOf(e, v.size))?.filterNotNull()?.takeIf { it.isNotEmpty() }?.average()
+            (0 until n step bucket).map { s ->
+                val e = minOf(s + bucket, n)
+                WxStreamPoint(t = time.getOrNull(s) ?: s.toDouble(), km = dist.getOrNull(s)?.div(1000.0),
+                    w = mean(watts, s, e), hr = mean(hr, s, e), alt = mean(alt, s, e))
+            }
         }
-        fun x(i: Int, m: Int) = size.width * i / (m - 1).coerceAtLeast(1)
-        for (k in 1..3) drawLine(Wx.line, Offset(0f, plotH * k / 4f), Offset(size.width, plotH * k / 4f), 1f)
-        fun draw(v: List<Double?>, c: Color, w: Float) {
-            val pts = series(v); val hi = pts.filterNotNull().maxOrNull()?.coerceAtLeast(1.0) ?: return
+    }
+    if (pts.size < 2) return
+    var touchX by remember(pts) { mutableStateOf<Float?>(null) }
+    Canvas(
+        Modifier.fillMaxWidth().height(200.dp)
+            .pointerInput(pts) {
+                detectTapGestures(onPress = { p -> touchX = p.x; tryAwaitRelease(); touchX = null })
+            }
+            .pointerInput(pts) {
+                detectHorizontalDragGestures(
+                    onDragStart = { p -> touchX = p.x }, onDragEnd = { touchX = null }, onDragCancel = { touchX = null },
+                    onHorizontalDrag = { change, _ -> touchX = change.position.x },
+                )
+            },
+    ) {
+        val top = 26.dp.toPx(); val axisH = 14.dp.toPx(); val plotB = size.height - axisH; val plotH = plotB - top
+        fun x(i: Int) = size.width * i / (pts.size - 1)
+        // Elevation, shaded behind, on its own range.
+        val alts = pts.mapNotNull { it.alt }
+        if (alts.size > 1) {
+            val lo = alts.minOrNull()!!; val hi = alts.maxOrNull()!!.coerceAtLeast(lo + 10)
+            val fill = Path(); var started = false
+            pts.forEachIndexed { i, p ->
+                val a = p.alt ?: return@forEachIndexed
+                val yy = (plotB - plotH * 0.6 * ((a - lo) / (hi - lo))).toFloat()
+                if (!started) { fill.moveTo(x(i), plotB); fill.lineTo(x(i), yy); started = true } else fill.lineTo(x(i), yy)
+            }
+            fill.lineTo(size.width, plotB); fill.close()
+            drawPath(fill, Wx.lineStrong.copy(alpha = 0.55f))
+        }
+        for (k in 1..3) drawLine(Wx.line, Offset(0f, top + plotH * k / 4f), Offset(size.width, top + plotH * k / 4f), 1f)
+        fun line(get: (WxStreamPoint) -> Double?, c: Color, w: Float) {
+            val hi = pts.mapNotNull(get).maxOrNull()?.coerceAtLeast(1.0) ?: return
             val p = Path(); var open = false
-            pts.forEachIndexed { i, y ->
-                if (y == null) { open = false; return@forEachIndexed }
-                val yy = (plotH - plotH * 0.95 * (y / hi)).toFloat()
-                if (!open) { p.moveTo(x(i, pts.size), yy); open = true } else p.lineTo(x(i, pts.size), yy)
+            pts.forEachIndexed { i, pt ->
+                val v = get(pt) ?: run { open = false; return@forEachIndexed }
+                val yy = (plotB - plotH * 0.95 * (v / hi)).toFloat()
+                if (!open) { p.moveTo(x(i), yy); open = true } else p.lineTo(x(i), yy)
             }
             drawPath(p, c, style = Stroke(w, cap = StrokeCap.Round))
         }
-        hr?.let { draw(it, Wx.heart.copy(alpha = 0.75f), 1.5.dp.toPx()) }
-        watts?.let { draw(it, Wx.effort, 1.8.dp.toPx()) }
-        val total = time.lastOrNull { it != null } ?: n.toDouble()
+        line({ it.hr }, Wx.heart.copy(alpha = 0.8f), 1.5.dp.toPx())
+        line({ it.w }, Wx.effort, 1.6.dp.toPx())
+        val total = pts.last().t
         listOf(0.0, 0.5, 1.0).forEach { f ->
-            val t = measurer.measure("${(total * f / 60).roundToInt()}'", TextStyle(fontSize = 10.sp, color = Wx.textDim))
+            val t = measurer.measure(wxClockDuration(total * f), TextStyle(fontSize = 10.sp, color = Wx.textDim))
             drawText(t, topLeft = Offset((size.width * f.toFloat() - t.size.width / 2f).coerceIn(0f, size.width - t.size.width), size.height - t.size.height))
         }
+        touchX?.let { tx ->
+            val i = ((tx / size.width) * (pts.size - 1)).toInt().coerceIn(0, pts.size - 1)
+            val p = pts[i]; val px = x(i)
+            drawLine(Wx.textMuted, Offset(px, top), Offset(px, plotB), 1f)
+            val label = listOfNotNull(
+                wxClockDuration(p.t),
+                p.km?.let { String.format(Locale.getDefault(), "%.1f km", it) },
+                p.w?.let { "${it.roundToInt()} W" },
+                p.hr?.let { "${it.roundToInt()} bpm" },
+                p.alt?.let { "${it.roundToInt()} m" },
+            ).joinToString(" · ")
+            val t = measurer.measure(label, TextStyle(fontSize = 12.sp, color = Wx.text))
+            val padX = 8.dp.toPx(); val w = t.size.width + padX * 2
+            val bx = (px - w / 2).coerceIn(0f, size.width - w)
+            drawRoundRect(Wx.cardRaised, Offset(bx, 0f), androidx.compose.ui.geometry.Size(w, t.size.height + 6.dp.toPx()),
+                androidx.compose.ui.geometry.CornerRadius(6.dp.toPx()))
+            drawText(t, topLeft = Offset(bx + padX, 3.dp.toPx()))
+        }
     }
+}
+
+/** Elapsed time as h:mm:ss (or m:ss under an hour). */
+private fun wxClockDuration(s: Double): String {
+    val t = s.roundToInt()
+    return if (t >= 3600) "%d:%02d:%02d".format(t / 3600, t / 60 % 60, t % 60) else "%d:%02d".format(t / 60, t % 60)
 }
 
 /**
