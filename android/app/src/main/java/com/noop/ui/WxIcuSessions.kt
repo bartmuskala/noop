@@ -108,6 +108,8 @@ internal fun rememberWxSessions(vm: AppViewModel): List<WorkoutRow> {
     LaunchedEffect(on, status.lastSync) {
         if (!on) return@LaunchedEffect
         IcuEfforts.load(ctx)
+        // TrainingPeaks plan → intervals.icu first (when set up), so the sync below picks it up.
+        com.noop.intervals.TpSync.runIfStale(ctx)
         IntervalsSync.syncIfStale(ctx)
         IcuEfforts.compute(vm, ctx, IntervalsStore.activities(ctx))
     }

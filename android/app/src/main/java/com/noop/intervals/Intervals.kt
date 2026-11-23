@@ -8,6 +8,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.withContext
 import okhttp3.Credentials
 import okhttp3.OkHttpClient
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.Request
 import java.io.File
 import java.time.LocalDate
@@ -47,6 +49,22 @@ class IntervalsException(val code: Int, message: String) : Exception(message)
 class IntervalsClient(private val athleteId: String, private val apiKey: String) {
     private val http = OkHttpClient.Builder().connectTimeout(15, TimeUnit.SECONDS).readTimeout(30, TimeUnit.SECONDS).build()
     private val base = "https://intervals.icu/api/v1"
+
+    /** A write (POST / PUT / DELETE) of a JSON body; used only by the TrainingPeaks bridge, for events it owns. */
+    fun send(method: String, path: String, body: String?): String {
+        val rb = body?.toRequestBody("application/json".toMediaTypeOrNull())
+        val req = Request.Builder().url(base + path)
+            .header("Authorization", Credentials.basic("API_KEY", apiKey))
+            .method(method, rb)
+            .build()
+        http.newCall(req).execute().use { r ->
+            val text = r.body?.string().orEmpty()
+            if (!r.isSuccessful) throw IntervalsException(r.code, "HTTP ${r.code} on $method $path")
+            return text
+        }
+    }
+
+    fun athleteId(): String = athleteId
 
     private fun get(path: String): String {
         val req = Request.Builder().url(base + path)

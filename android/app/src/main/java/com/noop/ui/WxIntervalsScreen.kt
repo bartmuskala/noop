@@ -92,5 +92,62 @@ internal fun WxIntervalsScreen(onBack: () -> Unit) {
                 Text(it, style = WxType.caption, color = Wx.recoveryLow)
             }
         }
+        if (connected) WxTrainingPeaksCard()
+    }
+}
+
+/**
+ * The TrainingPeaks → intervals.icu plan bridge: paste the browser cookie, sync now, see the last
+ * result, or remove the cookie. Runs by itself when the app opens, at most every three hours.
+ */
+@Composable
+private fun WxTrainingPeaksCard() {
+    val ctx = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val tp by com.noop.intervals.TpSync.status.collectAsStateWithLifecycle()
+    var has by remember { mutableStateOf(com.noop.intervals.TpKeyStore.cookie(ctx) != null) }
+    var cookie by remember { mutableStateOf("") }
+    val fieldColors = OutlinedTextFieldDefaults.colors(
+        focusedTextColor = Wx.text, unfocusedTextColor = Wx.text,
+        focusedBorderColor = Wx.effort, unfocusedBorderColor = Wx.lineStrong,
+        focusedLabelColor = Wx.effort, unfocusedLabelColor = Wx.textMuted, cursorColor = Wx.effort,
+    )
+    WxCard {
+        WxCardHeader(uiString(R.string.wx_tp_title))
+        Spacer(Modifier.height(8.dp))
+        Text(uiString(R.string.wx_tp_intro), style = WxType.caption, color = Wx.textSoft)
+        Spacer(Modifier.height(10.dp))
+        if (!has) {
+            OutlinedTextField(cookie, { cookie = it }, label = { Text(uiString(R.string.wx_tp_cookie)) },
+                singleLine = true, colors = fieldColors, visualTransformation = PasswordVisualTransformation(),
+                modifier = Modifier.fillMaxWidth())
+            Spacer(Modifier.height(6.dp))
+            Text(uiString(R.string.wx_tp_where), style = WxType.caption, color = Wx.textMuted)
+            Spacer(Modifier.height(12.dp))
+            WxButton(uiString(R.string.wx_tp_connect), onClick = {
+                if (cookie.isBlank()) return@WxButton
+                com.noop.intervals.TpKeyStore.save(ctx, cookie)
+                scope.launch {
+                    if (com.noop.intervals.TpSync.run(ctx)) { has = true; cookie = "" }
+                    else if (com.noop.intervals.TpSync.status.value.line?.contains("cookie", ignoreCase = true) == true) {
+                        com.noop.intervals.TpKeyStore.clear(ctx)
+                    } else has = true
+                }
+            })
+        } else {
+            val last = com.noop.intervals.TpKeyStore.lastRun(ctx).takeIf { it > 0 }?.let {
+                val t = Instant.ofEpochMilli(it).atZone(ZoneId.systemDefault())
+                "${wxShortDate(t.toLocalDate())} %02d:%02d".format(t.hour, t.minute)
+            } ?: "–"
+            Text(uiString(R.string.wx_tp_last, last), style = WxType.caption, color = Wx.textSoft)
+            WxButton(uiString(if (tp.running) R.string.wx_icu_syncing else R.string.wx_icu_sync_now),
+                onClick = { scope.launch { com.noop.intervals.TpSync.run(ctx) } })
+            Spacer(Modifier.height(4.dp))
+            WxLinkRow(uiString(R.string.wx_tp_remove)) { com.noop.intervals.TpKeyStore.clear(ctx); has = false }
+        }
+        (tp.line ?: com.noop.intervals.TpKeyStore.lastLine(ctx))?.let {
+            Spacer(Modifier.height(8.dp))
+            Text(it, style = WxType.caption, color = if (tp.error) Wx.recoveryLow else Wx.textMuted)
+        }
     }
 }

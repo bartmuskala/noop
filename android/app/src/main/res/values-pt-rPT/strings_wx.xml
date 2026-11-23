@@ -281,6 +281,13 @@
     <string name="wx_todays_activities">Atividades de hoje</string>
     <string name="wx_tonights_sleep">Sono desta noite</string>
     <string name="wx_top_sport">Mais frequente</string>
+    <string name="wx_tp_connect">Guardar e sincronizar o plano</string>
+    <string name="wx_tp_cookie">Cookie do TrainingPeaks (Production_tpAuth)</string>
+    <string name="wx_tp_intro">Copia os treinos planeados do TrainingPeaks dos próximos 14 dias para o teu calendário intervals.icu, com a estrutura e os alvos em watts, bpm ou ritmo. Corre ao abrir a app, no máximo de três em três horas. Só altera ou remove o que criou.</string>
+    <string name="wx_tp_last">Última sincronização do plano %1$s</string>
+    <string name="wx_tp_remove">Remover o cookie do TrainingPeaks</string>
+    <string name="wx_tp_title">Plano TrainingPeaks</string>
+    <string name="wx_tp_where">Inicia sessão em trainingpeaks.com num navegador, abre as ferramentas de programador, Aplicação, Cookies, trainingpeaks.com, e copia o valor de Production_tpAuth. Deixa de funcionar se terminares a sessão lá.</string>
     <string name="wx_training_load">Forma e fadiga</string>
     <string name="wx_training_load_note">A condição é o teu esforço diário em média de cerca de 6 semanas, a fadiga de 1 semana; a frescura é a diferença. Positiva: fresco. Muito negativa: cansado.</string>
     <string name="wx_training_load_unavailable">Precisa de pelo menos 14 dias seguidos com pontuação de esforço.</string>

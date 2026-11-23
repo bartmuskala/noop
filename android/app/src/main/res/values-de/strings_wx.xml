@@ -281,6 +281,13 @@
     <string name="wx_todays_activities">Heutige Aktivitäten</string>
     <string name="wx_tonights_sleep">Schlaf heute Nacht</string>
     <string name="wx_top_sport">Am häufigsten</string>
+    <string name="wx_tp_connect">Speichern und Plan synchronisieren</string>
+    <string name="wx_tp_cookie">TrainingPeaks-Cookie (Production_tpAuth)</string>
+    <string name="wx_tp_intro">Kopiert deine geplanten TrainingPeaks-Workouts der nächsten 14 Tage in deinen intervals.icu-Kalender, mit Struktur und Zielen in Watt, bpm oder Pace. Läuft beim Öffnen der App, höchstens alle drei Stunden. Nur selbst erstellte Workouts werden geändert oder entfernt.</string>
+    <string name="wx_tp_last">Letzte Plan-Synchronisierung %1$s</string>
+    <string name="wx_tp_remove">TrainingPeaks-Cookie entfernen</string>
+    <string name="wx_tp_title">TrainingPeaks-Plan</string>
+    <string name="wx_tp_where">Melde dich in einem Browser bei trainingpeaks.com an, öffne die Entwicklertools, Anwendung, Cookies, trainingpeaks.com, und kopiere den Wert von Production_tpAuth. Er funktioniert nicht mehr, wenn du dich dort abmeldest.</string>
     <string name="wx_training_load">Fitness und Ermüdung</string>
     <string name="wx_training_load_note">Fitness ist deine tägliche Belastung über etwa 6 Wochen gemittelt, Ermüdung über etwa 1 Woche; Form ist die Differenz. Positiv: frisch. Stark negativ: ermüdet.</string>
     <string name="wx_training_load_unavailable">Benötigt mindestens 14 Tage am Stück mit Belastungswert.</string>

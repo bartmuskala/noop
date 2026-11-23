@@ -281,6 +281,13 @@
     <string name="wx_todays_activities">Actividades de hoy</string>
     <string name="wx_tonights_sleep">Sueño de esta noche</string>
     <string name="wx_top_sport">Más frecuente</string>
+    <string name="wx_tp_connect">Guardar y sincronizar el plan</string>
+    <string name="wx_tp_cookie">Cookie de TrainingPeaks (Production_tpAuth)</string>
+    <string name="wx_tp_intro">Copia tus entrenamientos planificados de TrainingPeaks de los próximos 14 días a tu calendario de intervals.icu, con su estructura y objetivos en vatios, ppm o ritmo. Se ejecuta al abrir la app, como mucho cada tres horas. Solo cambia o borra lo que creó.</string>
+    <string name="wx_tp_last">Última sincronización del plan %1$s</string>
+    <string name="wx_tp_remove">Quitar la cookie de TrainingPeaks</string>
+    <string name="wx_tp_title">Plan de TrainingPeaks</string>
+    <string name="wx_tp_where">Inicia sesión en trainingpeaks.com en un navegador, abre las herramientas de desarrollo, Aplicación, Cookies, trainingpeaks.com, y copia el valor de Production_tpAuth. Deja de funcionar si cierras sesión allí.</string>
     <string name="wx_training_load">Forma y fatiga</string>
     <string name="wx_training_load_note">La forma física es tu esfuerzo diario promediado en unas 6 semanas, la fatiga en 1 semana; la frescura es la diferencia. Positiva: fresco. Muy negativa: fatigado.</string>
     <string name="wx_training_load_unavailable">Necesita al menos 14 días seguidos con puntuación de esfuerzo.</string>

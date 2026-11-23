@@ -281,6 +281,13 @@
     <string name="wx_todays_activities">Today\'s activities</string>
     <string name="wx_tonights_sleep">Tonight\'s sleep</string>
     <string name="wx_top_sport">Most done</string>
+    <string name="wx_tp_connect">Save and sync the plan</string>
+    <string name="wx_tp_cookie">TrainingPeaks cookie (Production_tpAuth)</string>
+    <string name="wx_tp_intro">Copies your planned TrainingPeaks workouts for the next 14 days into your intervals.icu calendar, with their structure and targets in watts, bpm or pace. Runs when you open the app, at most every three hours. Only workouts it created are changed or removed.</string>
+    <string name="wx_tp_last">Last plan sync %1$s</string>
+    <string name="wx_tp_remove">Remove the TrainingPeaks cookie</string>
+    <string name="wx_tp_title">TrainingPeaks plan</string>
+    <string name="wx_tp_where">Log in at trainingpeaks.com in a browser, open the developer tools, Application, Cookies, trainingpeaks.com, and copy the value of Production_tpAuth. It stops working when you log out there.</string>
     <string name="wx_training_load">Fitness and fatigue</string>
     <string name="wx_training_load_note">Fitness is your daily Effort averaged over about 6 weeks, fatigue over about 1 week; form is the difference. Positive form: fresh. Strongly negative: carrying fatigue.</string>
     <string name="wx_training_load_unavailable">Needs at least 14 days in a row with an Effort score.</string>

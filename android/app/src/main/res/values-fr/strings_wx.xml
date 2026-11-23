@@ -281,6 +281,13 @@
     <string name="wx_todays_activities">Activités du jour</string>
     <string name="wx_tonights_sleep">Sommeil de cette nuit</string>
     <string name="wx_top_sport">Le plus fréquent</string>
+    <string name="wx_tp_connect">Enregistrer et synchroniser le plan</string>
+    <string name="wx_tp_cookie">Cookie TrainingPeaks (Production_tpAuth)</string>
+    <string name="wx_tp_intro">Copie tes séances TrainingPeaks planifiées des 14 prochains jours dans ton calendrier intervals.icu, avec leur structure et leurs cibles en watts, bpm ou allure. S\'exécute à l\'ouverture de l\'app, au plus toutes les trois heures. Ne modifie ou ne supprime que ce qu\'il a créé.</string>
+    <string name="wx_tp_last">Dernière synchro du plan %1$s</string>
+    <string name="wx_tp_remove">Supprimer le cookie TrainingPeaks</string>
+    <string name="wx_tp_title">Plan TrainingPeaks</string>
+    <string name="wx_tp_where">Connecte-toi sur trainingpeaks.com dans un navigateur, ouvre les outils de développement, Application, Cookies, trainingpeaks.com, et copie la valeur de Production_tpAuth. Elle cesse de fonctionner si tu te déconnectes là-bas.</string>
     <string name="wx_training_load">Forme et fatigue</string>
     <string name="wx_training_load_note">La condition est ton effort quotidien moyenné sur environ 6 semaines, la fatigue sur 1 semaine ; la fraîcheur est la différence. Positive : frais. Très négative : fatigué.</string>
     <string name="wx_training_load_unavailable">Il faut au moins 14 jours d\'affilée avec un score d\'effort.</string>
