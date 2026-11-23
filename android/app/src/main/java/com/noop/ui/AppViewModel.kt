@@ -1221,6 +1221,12 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             // Fork: once the history carries today's definitions, rebuild every week's Fitness Age on them.
             if (NoopPrefs.of(appContext).getBoolean(FORK_RESCORE_KEY, false) && !NoopPrefs.of(appContext).getBoolean(FORK_FA_BACKFILL_KEY, false)) {
                 runCatching {
+                    // The activity term reads intervals.icu's sessions: make sure the cache spans the history.
+                    if (com.noop.intervals.IntervalsKeyStore.enabled(appContext) &&
+                        com.noop.intervals.IntervalsStore.read(appContext, "activities_from") == null) {
+                        com.noop.intervals.IntervalsSync.sync(appContext)
+                    }
+                    installFitnessInputs()
                     val weeks = IntelligenceEngine.backfillFitnessAgeHistory(repository, currentProfile(), deviceId)
                     NoopPrefs.of(appContext).edit().putBoolean(FORK_FA_BACKFILL_KEY, true).apply()
                     ble.externalLog("Fitness Age history rebuilt: $weeks weeks on the current resting-HR and activity rules")
@@ -2086,6 +2092,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     private suspend fun forkScoringUpgrade() {
         val prefs = NoopPrefs.of(appContext)
         com.noop.analytics.AnalyticsEngine.wholeNightMeanRHR = prefs.getBoolean(KEY_WHOLE_NIGHT_RHR, true)
+        installFitnessInputs()
         if (!prefs.getBoolean(FORK_VITALS_KEY, false)) {
             val line = runCatching { fitVitalScales() }.getOrElse { "Vitals vs WHOOP: failed (${it.javaClass.simpleName})" }
             prefs.edit().putBoolean(FORK_VITALS_KEY, true).apply()
@@ -2157,6 +2164,70 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             NoopPrefs.of(appContext).edit().putBoolean(FORK_RESCORE_KEY, false).apply()
         }
         return "Vitals vs WHOOP: $hrvLine; $respLine"
+    }
+
+    /**
+     * Fork: the Fitness Age inputs that live outside the engine: the activity term from intervals.icu's
+     * sessions (when connected) and the level offsets calibrated to the wearer's WHOOP weeks.
+     */
+    private fun installFitnessInputs() {
+        val prefs = NoopPrefs.of(appContext)
+        com.noop.analytics.IntelligenceEngine.fitnessAgeOffset = prefs.getFloat(KEY_FA_OFFSET, 0f).toDouble()
+        com.noop.analytics.IntelligenceEngine.vo2Offset = prefs.getFloat(KEY_VO2_OFFSET, 0f).toDouble()
+        val acts = if (com.noop.intervals.IntervalsKeyStore.enabled(appContext)) com.noop.intervals.IntervalsStore.activities(appContext) else emptyList()
+        if (acts.isEmpty()) { com.noop.analytics.IntelligenceEngine.paIndexProvider = null; return }
+        val hrMax = com.noop.analytics.StrainScorer.effortHRmax(
+            profileStore.hrMaxOverride.takeIf { it > 0 }?.toDouble(), profileStore.age.toDouble(),
+        ).first ?: com.noop.analytics.StrainScorer.defaultMaxHR().toDouble()
+        val sessions = acts.map { a ->
+            com.noop.analytics.WxFitnessCalibration.Session(
+                day = a.day,
+                minutes = ((a.movingS ?: a.elapsedS) ?: 0.0) / 60.0,
+                // Hard: intensity of at least 0.8 of FTP, or an average heart rate of at least 80 % of max.
+                hard = (a.intensityFactor ?: 0.0) >= 0.8 || (a.avgHr ?: 0.0) >= 0.8 * hrMax,
+            )
+        }
+        // The first day the cached history covers: the start of the last sync's window, else (an older
+        // cache) the first ride in it.
+        val coverage = com.noop.intervals.IntervalsStore.read(appContext, "activities_from")?.trim()
+            ?: sessions.minOfOrNull { it.day }
+        com.noop.analytics.IntelligenceEngine.paIndexProvider = { sat ->
+            com.noop.analytics.WxFitnessCalibration.paIndex(sessions, sat, coverage)
+        }
+    }
+
+    /** The WHOOP weeks the wearer typed in for the Fitness Age calibration, as typed. */
+    fun fitnessWhoopRefs(): String = NoopPrefs.of(appContext).getString(KEY_FA_REFS, "") ?: ""
+
+    /**
+     * Fork: calibrate Fitness Age and VO2max to the wearer's WHOOP weeks ([text], e.g. "05/7 - 11/7:
+     * 38,5 en 53" per line). Rebuilds the history without offsets, takes the median WHOOP-minus-NOOP
+     * difference over the weeks both have, stores it and rebuilds again with it. Returns a summary.
+     */
+    suspend fun calibrateFitnessToWhoop(text: String): String = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+        val prefs = NoopPrefs.of(appContext)
+        prefs.edit().putString(KEY_FA_REFS, text).apply()
+        val refs = com.noop.analytics.WxFitnessCalibration.parseRefs(text, java.time.LocalDate.now())
+        if (refs.isEmpty()) return@withContext "No weeks recognised. Use one line per week: 05/7 - 11/7: 38,5 en 53"
+        // The whole activity history first, so every WHOOP week has its sessions.
+        if (com.noop.intervals.IntervalsKeyStore.enabled(appContext)) com.noop.intervals.IntervalsSync.sync(appContext)
+        installFitnessInputs()
+        com.noop.analytics.IntelligenceEngine.fitnessAgeOffset = 0.0
+        com.noop.analytics.IntelligenceEngine.vo2Offset = 0.0
+        com.noop.analytics.IntelligenceEngine.backfillFitnessAgeHistory(repository, currentProfile(), deviceId)
+        val id = "$deviceId-noop"
+        val age = repository.metricSeries(id, "fitness_age", "0000-01-01", "9999-12-31").associate { it.day to it.value }
+        val vo2 = repository.metricSeries(id, "vo2max_est", "0000-01-01", "9999-12-31").associate { it.day to it.value }
+        val (aOff, vOff, n) = com.noop.analytics.WxFitnessCalibration.offsets(refs, age, vo2)
+        if (n == 0) return@withContext "None of the ${refs.size} weeks has a NOOP value yet, so nothing was calibrated."
+        prefs.edit().putFloat(KEY_FA_OFFSET, (aOff ?: 0.0).toFloat()).putFloat(KEY_VO2_OFFSET, (vOff ?: 0.0).toFloat()).apply()
+        com.noop.analytics.IntelligenceEngine.fitnessAgeOffset = aOff ?: 0.0
+        com.noop.analytics.IntelligenceEngine.vo2Offset = vOff ?: 0.0
+        com.noop.analytics.IntelligenceEngine.backfillFitnessAgeHistory(repository, currentProfile(), deviceId)
+        val line = "Calibrated on $n of ${refs.size} WHOOP weeks: Fitness Age %+.1f years, VO2max %+.1f".format(
+            java.util.Locale.US, aOff ?: 0.0, vOff ?: 0.0)
+        ble.externalLog(line)
+        line
     }
 
     /** Days with WHOOP's imported Effort and at least 18 h of strap heart rate, fitted (fork). */
@@ -3598,4 +3669,7 @@ internal const val KEY_WHOLE_NIGHT_RHR = "wx.rhr.wholeNightMean"
 private const val FORK_CALIBRATED_KEY = "wx.effort.calibrated.v1"
 private const val FORK_RESCORE_KEY = "wx.history.rescored.v1"
 private const val FORK_VITALS_KEY = "wx.vitals.calibrated.v1"
-private const val FORK_FA_BACKFILL_KEY = "wx.fitnessAge.backfilled.v1"
+private const val FORK_FA_BACKFILL_KEY = "wx.fitnessAge.backfilled.v2"
+private const val KEY_FA_REFS = "wx.fitnessAge.whoopRefs"
+private const val KEY_FA_OFFSET = "wx.fitnessAge.offset"
+private const val KEY_VO2_OFFSET = "wx.vo2.offset"

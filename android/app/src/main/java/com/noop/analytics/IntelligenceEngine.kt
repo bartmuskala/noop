@@ -2711,6 +2711,15 @@ object IntelligenceEngine {
      *  when ready, build the fitness_age (+ optional vo2max) rows keyed to [satKey]. Empty when not ready.
      *  The SINGLE source of the gate + compute , shared by the recompute pass and the manual "refresh
      *  Fitness Age" button so the two can never drift. */
+    /**
+     * Fork: the PA-index for a week (by its Saturday) from training sessions (WxFitnessCalibration), or
+     * null to use the Effort-based index below; and the level offsets calibrated to the wearer's WHOOP
+     * history. Set by the app; null / 0 keep the shipped behaviour, which every test exercises.
+     */
+    @Volatile var paIndexProvider: ((String) -> Double?)? = null
+    @Volatile var fitnessAgeOffset: Double = 0.0
+    @Volatile var vo2Offset: Double = 0.0
+
     fun fitnessAgeRows(
         gateDays: List<DailyMetric>, profile: UserProfile, computedId: String, satKey: String,
         // Fork: the activity behind the PA-index over a longer window (the last 28 days), averaged per
@@ -2733,9 +2742,9 @@ object IntelligenceEngine {
         val res = FitnessAgeEngine.compute(
             age = profile.age, sex = profile.sex,
             restingHR = medianOfDoubles(rhrs),
-            paIndex = FitnessAgeEngine.physicalActivityIndexFromStrain(activePerWeek, meanStrain),
+            paIndex = paIndexProvider?.invoke(satKey) ?: FitnessAgeEngine.physicalActivityIndexFromStrain(activePerWeek, meanStrain),
             waistCm = waist) ?: return emptyList()
-        val rows = mutableListOf(MetricSeriesRow(deviceId = computedId, day = satKey, key = "fitness_age", value = res.fitnessAge))
+        val rows = mutableListOf(MetricSeriesRow(deviceId = computedId, day = satKey, key = "fitness_age", value = res.fitnessAge + fitnessAgeOffset))
         // #1391: offer a VO₂max even without a waist. res.vo2max is the Nes 2011 waist-based estimate (null
         // when no waist is set). Fall back to the Uth 2004 HR-ratio estimate (15.3·HRmax/RHR — waist-free,
         // the SAME formula the calorie path already uses), so any user past the age+RHR fitness-age gate gets
@@ -2746,7 +2755,7 @@ object IntelligenceEngine {
             val hrmax: Double = StrainScorer.estimateHRmax(emptyList<Double>(), profile.age).first
             Calories.vo2maxFor(hrmax, medianOfDoubles(rhrs))
         }
-        if (vo2 != null) rows.add(MetricSeriesRow(deviceId = computedId, day = satKey, key = "vo2max_est", value = vo2))
+        if (vo2 != null) rows.add(MetricSeriesRow(deviceId = computedId, day = satKey, key = "vo2max_est", value = vo2 + vo2Offset))
         return rows
     }
 

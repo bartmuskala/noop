@@ -70,6 +70,9 @@
     <string name="wx_effort_in_range">In today\'s target range.</string>
     <string name="wx_effort_sentence_empty">A target appears once today\'s recovery is scored.</string>
     <string name="wx_elevation">Elevation</string>
+    <string name="wx_fa_calibrate">Calibrate to WHOOP</string>
+    <string name="wx_fa_calibrate_intro">Type WHOOP\'s Age and VO2max for some weeks, one line each, as WHOOP shows them: 05/7 - 11/7: 38,5 en 53. NOOP compares them with its own value for the same weeks and shifts its whole series by the median difference, so it starts from your WHOOP level and then follows your own data. Kept on this phone only.</string>
+    <string name="wx_fa_calibrate_run">Calibrate and rebuild the history</string>
     <string name="wx_fatigue">Fatigue</string>
     <string name="wx_fitness">Fitness</string>
     <string name="wx_fitness_age_not_ready">No Fitness Age yet. It needs a few weeks of resting heart rate and activity; see how it\'s calculated below.</string>

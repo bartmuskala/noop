@@ -29,6 +29,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
+import kotlinx.coroutines.launch
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -57,7 +58,8 @@ internal fun WxFitnessAgeScreen(vm: AppViewModel, onBack: () -> Unit, onOpenDeta
     val profile = remember { ProfileStore.from(context) }
     var series by remember { mutableStateOf<List<MetricSeriesRow>?>(null) }
     var vo2 by remember { mutableStateOf<List<MetricSeriesRow>>(emptyList()) }
-    LaunchedEffect(days) {
+    var reload by remember { mutableStateOf(0) }
+    LaunchedEffect(days, reload) {
         series = runCatching {
             vm.repo.metricSeriesComputedUnion(vm.activeStrapId, "fitness_age", "0000-01-01", "9999-12-31")
         }.getOrDefault(emptyList()).sortedBy { it.day }
@@ -167,6 +169,7 @@ internal fun WxFitnessAgeScreen(vm: AppViewModel, onBack: () -> Unit, onOpenDeta
                 }
             }
             WxButton(uiString(R.string.wx_how_its_calculated), onClick = onOpenDetails, filled = false)
+            WxWhoopCalibrationCard(vm, onDone = { reload++ })
         }
     }
 }
@@ -200,5 +203,42 @@ private fun WxAgeBlob(modifier: Modifier) {
             val p = Offset((c.x + d * cos(a)).toFloat(), (c.y + d * sin(a)).toFloat())
             drawCircle(Wx.recoveryHigh.copy(alpha = 0.35f + (i % 5) * 0.1f), (1 + i % 3).dp.toPx() * 0.8f, p)
         }
+    }
+}
+
+/**
+ * Fork: calibrate the level of Fitness Age and VO2max to the wearer's WHOOP weeks. One line per week,
+ * as WHOOP shows it ("05/7 - 11/7: 38,5 en 53"). Kept on the phone only.
+ */
+@Composable
+private fun WxWhoopCalibrationCard(vm: AppViewModel, onDone: () -> Unit) {
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
+    var text by remember { mutableStateOf(vm.fitnessWhoopRefs()) }
+    var result by remember { mutableStateOf<String?>(null) }
+    var running by remember { mutableStateOf(false) }
+    WxCard {
+        WxCardHeader(uiString(R.string.wx_fa_calibrate))
+        Spacer(Modifier.height(6.dp))
+        Text(uiString(R.string.wx_fa_calibrate_intro), style = WxType.caption, color = Wx.textMuted)
+        Spacer(Modifier.height(10.dp))
+        androidx.compose.material3.OutlinedTextField(
+            value = text, onValueChange = { text = it }, minLines = 3,
+            placeholder = { Text("05/7 - 11/7: 38,5 en 53", color = Wx.textDim) },
+            colors = androidx.compose.material3.OutlinedTextFieldDefaults.colors(
+                focusedTextColor = Wx.text, unfocusedTextColor = Wx.text,
+                focusedBorderColor = Wx.effort, unfocusedBorderColor = Wx.lineStrong, cursorColor = Wx.effort),
+            modifier = Modifier.fillMaxWidth(),
+        )
+        Spacer(Modifier.height(10.dp))
+        WxButton(uiString(if (running) R.string.wx_icu_syncing else R.string.wx_fa_calibrate_run), onClick = {
+            if (running || text.isBlank()) return@WxButton
+            running = true
+            scope.launch {
+                result = runCatching { vm.calibrateFitnessToWhoop(text) }.getOrElse { it.message ?: it.javaClass.simpleName }
+                running = false
+                onDone()
+            }
+        })
+        result?.let { Spacer(Modifier.height(8.dp)); Text(it, style = WxType.caption, color = Wx.textSoft) }
     }
 }

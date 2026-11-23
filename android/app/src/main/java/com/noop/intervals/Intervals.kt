@@ -134,7 +134,10 @@ suspend fun IntervalsStore.streams(ctx: Context, activityId: String): Map<String
     IntervalsParse.streams(json)
 }
 
-/** One sync: activities of the last 180 days, planned workouts two weeks back and four ahead, fitness. */
+/** How far back activities are synced: a year and a bit, so Fitness Age's activity term covers the history. */
+const val ACTIVITY_DAYS = 400L
+
+/** One sync: activities of the last 400 days, planned workouts two weeks back and four ahead, fitness. */
 object IntervalsSync {
     data class Status(val running: Boolean = false, val error: String? = null, val lastSync: Long = 0L,
                       val activities: Int = 0, val planned: Int = 0)
@@ -163,11 +166,12 @@ object IntervalsSync {
         val client = IntervalsClient(IntervalsKeyStore.athleteId(ctx), key)
         val today = LocalDate.now()
         val result = runCatching {
-            val acts = client.activities(today.minusDays(180), today)
+            val acts = client.activities(today.minusDays(ACTIVITY_DAYS), today)
             val events = client.events(today.minusDays(14), today.plusDays(28))
             val well = client.wellness(today.minusDays(120), today.plusDays(28))
             IntervalsStore.write(ctx, "events.json", events)
             IntervalsStore.write(ctx, "wellness.json", well)
+            IntervalsStore.write(ctx, "activities_from", today.minusDays(ACTIVITY_DAYS).toString())
             IntervalsStore.write(ctx, "activities.json", acts) // last: its time stamps the sync
         }
         val err = result.exceptionOrNull()?.let { e ->

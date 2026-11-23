@@ -70,6 +70,9 @@
     <string name="wx_effort_in_range">Dentro do intervalo alvo de hoje.</string>
     <string name="wx_effort_sentence_empty">Um objetivo aparece quando a recuperação for calculada.</string>
     <string name="wx_elevation">Desnível</string>
+    <string name="wx_fa_calibrate">Calibrar com o WHOOP</string>
+    <string name="wx_fa_calibrate_intro">Escreve a idade e o VO2max do WHOOP de algumas semanas, uma linha por semana, como o WHOOP os mostra: 05/7 - 11/7: 38,5 en 53. O NOOP compara-os com o seu próprio valor dessas semanas e desloca toda a série pela diferença mediana. Fica apenas neste telemóvel.</string>
+    <string name="wx_fa_calibrate_run">Calibrar e recalcular o histórico</string>
     <string name="wx_fatigue">Fadiga</string>
     <string name="wx_fitness">Condição</string>
     <string name="wx_fitness_age_not_ready">Ainda sem idade física. Precisa de algumas semanas de FC em repouso e atividade; veja abaixo como é calculada.</string>
