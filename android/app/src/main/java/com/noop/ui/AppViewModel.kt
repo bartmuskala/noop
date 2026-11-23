@@ -1218,6 +1218,14 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 )
             }.onFailure { if (it is kotlin.coroutines.cancellation.CancellationException) throw it }
             if (NoopPrefs.effortRescoreDone(appContext)) NoopPrefs.of(appContext).edit().putBoolean(FORK_RESCORE_KEY, true).apply()
+            // Fork: once the history carries today's definitions, rebuild every week's Fitness Age on them.
+            if (NoopPrefs.of(appContext).getBoolean(FORK_RESCORE_KEY, false) && !NoopPrefs.of(appContext).getBoolean(FORK_FA_BACKFILL_KEY, false)) {
+                runCatching {
+                    val weeks = IntelligenceEngine.backfillFitnessAgeHistory(repository, currentProfile(), deviceId)
+                    NoopPrefs.of(appContext).edit().putBoolean(FORK_FA_BACKFILL_KEY, true).apply()
+                    ble.externalLog("Fitness Age history rebuilt: $weeks weeks on the current resting-HR and activity rules")
+                }.onFailure { if (it is kotlin.coroutines.cancellation.CancellationException) throw it }
+            }
             while (isActive) {
                 // #547 RE-POLLUTION: a sync since the last tick may have flagged a re-heal (its ingest gate
                 // dropped bad-clock records). Re-run the purge BEFORE this tick's rescore so the affected days
@@ -3590,3 +3598,4 @@ internal const val KEY_WHOLE_NIGHT_RHR = "wx.rhr.wholeNightMean"
 private const val FORK_CALIBRATED_KEY = "wx.effort.calibrated.v1"
 private const val FORK_RESCORE_KEY = "wx.history.rescored.v1"
 private const val FORK_VITALS_KEY = "wx.vitals.calibrated.v1"
+private const val FORK_FA_BACKFILL_KEY = "wx.fitnessAge.backfilled.v1"

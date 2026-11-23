@@ -2771,6 +2771,37 @@ object IntelligenceEngine {
      *  ([fitnessAgeRows]) and the same date/window logic as the recompute pass, so it reads exactly what the
      *  readiness card shows. Light + connection-independent (stored data only), so it works even when the
      *  strap is offline. Returns true if a value was written. */
+    /**
+     * Fork: recompute the WHOLE weekly Fitness Age (and VO2max) history from the persisted days, with
+     * the same rules the current week uses: today's resting-HR definition (the history is rescored
+     * with it) and the 28-day activity window. Without it, weeks scored before a change in either keep
+     * their old basis and the series steps at the change rather than tracking the wearer. Returns the
+     * number of weeks written.
+     */
+    suspend fun backfillFitnessAgeHistory(repo: WhoopRepository, profile: UserProfile, importedDeviceId: String): Int {
+        val computedId = importedDeviceId + "-noop"
+        val merged = repo.daysMerged(importedDeviceId).sortedBy { it.day }
+        if (merged.size < 7) return 0
+        val first = java.time.LocalDate.parse(merged.first().day)
+        val last = java.time.LocalDate.parse(merged.last().day)
+        var sat = java.time.LocalDate.parse(saturdayKeyOnOrBefore(first.plusDays(6).toString()))
+        val out = ArrayList<MetricSeriesRow>()
+        while (!sat.isAfter(last)) {
+            val key = sat.toString()
+            val gate = merged.filter { it.day <= key && it.day > sat.minusDays(7).toString() }
+            val activity = merged.filter { it.day <= key && it.day > sat.minusDays(28).toString() }
+            out += fitnessAgeRows(gate, profile, computedId, key, activityDays = activity)
+            sat = sat.plusDays(7)
+        }
+        if (out.isNotEmpty()) {
+            for (chunk in out.chunked(200)) {
+                repo.upsertMetricSeriesWithProvenance(rows = chunk,
+                    provenance = chunk.filter { it.key == "vo2max_est" }.flatMap { vo2MaxProvenance(listOf(it), profile.waistCm, computedId) })
+            }
+        }
+        return out.count { it.key == "fitness_age" }
+    }
+
     suspend fun recomputeFitnessAgeOnly(
         repo: WhoopRepository, profile: UserProfile, importedDeviceId: String, maxDays: Int = 21,
     ): Boolean {

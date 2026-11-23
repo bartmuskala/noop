@@ -80,15 +80,19 @@ internal fun WxStressScreen(vm: AppViewModel, onBack: () -> Unit, onBreathe: () 
             runCatching { wxStressHours(vm, today, personal) }.getOrDefault(emptyList())
         }
     }
-    var computedDaily by remember { mutableStateOf<Map<String, Double>>(emptyMap()) }
+    // The last week's daily means, shown at once from the phone's cache; only days missing from it, and
+    // yesterday (its heart rate can still arrive), are recomputed.
+    var computedDaily by remember { mutableStateOf(WxStressDailyCache.read(context, personal)) }
     LaunchedEffect(Unit) {
         computedDaily = withContext(Dispatchers.Default) {
-            val out = HashMap<String, Double>()
+            val out = HashMap(WxStressDailyCache.read(context, personal))
             for (back in 1L..6L) {
                 val d = today.minusDays(back)
+                if (back > 1 && out.containsKey(d.toString())) continue
                 runCatching { wxStressHours(vm, d, personal) }.getOrNull()
                     ?.mapNotNull { it.level }?.takeIf { it.isNotEmpty() }?.average()?.let { out[d.toString()] = it }
             }
+            WxStressDailyCache.write(context, personal, out, keepFrom = today.minusDays(30))
             out
         }
     }
@@ -250,5 +254,19 @@ private fun WxStressCurve(hours: List<DaytimeStress.HourPoint>, description: Str
             drawText(t, topLeft = Offset((x(h) - t.size.width / 2f).coerceIn(0f, w - t.size.width), size.height - t.size.height))
             h += step
         }
+    }
+}
+
+/** Daily stress means per day, kept on the phone (fork). Versioned with the scorer so a change rescales. */
+internal object WxStressDailyCache {
+    private fun key(personal: Boolean) = "wx.stress.daily.v2." + (if (personal) "p" else "d")
+    fun read(ctx: android.content.Context, personal: Boolean): Map<String, Double> = runCatching {
+        val o = org.json.JSONObject(NoopPrefs.of(ctx).getString(key(personal), "{}") ?: "{}")
+        o.keys().asSequence().associateWith { o.getDouble(it) }
+    }.getOrDefault(emptyMap())
+    fun write(ctx: android.content.Context, personal: Boolean, m: Map<String, Double>, keepFrom: java.time.LocalDate) {
+        val o = org.json.JSONObject()
+        m.filterKeys { it >= keepFrom.toString() }.forEach { (k, v) -> o.put(k, v) }
+        NoopPrefs.of(ctx).edit().putString(key(personal), o.toString()).apply()
     }
 }

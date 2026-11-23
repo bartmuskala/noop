@@ -66,6 +66,9 @@ internal fun WxWorkoutCalendar(
     val zone = ZoneId.systemDefault()
     val today = LocalDate.now()
     val firstMonday = today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)).minusWeeks(4)
+    // Next week as an extra row only when something is planned in it.
+    val nextMonday = firstMonday.plusWeeks(5)
+    val weeks = if (planned.keys.any { it >= nextMonday.toString() && it < nextMonday.plusWeeks(1).toString() }) 6 else 5
     val byDay = rows.groupBy { Instant.ofEpochSecond(it.startTs).atZone(zone).toLocalDate() }
     WxCard(padding = 16.dp) {
         WxCardHeader(uiString(R.string.wx_last_5_weeks), uiString(R.string.wx_dot_effort))
@@ -77,7 +80,7 @@ internal fun WxWorkoutCalendar(
                     textAlign = TextAlign.Center, modifier = Modifier.weight(1f))
             }
         }
-        for (w in 0 until 5) {
+        for (w in 0 until weeks) {
             Row(Modifier.fillMaxWidth()) {
                 for (i in 0 until 7) {
                     val d = firstMonday.plusDays((w * 7 + i).toLong())
