@@ -88,4 +88,11 @@ class IntervalsParseTest {
         assertEquals(225.0, a.normWatts!!, 1e-9)
         assertEquals(0.865, a.intensityFactor!!, 1e-9)
     }
+
+    @Test
+    fun hrZonesSplitAtTenPercentOfMax() {
+        // Max 200: 90 bpm (45 %) is below the zones, 110 Z1, 150 Z3, 195 Z5.
+        val z = IntervalsParse.hrZoneSeconds(listOf(90.0, 110.0, 150.0, 195.0), listOf(0.0, 1.0, 2.0, 3.0), 200.0)!!
+        assertEquals(listOf(1.0, 0.0, 1.0, 0.0, 1.0), z)
+    }
 }

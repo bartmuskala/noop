@@ -1,6 +1,7 @@
 package com.noop.ui
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.clickable
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
@@ -202,26 +203,68 @@ internal fun WxIcuActivityDetail(vm: AppViewModel, a: IntervalsParse.Activity, r
                     WxStat(uiString(R.string.wx_icu_cadence), a.avgCadence?.let { "${it.roundToInt()} rpm" } ?: "–", Modifier.weight(1f))
                     WxStat(uiString(R.string.wx_avg_hr), a.avgHr?.roundToInt()?.toString() ?: "–", Modifier.weight(1f))
                 }
-                val ftp = a.ftp
-                val zones = if (watts != null && ftp != null) IntervalsParse.powerZoneSeconds(watts, st["time"].orEmpty(), ftp) else null
-                if (zones != null && zones.sum() > 0) {
-                    Spacer(Modifier.height(14.dp))
-                    WxLabel(uiString(R.string.wx_icu_power_zones))
-                    Spacer(Modifier.height(8.dp))
-                    val colors = listOf(Wx.textDim, Wx.zone1, Wx.zone2, Wx.zone3, Wx.zone4, Wx.zone5, Wx.heart)
-                    val total = zones.sum()
-                    zones.forEachIndexed { i, sec ->
-                        Row(Modifier.fillMaxWidth().padding(vertical = 3.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Text("Z${i + 1}", style = WxType.caption, color = Wx.textMuted, modifier = Modifier.width(28.dp))
-                            Box(Modifier.weight(1f).height(10.dp).clip(RoundedCornerShape(5.dp)).background(Wx.cardRaised)) {
-                                Box(Modifier.fillMaxWidth((sec / total).toFloat().coerceIn(0f, 1f)).height(10.dp).clip(RoundedCornerShape(5.dp)).background(colors[i]))
-                            }
-                            Text(wxHoursMinutes(sec / 60.0), style = WxType.caption, color = Wx.textSoft, modifier = Modifier.width(56.dp).padding(start = 8.dp))
-                        }
-                    }
-                }
             }
         }
+        WxIcuZonesCard(watts, hr, st?.get("time").orEmpty(), a.ftp)
+    }
+}
+
+/**
+ * Time in zones for one session, power (Coggan's seven, against the session's FTP) or heart rate (five,
+ * 50–100 % of max HR in 10 % steps, the same split as NOOP's workout zones), highest zone on top. Power
+ * is shown first when the session has it.
+ */
+@Composable
+private fun WxIcuZonesCard(watts: List<Double?>?, hr: List<Double?>?, time: List<Double?>, ftp: Double?) {
+    val ctx = LocalContext.current
+    val hrMax = remember {
+        val p = ProfileStore.from(ctx)
+        com.noop.analytics.StrainScorer.effortHRmax(p.hrMaxOverride.takeIf { it > 0 }?.toDouble(), p.age.toDouble()).first
+            ?: com.noop.analytics.StrainScorer.defaultMaxHR().toDouble()
+    }
+    val power = remember(watts, ftp) { if (watts != null && ftp != null) IntervalsParse.powerZoneSeconds(watts, time, ftp)?.takeIf { it.sum() > 0 } else null }
+    val heart = remember(hr, hrMax) { hr?.let { IntervalsParse.hrZoneSeconds(it, time, hrMax) }?.takeIf { it.sum() > 0 } }
+    if (power == null && heart == null) return
+    var showPower by remember(power) { mutableStateOf(power != null) }
+    WxCard(padding = 16.dp) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            WxLabel(uiString(R.string.wx_zones), Modifier.weight(1f))
+            if (power != null && heart != null) {
+                WxZoneToggle(uiString(R.string.wx_icu_power), showPower) { showPower = true }
+                Spacer(Modifier.width(6.dp))
+                WxZoneToggle("HR", !showPower) { showPower = false }
+            }
+        }
+        Text(
+            if (showPower && power != null) "FTP ${ftp?.roundToInt()} W" else uiString(R.string.wx_pct_of_max, hrMax.roundToInt()),
+            style = WxType.caption, color = Wx.textMuted,
+        )
+        Spacer(Modifier.height(10.dp))
+        val zones = if (showPower && power != null) power else heart!!
+        val colors = if (zones.size == 7) listOf(Wx.textDim, Wx.zone1, Wx.zone2, Wx.zone3, Wx.zone4, Wx.zone5, Wx.heart)
+            else listOf(Wx.zone1, Wx.zone2, Wx.zone3, Wx.zone4, Wx.zone5)
+        val total = zones.sum()
+        // Highest zone first.
+        for (i in zones.indices.reversed()) {
+            val sec = zones[i]
+            Row(Modifier.fillMaxWidth().padding(vertical = 3.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text("Z${i + 1}", style = WxType.caption, color = Wx.textMuted, modifier = Modifier.width(28.dp))
+                Box(Modifier.weight(1f).height(10.dp).clip(RoundedCornerShape(5.dp)).background(Wx.cardRaised)) {
+                    Box(Modifier.fillMaxWidth((sec / total).toFloat().coerceIn(0f, 1f)).height(10.dp).clip(RoundedCornerShape(5.dp)).background(colors[i]))
+                }
+                Text(wxHoursMinutes(sec / 60.0), style = WxType.caption, color = Wx.textSoft, modifier = Modifier.width(56.dp).padding(start = 8.dp))
+            }
+        }
+    }
+}
+
+@Composable
+private fun WxZoneToggle(label: String, selected: Boolean, onClick: () -> Unit) {
+    Box(
+        Modifier.clip(RoundedCornerShape(8.dp)).background(if (selected) Wx.text else Wx.cardRaised)
+            .clickable(onClick = onClick).padding(horizontal = 10.dp, vertical = 4.dp),
+    ) {
+        Text(label, style = WxType.caption.copy(fontSize = 12.sp), color = if (selected) Wx.canvas else Wx.textSoft)
     }
 }
 

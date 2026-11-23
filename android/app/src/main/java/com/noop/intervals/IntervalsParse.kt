@@ -146,6 +146,21 @@ object IntervalsParse {
         return z.toList()
     }
 
+    /** Seconds in five heart-rate zones (50/60/70/80/90–100 % of [hrMax]); time below 50 % is not counted. */
+    fun hrZoneSeconds(hr: List<Double?>, times: List<Double?>, hrMax: Double): List<Double>? {
+        if (hrMax <= 0 || hr.size < 2) return null
+        val z = DoubleArray(5)
+        for (i in hr.indices) {
+            val b = hr[i] ?: continue
+            val dt = if (i + 1 < times.size && times[i] != null && times[i + 1] != null)
+                (times[i + 1]!! - times[i]!!).coerceIn(0.0, 5.0) else 1.0
+            val pct = b / hrMax
+            if (pct < 0.5) continue
+            z[((pct - 0.5) / 0.1).toInt().coerceIn(0, 4)] += dt
+        }
+        return z.toList()
+    }
+
     data class Wellness(val day: String, val ctl: Double?, val atl: Double?, val rampRate: Double?)
 
     private fun JSONObject.str(k: String): String? = if (has(k) && !isNull(k)) optString(k).takeIf { it.isNotBlank() } else null
