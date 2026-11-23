@@ -206,6 +206,8 @@ internal enum class Destination(
         Icons.Filled.Tune,
     ),
     TestCentre("test_centre", R.string.nav_test_centre, Icons.Filled.BugReport),
+    // Fork: the opt-in intervals.icu link (read-only, the wearer's own API key).
+    IntervalsIcu("intervals_icu", R.string.wx_intervals_icu, Icons.Filled.CloudSync),
     GroundTruthCollector("ground_truth_collector", R.string.ground_truth_title, Icons.Filled.Sensors),
 
     // Wx redesign: the three-tab score detail a Today dial opens, Trends opened on one metric, and the
@@ -259,7 +261,7 @@ internal val drawerGroups: List<DrawerGroup> = listOf(
         Destination.Coach, Destination.Live, Destination.Stress, Destination.InsightsHub, Destination.FitnessAge,
     ), defaultExpanded = true),
     DrawerGroup("Data", R.string.more_group_data, listOf(
-        Destination.Devices, Destination.DataSources, Destination.BackupSync,
+        Destination.Devices, Destination.DataSources, Destination.IntervalsIcu, Destination.BackupSync,
     ), defaultExpanded = true),
     DrawerGroup("App", R.string.more_group_app, listOf(
         Destination.SmartAlarm, Destination.Notifications, Destination.Settings, Destination.TestCentre,
@@ -819,6 +821,9 @@ fun AppRoot(viewModel: AppViewModel = viewModel()) {
                     )
                 }
                 composable(Destination.SelfHostedPush.route) { SelfHostedPushScreen() }
+                composable(Destination.IntervalsIcu.route) {
+                    WxIntervalsScreen(onBack = { nav.popBackStack() })
+                }
                 composable(Destination.TestCentre.route) {
                     TestCentreScreen(viewModel, onOpenGroundTruthCollector = {
                         nav.navigate(Destination.GroundTruthCollector.route)

@@ -71,6 +71,14 @@ internal fun WxWorkoutsScreen(vm: AppViewModel, onBack: (() -> Unit)?, onOpenFul
     val context = LocalContext.current
     val rows by vm.workouts.collectAsStateWithLifecycle()
     val days by vm.recentDays.collectAsStateWithLifecycle()
+    // intervals.icu (opt-in): synced at most hourly when this tab opens, read from the phone's cache.
+    val icuStatus by com.noop.intervals.IntervalsSync.status.collectAsStateWithLifecycle()
+    LaunchedEffect(Unit) { com.noop.intervals.IntervalsSync.syncIfStale(context) }
+    val icuOn = remember(icuStatus.lastSync) { com.noop.intervals.IntervalsKeyStore.enabled(context) }
+    val icuActs = remember(icuStatus.lastSync) { if (icuOn) com.noop.intervals.IntervalsStore.activities(context) else emptyList() }
+    val icuEvents = remember(icuStatus.lastSync) { if (icuOn) com.noop.intervals.IntervalsStore.events(context) else emptyList() }
+    val icuWellness = remember(icuStatus.lastSync) { if (icuOn) com.noop.intervals.IntervalsStore.wellness(context) else emptyList() }
+    var icuSel by remember { mutableStateOf<com.noop.intervals.IntervalsParse.Activity?>(null) }
     val effortScale = remember { UnitPrefs.effortScale(context) }
     val is24h = remember { android.text.format.DateFormat.is24HourFormat(context) }
     LaunchedEffect(Unit) {
@@ -92,6 +100,11 @@ internal fun WxWorkoutsScreen(vm: AppViewModel, onBack: (() -> Unit)?, onOpenFul
     var showAll by remember { mutableStateOf(false) }
     val sorted = remember(rows) { rows.sortedByDescending { it.startTs } }
 
+    icuSel?.let { a ->
+        BackHandler { icuSel = null }
+        WxIcuActivityDetail(a, onBack = { icuSel = null })
+        return
+    }
     val sel = selected
     val leave: () -> Unit = { if (direct != null) onPop() else selected = null }
     if (sel != null) {
@@ -116,7 +129,8 @@ internal fun WxWorkoutsScreen(vm: AppViewModel, onBack: (() -> Unit)?, onOpenFul
         val weekAgo = System.currentTimeMillis() / 1000L - 7 * 86_400L
         val week = sorted.filter { it.startTs >= weekAgo }
         // Summary: the calendar, the week and the month, then fitness, fatigue and form.
-        WxWorkoutCalendar(sorted, effortScale, onOpen = { selected = it })
+        WxWorkoutCalendar(sorted, effortScale, onOpen = { selected = it },
+            planned = icuEvents.filter { it.isWorkout }.groupBy { it.day }.mapValues { (_, v) -> v.sumOf { it.load ?: 0.0 } })
         WxCard {
             WxCardHeader(uiString(R.string.wx_last_7_days))
             Spacer(Modifier.height(12.dp))
@@ -132,7 +146,10 @@ internal fun WxWorkoutsScreen(vm: AppViewModel, onBack: (() -> Unit)?, onOpenFul
             }
         }
         WxWorkoutTotals(sorted, effortScale)
-        WxTrainingLoadCard(days)
+        if (icuOn) WxPlannedCard(icuEvents, is24h)
+        // With intervals.icu connected its own fitness model (and the plan's projection) is shown;
+        // otherwise NOOP's, from the daily Effort. Never both, so two fitness numbers cannot disagree.
+        if (icuWellness.count { it.ctl != null } >= 2) WxIcuFitnessCard(icuWellness, icuEvents) else WxTrainingLoadCard(days)
         WxButton(uiString(R.string.wx_start_workout), onClick = { showStart = true })
         if (sorted.isEmpty()) {
             WxCard { Text(uiString(R.string.wx_no_workouts), style = WxType.body, color = Wx.textSoft) }
@@ -155,6 +172,7 @@ internal fun WxWorkoutsScreen(vm: AppViewModel, onBack: (() -> Unit)?, onOpenFul
                 }
             }
         }
+        WxIcuActivitiesCard(icuActs, onOpen = { icuSel = it })
         WxLinkRow(uiString(R.string.wx_manage_workouts), onOpenFull)
     }
     if (showStart) StartWorkoutSheet(vm, onDismiss = { showStart = false })
@@ -258,6 +276,11 @@ private fun WxWorkoutDetail(
                 else -> WxSessionChart(d.points, w.startTs, w.endTs, uiString(R.string.wx_heart_rate), hrMax)
             }
         }
+        // The same session in intervals.icu, when connected: its route on the map.
+        val icuSame = remember(w.startTs) {
+            if (com.noop.intervals.IntervalsKeyStore.enabled(context)) icuMatch(com.noop.intervals.IntervalsStore.activities(context), w.startTs) else null
+        }
+        icuSame?.let { WxIcuRouteCard(it.id) }
 
         val zoneSeconds = data?.zoneSeconds ?: parseZonePercents(w.zonesJSON)?.map { it / 100.0 * wxDurationS(w) }
         if (zoneSeconds != null) {

@@ -51,6 +51,7 @@ internal val wxMoreItems: List<Pair<Destination, Color>> = listOf(
     Destination.FitnessAge to Wx.heart,
     Destination.Devices to Wx.effort,
     Destination.DataSources to Wx.recoveryHigh,
+    Destination.IntervalsIcu to Wx.effort,
     Destination.BackupSync to Wx.sleep,
     Destination.SmartAlarm to Wx.recoveryMid,
     Destination.Notifications to Wx.zone4,

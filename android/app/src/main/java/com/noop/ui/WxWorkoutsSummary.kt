@@ -2,6 +2,7 @@ package com.noop.ui
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -55,7 +56,13 @@ import kotlin.math.roundToInt
 
 /** Five weeks, Monday first, ending with this week; a dot per day sized by its hardest workout. */
 @Composable
-internal fun WxWorkoutCalendar(rows: List<WorkoutRow>, scale: EffortScale, onOpen: (WorkoutRow) -> Unit) {
+internal fun WxWorkoutCalendar(
+    rows: List<WorkoutRow>,
+    scale: EffortScale,
+    onOpen: (WorkoutRow) -> Unit,
+    /** Planned load per day from intervals.icu, drawn as an open ring on days still to come. */
+    planned: Map<String, Double> = emptyMap(),
+) {
     val zone = ZoneId.systemDefault()
     val today = LocalDate.now()
     val firstMonday = today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)).minusWeeks(4)
@@ -91,6 +98,12 @@ internal fun WxWorkoutCalendar(rows: List<WorkoutRow>, scale: EffortScale, onOpe
                                     Wx.effort.copy(alpha = if (d == today) 1f else 0.85f)))
                                 if (sizeDp > 24) Text(e21?.let { UnitFormatter.effortDisplay(top.strain!!, scale) } ?: "",
                                     style = WxType.caption.copy(fontSize = 10.sp), color = Wx.canvas)
+                            }
+                            !d.isBefore(today) && planned.containsKey(d.toString()) -> {
+                                // An open ring for a planned session; bigger for a heavier plan (load 150 = full).
+                                val sizeDp = 12 + 20 * kotlin.math.sqrt(((planned[d.toString()] ?: 0.0) / 150.0).coerceIn(0.05, 1.0))
+                                Box(Modifier.size(sizeDp.dp).clip(CircleShape)
+                                    .border(2.dp, Wx.effort.copy(alpha = 0.7f), CircleShape))
                             }
                             else -> Box(Modifier.size(5.dp).clip(CircleShape).background(
                                 if (future) Wx.cardRaised else if (d == today) Wx.textSoft else Wx.lineStrong))
