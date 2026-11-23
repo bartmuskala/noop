@@ -67,7 +67,7 @@ internal object WxWorkoutNav {
 }
 
 @Composable
-internal fun WxWorkoutsScreen(vm: AppViewModel, onBack: (() -> Unit)?, onOpenFull: () -> Unit, onPop: () -> Unit = {}) {
+internal fun WxWorkoutsScreen(vm: AppViewModel, onBack: (() -> Unit)?, onOpenFull: () -> Unit, onPop: () -> Unit = {}, onOpenIntervals: () -> Unit = {}) {
     val context = LocalContext.current
     // Fork: one list, intervals.icu's when connected.
     val rows = rememberWxSessions(vm)
@@ -146,6 +146,14 @@ internal fun WxWorkoutsScreen(vm: AppViewModel, onBack: (() -> Unit)?, onOpenFul
         val weekAgo = System.currentTimeMillis() / 1000L - 7 * 86_400L
         val week = sorted.filter { it.startTs >= weekAgo }
         // Summary: the calendar, the week and the month, then fitness, fatigue and form.
+        // The TrainingPeaks bridge stopped because its cookie expired: say so here, where the plan is missing.
+        val tpLine = remember(icuStatus.lastSync) { com.noop.intervals.TpKeyStore.lastLine(context) }
+        if (com.noop.intervals.TpKeyStore.cookie(context) != null && tpLine?.contains("cookie", ignoreCase = true) == true) {
+            WxCard(onClick = { onOpenIntervals() }) {
+                Text(uiString(R.string.wx_tp_expired), style = WxType.bodyStrong.copy(fontSize = 14.sp), color = Wx.recoveryLow)
+                Text(tpLine, style = WxType.caption, color = Wx.textMuted)
+            }
+        }
         // Today's plan first: what it is and whether it has been ridden.
         if (icuOn) WxTodayPlanCard(icuEvents, icuActs, onOpen = { planSel = it })
         WxWorkoutCalendar(sorted, effortScale, onOpen = { selected = it },
@@ -165,7 +173,6 @@ internal fun WxWorkoutsScreen(vm: AppViewModel, onBack: (() -> Unit)?, onOpenFul
             }
         }
         WxWorkoutTotals(sorted, effortScale)
-        if (icuOn) WxPlannedCard(icuEvents, is24h, onOpen = { planSel = it })
         // With intervals.icu connected its own fitness model (and the plan's projection) is shown;
         // otherwise NOOP's, from the daily Effort. Never both, so two fitness numbers cannot disagree.
         if (icuWellness.count { it.ctl != null } >= 2) WxIcuFitnessCard(icuWellness, icuEvents) else WxTrainingLoadCard(days)

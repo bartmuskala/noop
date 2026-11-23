@@ -730,7 +730,8 @@ fun AppRoot(viewModel: AppViewModel = viewModel()) {
                 composable(Destination.Workouts.route) {
                     WxWorkoutsScreen(viewModel, onBack = null,
                         onOpenFull = { nav.navigate(Destination.WorkoutsClassic.route) },
-                        onPop = { nav.popBackStack() })
+                        onPop = { nav.popBackStack() },
+                        onOpenIntervals = { nav.navigate(Destination.IntervalsIcu.route) })
                 }
                 composable(Destination.WorkoutsClassic.route) { WorkoutsScreen(viewModel) }
                 composable(Destination.Intelligence.route) { IntelligenceScreen(viewModel) }

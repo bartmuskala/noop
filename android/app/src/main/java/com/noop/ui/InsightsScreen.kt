@@ -240,7 +240,7 @@ fun InsightsScreen(vm: AppViewModel, onOpenInsightsHub: () -> Unit = {}) {
         behaviours = byBehaviour.mapValues { it.value.toSet() }
         controls = controlsByBehaviour.mapValues { it.value.toSet() }
         numericJournalSeries = numericByBehaviour.mapValues { it.value.toMap() }
-        importedQuestions = imported.map { it.question }.distinct()
+        importedQuestions = imported.map { canonicalJournalQuestion(it.question) }.distinct()
         val key = journalDayKey(dayOffset)
         var answers = native.filter { it.day == key }.associate { it.question to it.answeredYes }
         // #322: the selected day's numeric values (native-only; imported WHOOP rows carry none).

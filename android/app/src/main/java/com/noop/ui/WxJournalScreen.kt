@@ -81,7 +81,7 @@ internal suspend fun wxLoadJournalHistory(vm: AppViewModel): WxJournalHistory {
     val yes = HashMap<String, MutableSet<String>>()
     val no = HashMap<String, MutableSet<String>>()
     for (e in merged) (if (e.answeredYes) yes else no).getOrPut(e.question) { mutableSetOf() }.add(e.day)
-    return WxJournalHistory(native, yes, no, imported.map { it.question }.distinct())
+    return WxJournalHistory(native, yes, no, imported.map { canonicalJournalQuestion(it.question) }.distinct())
 }
 
 /** The outcomes the effects can be read against, matching the classic screen's outcome set. */

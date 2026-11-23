@@ -88,6 +88,33 @@ internal fun normJournalKey(s: String): String =
         }
     }.trim().lowercase()
 
+/**
+ * Fork: the starter question an imported WHOOP question asks the same thing as, so the two phrasings
+ * (e.g. WHOOP's "Have any alcoholic drinks?" and NOOP's "Did you drink any alcohol?") are logged and
+ * evaluated as ONE behaviour. Matched on the meaning-carrying words, conservatively: a question that
+ * only overlaps in part (WHOOP's "any caffeine" against "caffeine late in the day") stays separate.
+ * A question that matches nothing is returned unchanged.
+ */
+internal fun canonicalJournalQuestion(q: String): String {
+    val k = normJournalKey(q)
+    fun has(vararg w: String) = w.all { k.contains(it) }
+    fun any(vararg w: String) = w.any { k.contains(it) }
+    val starter = when {
+        any("alcohol") -> "Did you drink any alcohol?"
+        has("bedtime") && any("eat", "ate ", "food", "meal") -> "Did you eat close to bedtime?"
+        has("caffeine") && any("late", "afternoon", "evening") -> "Did you have caffeine late in the day?"
+        has("screen") && has("bed") -> "Did you view a screen in bed?"
+        any("stress") && !any("manag", "reduc", "relie") -> "Did you feel stressed?"
+        has("sauna") -> "Did you use a sauna?"
+        has("share") && has("bed") -> "Did you share your bed?"
+        any("sick", " ill") -> "Did you feel sick or ill?"
+        has("magnesium") -> "Did you take magnesium?"
+        has("read") && has("bed") -> "Did you read before bed?"
+        else -> null
+    }
+    return starter ?: q
+}
+
 /** Union of imported + native entries; on a (day, question) collision the NATIVE row wins (the
  *  in-app answer is the user's most recent explicit action and stays editable). */
 internal fun mergeJournalEntries(
@@ -95,7 +122,8 @@ internal fun mergeJournalEntries(
     native: List<JournalEntry>,
 ): List<JournalEntry> {
     val byKey = LinkedHashMap<Pair<String, String>, JournalEntry>()
-    for (e in imported) byKey[e.day to e.question] = e
+    // Fork: an imported WHOOP phrasing joins the starter question it means (canonicalJournalQuestion).
+    for (e in imported) canonicalJournalQuestion(e.question).let { q -> byKey[e.day to q] = if (q == e.question) e else e.copy(question = q) }
     for (e in native) byKey[e.day to e.question] = e
     return byKey.values.sortedWith(compareBy({ it.day }, { it.question }))
 }

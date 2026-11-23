@@ -283,6 +283,7 @@
     <string name="wx_top_sport">Most done</string>
     <string name="wx_tp_connect">Save and sync the plan</string>
     <string name="wx_tp_cookie">TrainingPeaks cookie (Production_tpAuth)</string>
+    <string name="wx_tp_expired">TrainingPeaks plan not synced: paste a fresh cookie</string>
     <string name="wx_tp_intro">Copies your planned TrainingPeaks workouts for the next 14 days into your intervals.icu calendar, with their structure and targets in watts, bpm or pace. Runs when you open the app, at most every three hours. Only workouts it created are changed or removed.</string>
     <string name="wx_tp_last">Last plan sync %1$s</string>
     <string name="wx_tp_remove">Remove the TrainingPeaks cookie</string>

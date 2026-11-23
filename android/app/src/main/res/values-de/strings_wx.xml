@@ -283,6 +283,7 @@
     <string name="wx_top_sport">Am häufigsten</string>
     <string name="wx_tp_connect">Speichern und Plan synchronisieren</string>
     <string name="wx_tp_cookie">TrainingPeaks-Cookie (Production_tpAuth)</string>
+    <string name="wx_tp_expired">TrainingPeaks-Plan nicht synchronisiert: neuen Cookie einfügen</string>
     <string name="wx_tp_intro">Kopiert deine geplanten TrainingPeaks-Workouts der nächsten 14 Tage in deinen intervals.icu-Kalender, mit Struktur und Zielen in Watt, bpm oder Pace. Läuft beim Öffnen der App, höchstens alle drei Stunden. Nur selbst erstellte Workouts werden geändert oder entfernt.</string>
     <string name="wx_tp_last">Letzte Plan-Synchronisierung %1$s</string>
     <string name="wx_tp_remove">TrainingPeaks-Cookie entfernen</string>

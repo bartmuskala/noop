@@ -283,6 +283,7 @@
     <string name="wx_top_sport">Mais frequente</string>
     <string name="wx_tp_connect">Guardar e sincronizar o plano</string>
     <string name="wx_tp_cookie">Cookie do TrainingPeaks (Production_tpAuth)</string>
+    <string name="wx_tp_expired">Plano TrainingPeaks não sincronizado: cola um cookie novo</string>
     <string name="wx_tp_intro">Copia os treinos planeados do TrainingPeaks dos próximos 14 dias para o teu calendário intervals.icu, com a estrutura e os alvos em watts, bpm ou ritmo. Corre ao abrir a app, no máximo de três em três horas. Só altera ou remove o que criou.</string>
     <string name="wx_tp_last">Última sincronização do plano %1$s</string>
     <string name="wx_tp_remove">Remover o cookie do TrainingPeaks</string>
