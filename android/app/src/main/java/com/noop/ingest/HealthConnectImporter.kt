@@ -529,7 +529,9 @@ object HealthConnectImporter {
                 }
             }
             // --- Exercise sessions -> WorkoutRow(source="health-connect") ---
-            readSelected(ExerciseSessionRecord::class) { r ->
+            // Fork: with the intervals.icu link on, workouts come from intervals.icu only; Health
+            // Connect still supplies steps, calories and the rest of this category.
+            if (!com.noop.intervals.IntervalsKeyStore.enabled(context)) readSelected(ExerciseSessionRecord::class) { r ->
                 val startS = r.startTime.epochSecond
                 val endS = r.endTime.epochSecond
                 // #1205: read the GPS route when the provider attached one. Health Connect gates

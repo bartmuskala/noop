@@ -102,8 +102,11 @@ internal fun WxWorkoutCalendar(
                             !d.isBefore(today) && planned.containsKey(d.toString()) -> {
                                 // An open ring for a planned session; bigger for a heavier plan (load 150 = full).
                                 val sizeDp = 12 + 20 * kotlin.math.sqrt(((planned[d.toString()] ?: 0.0) / 150.0).coerceIn(0.05, 1.0))
-                                Box(Modifier.size(sizeDp.dp).clip(CircleShape)
-                                    .border(2.dp, Wx.effort.copy(alpha = 0.7f), CircleShape))
+                                // Dashed: planned, not ridden yet.
+                                Canvas(Modifier.size(sizeDp.dp)) {
+                                    drawCircle(Wx.effort.copy(alpha = 0.8f), radius = size.minDimension / 2 - 1.dp.toPx(),
+                                        style = Stroke(1.8.dp.toPx(), pathEffect = androidx.compose.ui.graphics.PathEffect.dashPathEffect(floatArrayOf(5f, 4f))))
+                                }
                             }
                             else -> Box(Modifier.size(5.dp).clip(CircleShape).background(
                                 if (future) Wx.cardRaised else if (d == today) Wx.textSoft else Wx.lineStrong))
@@ -111,6 +114,10 @@ internal fun WxWorkoutCalendar(
                     }
                 }
             }
+        }
+        if (planned.isNotEmpty()) {
+            Spacer(Modifier.height(6.dp))
+            Text(uiString(R.string.wx_cal_legend), style = WxType.caption.copy(fontSize = 11.sp), color = Wx.textMuted)
         }
     }
 }

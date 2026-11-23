@@ -154,6 +154,11 @@
         <package android:name="com.vivo.permissionmanager" />
         <package android:name="com.huawei.systemmanager" />
         <package android:name="com.meizu.safe" />
+        <!-- Fork: find the JOIN training app by its launcher name, to open it from a planned workout. -->
+        <intent>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.LAUNCHER" />
+        </intent>
     </queries>
 
     <application

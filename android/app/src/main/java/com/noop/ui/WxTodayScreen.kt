@@ -113,7 +113,8 @@ internal fun WxTodayScreen(vm: AppViewModel, onOpen: (WxTodayTarget) -> Unit) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val days by vm.recentDays.collectAsStateWithLifecycle()
-    val workouts by vm.workouts.collectAsStateWithLifecycle()
+    // Fork: intervals.icu's activities when connected, NOOP's workouts otherwise (one list everywhere).
+    val workouts = rememberWxSessions(vm)
     val nextWake = rememberWxNextWake(vm)
     var vo2max by remember { mutableStateOf<Double?>(null) }
     var fitnessAge by remember { mutableStateOf<Double?>(null) }
@@ -312,11 +313,25 @@ internal fun WxTodayScreen(vm: AppViewModel, onOpen: (WxTodayTarget) -> Unit) {
                 dayWorkouts.forEach { w ->
                     WxActivityRow(
                         accent = Wx.effort,
-                        title = wxSportName(w.sport),
+                        title = wxWorkoutTitle(w),
                         subtitle = wxWorkoutSubtitle(w, is24h),
                         trailing = w.strain?.let { UnitFormatter.effortDisplay(it, effortScale) } ?: "–",
                         onClick = { WxWorkoutNav.pending = WxWorkoutNav.key(w); onOpen(WxTodayTarget.Workouts) },
                     )
+                }
+                // Today's planned session from intervals.icu, until it has been ridden.
+                if (selectedDate == java.time.LocalDate.now()) {
+                    val ctxPlan = androidx.compose.ui.platform.LocalContext.current
+                    val plans = remember(workouts) { icuOpenPlansToday(ctxPlan) }
+                    plans.forEach { e ->
+                        WxActivityRow(
+                            accent = Wx.effort.copy(alpha = 0.45f),
+                            title = uiString(R.string.wx_icu_planned_title, e.name ?: uiString(R.string.wx_workout)),
+                            subtitle = listOf(uiString(R.string.wx_icu_not_ridden), icuPlanSubtitle(e)).filter { it.isNotBlank() }.joinToString(" · "),
+                            trailing = e.load?.let { uiString(R.string.wx_icu_load_value, it.roundToInt()) } ?: "",
+                            onClick = { WxWorkoutNav.pending = "plan:${e.id}"; onOpen(WxTodayTarget.Workouts) },
+                        )
+                    }
                 }
                 Spacer(Modifier.height(8.dp))
                 var syncing by remember { mutableStateOf(false) }
@@ -772,7 +787,13 @@ internal fun wxShortDate(d: LocalDate): String =
     d.format(DateTimeFormatter.ofPattern("EEE d MMM", Locale.getDefault()))
 
 internal fun wxSportName(sport: String): String =
-    sport.replace('_', ' ').lowercase(Locale.getDefault()).replaceFirstChar { it.titlecase(Locale.getDefault()) }
+    // "VirtualRide" and "virtual_ride" both read "Virtual ride".
+    sport.replace(Regex("(?<=[a-z])(?=[A-Z])"), " ").replace('_', ' ').lowercase(Locale.getDefault())
+        .replaceFirstChar { it.titlecase(Locale.getDefault()) }
+
+/** A workout's title: the session's own name for an intervals.icu ride, else its sport. */
+internal fun wxWorkoutTitle(w: WorkoutRow): String =
+    w.notes?.takeIf { w.source == ICU_SOURCE && it.isNotBlank() } ?: wxSportName(w.sport)
 
 private fun wxWorkoutSubtitle(w: WorkoutRow, is24h: Boolean): String {
     val zone = ZoneId.systemDefault()

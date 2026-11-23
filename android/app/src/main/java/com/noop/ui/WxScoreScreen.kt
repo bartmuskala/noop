@@ -73,7 +73,7 @@ internal fun WxScoreScreen(vm: AppViewModel, initial: WxScoreTab, initialOffset:
                            onOpenProfile: () -> Unit, onOpenMoves: () -> Unit = {}) {
     val context = LocalContext.current
     val days by vm.recentDays.collectAsStateWithLifecycle()
-    val workouts by vm.workouts.collectAsStateWithLifecycle()
+    val workouts = rememberWxSessions(vm)
     val effortScale = remember { UnitPrefs.effortScale(context) }
     val profile = remember { ProfileStore.from(context) }
     var tab by remember { mutableStateOf(initial) }
@@ -417,7 +417,7 @@ private fun WxEffortTab(
             dayWorkouts.forEach { w ->
                 val mins = ((w.durationS ?: (w.endTs - w.startTs).toDouble()) / 60.0)
                 WxActivityRow(
-                    accent = Wx.effort, title = wxSportName(w.sport),
+                    accent = Wx.effort, title = wxWorkoutTitle(w),
                     subtitle = listOfNotNull(wxHoursMinutes(mins), w.avgHr?.let { "$it avg" }, w.maxHr?.let { "$it max" }).joinToString(" · "),
                     trailing = w.strain?.let { UnitFormatter.effortDisplay(it, scale) } ?: "–",
                     onClick = { WxWorkoutNav.pending = WxWorkoutNav.key(w); onOpenWorkouts() },

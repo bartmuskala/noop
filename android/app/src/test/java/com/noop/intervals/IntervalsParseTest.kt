@@ -53,4 +53,39 @@ class IntervalsParseTest {
         assertEquals(48.0, p[0].third, 1e-9)           // 42 + (84 − 42) / 7
         assertEquals(43.0 - 43.0 / 42.0, p[1].second, 1e-9) // a rest day decays
     }
+
+    @Test
+    fun stepsFlattenRepeatsAndFormatTargets() {
+        val doc = """{"steps":[
+            {"duration":600,"power":{"units":"w","value":150,"max_value":180},"text":"Warm up"},
+            {"reps":3,"steps":[{"duration":300,"power":{"units":"%ftp","value":105}},{"duration":180,"hr":{"units":"bpm","value":120}}]},
+            {"duration":300}
+        ],"duration":2340}"""
+        val s = IntervalsParse.steps(doc)
+        assertEquals(4, s.size)
+        assertEquals("150–180 W", s[0].target)
+        assertEquals(165.0, s[0].level!!, 1e-9)
+        assertEquals(3, s[1].reps); assertTrue(s[1].firstOfBlock); assertEquals(2, s[1].blockSize)
+        assertEquals("105% FTP", s[1].target)
+        assertEquals("120 bpm", s[2].target); assertNull(s[2].level)
+        assertNull(s[3].target)
+        assertTrue(IntervalsParse.steps(null).isEmpty())
+    }
+
+    @Test
+    fun streamsAndPowerZones() {
+        val st = IntervalsParse.streams("""[{"type":"time","data":[0,1,2,3]},{"type":"watts","data":[100,null,250,400]},{"type":"latlng","data":[1],"data2":[2]}]""")
+        assertEquals(setOf("time", "watts"), st.keys)
+        val z = IntervalsParse.powerZoneSeconds(st.getValue("watts"), st.getValue("time"), 250.0)!!
+        // 100 W = 40 % (Z1), 250 W = 100 % (Z4), 400 W = 160 % (Z7); the null sample is skipped.
+        assertEquals(listOf(1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0), z)
+    }
+
+    @Test
+    fun activityPowerFieldsAndIntensityFactor() {
+        val a = IntervalsParse.activities("""[{"id":"i9","start_date_local":"2026-11-20T09:30:00","icu_average_watts":210,
+            "icu_weighted_avg_watts":225,"icu_ftp":260,"icu_intensity":86.5}]""").single()
+        assertEquals(225.0, a.normWatts!!, 1e-9)
+        assertEquals(0.865, a.intensityFactor!!, 1e-9)
+    }
 }

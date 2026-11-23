@@ -1,6 +1,9 @@
 package com.noop.ui
 
 import androidx.compose.foundation.Canvas
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -39,6 +42,7 @@ import androidx.compose.ui.unit.sp
 import com.noop.R
 import com.noop.intervals.IntervalsParse
 import com.noop.intervals.IntervalsStore
+import com.noop.intervals.streams
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.ZoneId
@@ -63,9 +67,10 @@ internal fun icuMatch(acts: List<IntervalsParse.Activity>, startTs: Long): Inter
 private fun km(m: Double?) = m?.let { String.format(Locale.getDefault(), "%.1f km", it / 1000.0) }
 
 @Composable
-internal fun WxPlannedCard(events: List<IntervalsParse.Event>, is24h: Boolean) {
+internal fun WxPlannedCard(events: List<IntervalsParse.Event>, is24h: Boolean, onOpen: (IntervalsParse.Event) -> Unit = {}) {
     val today = LocalDate.now().toString()
-    val upcoming = events.filter { it.isWorkout && it.day >= today }.sortedBy { it.startLocal }.take(10)
+    // Coming days only; today's session has its own card above.
+    val upcoming = events.filter { it.isWorkout && it.day > today }.sortedBy { it.startLocal }.take(10)
     WxCard(padding = 16.dp) {
         WxCardHeader(uiString(R.string.wx_icu_planned), "intervals.icu")
         if (upcoming.isEmpty()) {
@@ -78,6 +83,7 @@ internal fun WxPlannedCard(events: List<IntervalsParse.Event>, is24h: Boolean) {
                 title = e.name ?: e.type ?: uiString(R.string.wx_workout),
                 subtitle = listOfNotNull(d?.let { wxShortDate(it) }, e.movingS?.let { wxHoursMinutes(it / 60.0) }, e.type).joinToString(" · "),
                 trailing = e.load?.let { uiString(R.string.wx_icu_load_value, it.roundToInt()) } ?: "",
+                onClick = { onOpen(e) },
             )
         }
     }
@@ -123,24 +129,122 @@ internal fun WxIcuRouteCard(activityId: String) {
     }
 }
 
+/**
+ * One intervals.icu session: NOOP's Effort from the strap's heart rate in that window, the route, the
+ * power and heart rate through the session (from its streams), power figures and time in Coggan's
+ * power zones against the FTP intervals.icu scored it with.
+ */
 @Composable
-internal fun WxIcuActivityDetail(a: IntervalsParse.Activity, onBack: () -> Unit) {
+internal fun WxIcuActivityDetail(vm: AppViewModel, a: IntervalsParse.Activity, row: com.noop.data.WorkoutRow?, scale: EffortScale, onBack: () -> Unit) {
+    val ctx = LocalContext.current
     val d = runCatching { LocalDate.parse(a.day) }.getOrNull()
-    WxPage(title = a.name ?: a.type ?: uiString(R.string.wx_workout),
-        subtitle = listOfNotNull(d?.let { wxShortDate(it) }, a.type, "intervals.icu").joinToString(" · "), onBack = onBack) {
+    val efforts by IcuEfforts.flow.collectAsStateWithLifecycle()
+    val effort = row?.strain ?: efforts[a.id]
+    var streams by remember(a.id) { mutableStateOf<Map<String, List<Double?>>?>(null) }
+    LaunchedEffect(a.id) { streams = com.noop.intervals.IntervalsStore.streams(ctx, a.id) }
+    WxPage(title = a.name ?: wxSportName(a.type ?: "Workout"),
+        subtitle = listOfNotNull(d?.let { wxShortDate(it) }, a.type?.let { wxSportName(it) }, "intervals.icu").joinToString(" · "), onBack = onBack) {
+        Row(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+            val e21 = effort?.let { UnitFormatter.effortValue(it, EffortScale.WHOOP) }
+            WxRing(fraction = e21?.let { it / 21.0 }, color = Wx.effort, size = 120.dp, stroke = 10.dp) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(effort?.let { UnitFormatter.effortDisplay(it, scale) } ?: "–", style = WxType.number.copy(fontSize = 36.sp), color = Wx.text)
+                    WxLabel(uiString(R.string.wx_effort), color = Wx.effort)
+                }
+            }
+            Spacer(Modifier.width(18.dp))
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Row {
+                    WxStat(uiString(R.string.wx_distance), km(a.distanceM) ?: "–", Modifier.weight(1f))
+                    WxStat(uiString(R.string.wx_duration), a.movingS?.let { wxHoursMinutes(it / 60.0) } ?: "–", Modifier.weight(1f))
+                }
+                Row {
+                    WxStat(uiString(R.string.wx_icu_load), a.load?.roundToInt()?.toString() ?: "–", Modifier.weight(1f))
+                    WxStat(uiString(R.string.wx_elevation), a.elevationM?.let { "${it.roundToInt()} m" } ?: "–", Modifier.weight(1f))
+                }
+            }
+        }
+        if (effort == null) Text(uiString(R.string.wx_icu_no_strap_hr), style = WxType.caption, color = Wx.textMuted)
         WxIcuRouteCard(a.id)
-        WxCard {
-            Row(Modifier.fillMaxWidth()) {
-                WxStat(uiString(R.string.wx_distance), km(a.distanceM) ?: "–", Modifier.weight(1f))
-                WxStat(uiString(R.string.wx_duration), a.movingS?.let { wxHoursMinutes(it / 60.0) } ?: "–", Modifier.weight(1f))
-                WxStat(uiString(R.string.wx_elevation), a.elevationM?.let { "${it.roundToInt()} m" } ?: "–", Modifier.weight(1f))
+        val st = streams
+        val watts = st?.get("watts")?.takeIf { w -> w.count { it != null && it > 0 } > 30 }
+        val hr = st?.get("heartrate")?.takeIf { h -> h.count { it != null } > 30 }
+        if (watts != null || hr != null) {
+            WxCard(padding = 16.dp) {
+                WxCardHeader(uiString(if (watts != null) R.string.wx_icu_power_hr else R.string.wx_heart_rate))
+                Spacer(Modifier.height(8.dp))
+                WxIcuStreamChart(watts, hr, st["time"].orEmpty())
             }
-            Spacer(Modifier.height(12.dp))
-            Row(Modifier.fillMaxWidth()) {
-                WxStat(uiString(R.string.wx_avg_hr), a.avgHr?.roundToInt()?.toString() ?: "–", Modifier.weight(1f))
-                WxStat(uiString(R.string.wx_max_hr), a.maxHr?.roundToInt()?.toString() ?: "–", Modifier.weight(1f))
-                WxStat(uiString(R.string.wx_icu_load), a.load?.roundToInt()?.toString() ?: "–", Modifier.weight(1f))
+        }
+        if (a.avgWatts != null || watts != null) {
+            WxCard {
+                WxCardHeader(uiString(R.string.wx_icu_power), a.ftp?.let { "FTP ${it.roundToInt()} W" })
+                Spacer(Modifier.height(12.dp))
+                Row(Modifier.fillMaxWidth()) {
+                    WxStat(uiString(R.string.wx_icu_avg_power), a.avgWatts?.let { "${it.roundToInt()} W" } ?: "–", Modifier.weight(1f))
+                    WxStat(uiString(R.string.wx_icu_np), a.normWatts?.let { "${it.roundToInt()} W" } ?: "–", Modifier.weight(1f))
+                    WxStat(uiString(R.string.wx_icu_if), a.intensityFactor?.let { String.format(Locale.US, "%.2f", it) } ?: "–", Modifier.weight(1f))
+                }
+                Spacer(Modifier.height(12.dp))
+                Row(Modifier.fillMaxWidth()) {
+                    WxStat(uiString(R.string.wx_icu_max_power), watts?.mapNotNull { it }?.maxOrNull()?.let { "${it.roundToInt()} W" } ?: "–", Modifier.weight(1f))
+                    WxStat(uiString(R.string.wx_icu_cadence), a.avgCadence?.let { "${it.roundToInt()} rpm" } ?: "–", Modifier.weight(1f))
+                    WxStat(uiString(R.string.wx_avg_hr), a.avgHr?.roundToInt()?.toString() ?: "–", Modifier.weight(1f))
+                }
+                val ftp = a.ftp
+                val zones = if (watts != null && ftp != null) IntervalsParse.powerZoneSeconds(watts, st["time"].orEmpty(), ftp) else null
+                if (zones != null && zones.sum() > 0) {
+                    Spacer(Modifier.height(14.dp))
+                    WxLabel(uiString(R.string.wx_icu_power_zones))
+                    Spacer(Modifier.height(8.dp))
+                    val colors = listOf(Wx.textDim, Wx.zone1, Wx.zone2, Wx.zone3, Wx.zone4, Wx.zone5, Wx.heart)
+                    val total = zones.sum()
+                    zones.forEachIndexed { i, sec ->
+                        Row(Modifier.fillMaxWidth().padding(vertical = 3.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Text("Z${i + 1}", style = WxType.caption, color = Wx.textMuted, modifier = Modifier.width(28.dp))
+                            Box(Modifier.weight(1f).height(10.dp).clip(RoundedCornerShape(5.dp)).background(Wx.cardRaised)) {
+                                Box(Modifier.fillMaxWidth((sec / total).toFloat().coerceIn(0f, 1f)).height(10.dp).clip(RoundedCornerShape(5.dp)).background(colors[i]))
+                            }
+                            Text(wxHoursMinutes(sec / 60.0), style = WxType.caption, color = Wx.textSoft, modifier = Modifier.width(56.dp).padding(start = 8.dp))
+                        }
+                    }
+                }
             }
+        }
+    }
+}
+
+/** Power (and heart rate on its own scale) through the session, from its streams. */
+@Composable
+private fun WxIcuStreamChart(watts: List<Double?>?, hr: List<Double?>?, time: List<Double?>) {
+    val measurer = rememberTextMeasurer()
+    Canvas(Modifier.fillMaxWidth().height(170.dp)) {
+        val axisH = 14.dp.toPx(); val plotH = size.height - axisH
+        val n = maxOf(watts?.size ?: 0, hr?.size ?: 0)
+        if (n < 2) return@Canvas
+        // ~300 points: 30-second-ish means keep the line readable.
+        val bucket = (n / 300).coerceAtLeast(1)
+        fun series(v: List<Double?>): List<Double?> = (0 until n step bucket).map { s ->
+            v.subList(s, minOf(s + bucket, v.size)).filterNotNull().takeIf { it.isNotEmpty() }?.average()
+        }
+        fun x(i: Int, m: Int) = size.width * i / (m - 1).coerceAtLeast(1)
+        for (k in 1..3) drawLine(Wx.line, Offset(0f, plotH * k / 4f), Offset(size.width, plotH * k / 4f), 1f)
+        fun draw(v: List<Double?>, c: Color, w: Float) {
+            val pts = series(v); val hi = pts.filterNotNull().maxOrNull()?.coerceAtLeast(1.0) ?: return
+            val p = Path(); var open = false
+            pts.forEachIndexed { i, y ->
+                if (y == null) { open = false; return@forEachIndexed }
+                val yy = (plotH - plotH * 0.95 * (y / hi)).toFloat()
+                if (!open) { p.moveTo(x(i, pts.size), yy); open = true } else p.lineTo(x(i, pts.size), yy)
+            }
+            drawPath(p, c, style = Stroke(w, cap = StrokeCap.Round))
+        }
+        hr?.let { draw(it, Wx.heart.copy(alpha = 0.75f), 1.5.dp.toPx()) }
+        watts?.let { draw(it, Wx.effort, 1.8.dp.toPx()) }
+        val total = time.lastOrNull { it != null } ?: n.toDouble()
+        listOf(0.0, 0.5, 1.0).forEach { f ->
+            val t = measurer.measure("${(total * f / 60).roundToInt()}'", TextStyle(fontSize = 10.sp, color = Wx.textDim))
+            drawText(t, topLeft = Offset((size.width * f.toFloat() - t.size.width / 2f).coerceIn(0f, size.width - t.size.width), size.height - t.size.height))
         }
     }
 }

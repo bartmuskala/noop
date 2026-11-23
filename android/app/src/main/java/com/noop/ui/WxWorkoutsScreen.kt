@@ -69,7 +69,8 @@ internal object WxWorkoutNav {
 @Composable
 internal fun WxWorkoutsScreen(vm: AppViewModel, onBack: (() -> Unit)?, onOpenFull: () -> Unit, onPop: () -> Unit = {}) {
     val context = LocalContext.current
-    val rows by vm.workouts.collectAsStateWithLifecycle()
+    // Fork: one list, intervals.icu's when connected.
+    val rows = rememberWxSessions(vm)
     val days by vm.recentDays.collectAsStateWithLifecycle()
     // intervals.icu (opt-in): synced at most hourly when this tab opens, read from the phone's cache.
     val icuStatus by com.noop.intervals.IntervalsSync.status.collectAsStateWithLifecycle()
@@ -79,6 +80,7 @@ internal fun WxWorkoutsScreen(vm: AppViewModel, onBack: (() -> Unit)?, onOpenFul
     val icuEvents = remember(icuStatus.lastSync) { if (icuOn) com.noop.intervals.IntervalsStore.events(context) else emptyList() }
     val icuWellness = remember(icuStatus.lastSync) { if (icuOn) com.noop.intervals.IntervalsStore.wellness(context) else emptyList() }
     var icuSel by remember { mutableStateOf<com.noop.intervals.IntervalsParse.Activity?>(null) }
+    var planSel by remember { mutableStateOf<com.noop.intervals.IntervalsParse.Event?>(null) }
     val effortScale = remember { UnitPrefs.effortScale(context) }
     val is24h = remember { android.text.format.DateFormat.is24HourFormat(context) }
     LaunchedEffect(Unit) {
@@ -90,6 +92,10 @@ internal fun WxWorkoutsScreen(vm: AppViewModel, onBack: (() -> Unit)?, onOpenFul
     val direct = remember { WxWorkoutNav.pending.also { WxWorkoutNav.pending = null } }
     var directDone by remember { mutableStateOf(direct == null) }
     LaunchedEffect(rows, direct) {
+        if (direct != null && !directDone && direct.startsWith("plan:")) {
+            planSel = icuEvents.firstOrNull { it.id == direct.removePrefix("plan:") }
+            directDone = true
+        }
         if (direct != null && !directDone) {
             val hit = rows.firstOrNull { WxWorkoutNav.key(it) == direct }
             if (hit != null) { selected = hit; directDone = true }
@@ -100,13 +106,24 @@ internal fun WxWorkoutsScreen(vm: AppViewModel, onBack: (() -> Unit)?, onOpenFul
     var showAll by remember { mutableStateOf(false) }
     val sorted = remember(rows) { rows.sortedByDescending { it.startTs } }
 
+    planSel?.let { e ->
+        val back: () -> Unit = { if (direct != null) onPop() else planSel = null }
+        BackHandler { back() }
+        WxPlannedDetail(e, onBack = back)
+        return
+    }
     icuSel?.let { a ->
         BackHandler { icuSel = null }
-        WxIcuActivityDetail(a, onBack = { icuSel = null })
+        WxIcuActivityDetail(vm, a, null, effortScale, onBack = { icuSel = null })
         return
     }
     val sel = selected
     val leave: () -> Unit = { if (direct != null) onPop() else selected = null }
+    if (sel != null && sel.source == ICU_SOURCE) {
+        BackHandler { leave() }
+        val act = remember(sel.startTs) { icuActivityFor(context, sel) }
+        if (act != null) { WxIcuActivityDetail(vm, act, sel, effortScale, onBack = leave); return }
+    }
     if (sel != null) {
         BackHandler { leave() }
         WxWorkoutDetail(vm, sel, sorted, effortScale, is24h, onBack = leave, onEdit = onOpenFull,
@@ -129,6 +146,8 @@ internal fun WxWorkoutsScreen(vm: AppViewModel, onBack: (() -> Unit)?, onOpenFul
         val weekAgo = System.currentTimeMillis() / 1000L - 7 * 86_400L
         val week = sorted.filter { it.startTs >= weekAgo }
         // Summary: the calendar, the week and the month, then fitness, fatigue and form.
+        // Today's plan first: what it is and whether it has been ridden.
+        if (icuOn) WxTodayPlanCard(icuEvents, icuActs, onOpen = { planSel = it })
         WxWorkoutCalendar(sorted, effortScale, onOpen = { selected = it },
             planned = icuEvents.filter { it.isWorkout }.groupBy { it.day }.mapValues { (_, v) -> v.sumOf { it.load ?: 0.0 } })
         WxCard {
@@ -146,7 +165,7 @@ internal fun WxWorkoutsScreen(vm: AppViewModel, onBack: (() -> Unit)?, onOpenFul
             }
         }
         WxWorkoutTotals(sorted, effortScale)
-        if (icuOn) WxPlannedCard(icuEvents, is24h)
+        if (icuOn) WxPlannedCard(icuEvents, is24h, onOpen = { planSel = it })
         // With intervals.icu connected its own fitness model (and the plan's projection) is shown;
         // otherwise NOOP's, from the daily Effort. Never both, so two fitness numbers cannot disagree.
         if (icuWellness.count { it.ctl != null } >= 2) WxIcuFitnessCard(icuWellness, icuEvents) else WxTrainingLoadCard(days)
@@ -161,7 +180,7 @@ internal fun WxWorkoutsScreen(vm: AppViewModel, onBack: (() -> Unit)?, onOpenFul
                     shown.forEach { w ->
                         WxActivityRow(
                             accent = Wx.effort,
-                            title = wxSportName(w.sport),
+                            title = wxWorkoutTitle(w),
                             subtitle = wxWorkoutLine(w, is24h),
                             trailing = w.strain?.let { UnitFormatter.effortDisplay(it, effortScale) } ?: "–",
                             onClick = { selected = w },
@@ -172,7 +191,6 @@ internal fun WxWorkoutsScreen(vm: AppViewModel, onBack: (() -> Unit)?, onOpenFul
                 }
             }
         }
-        WxIcuActivitiesCard(icuActs, onOpen = { icuSel = it })
         WxLinkRow(uiString(R.string.wx_manage_workouts), onOpenFull)
     }
     if (showStart) StartWorkoutSheet(vm, onDismiss = { showStart = false })
@@ -183,6 +201,7 @@ private fun wxDurationS(w: WorkoutRow): Double = w.durationS ?: (w.endTs - w.sta
 private fun wxWorkoutLine(w: WorkoutRow, is24h: Boolean): String {
     val t = Instant.ofEpochSecond(w.startTs).atZone(ZoneId.systemDefault())
     val parts = mutableListOf(wxShortDate(t.toLocalDate()), wxClock(t.hour * 60 + t.minute, is24h), wxHoursMinutes(wxDurationS(w) / 60.0))
+    icuRowExtra(w)?.let { parts.add(it) }
     w.avgHr?.let { parts.add("$it bpm") }
     return parts.joinToString(" · ")
 }
@@ -238,7 +257,7 @@ private fun WxWorkoutDetail(
     val subtitle = "${wxShortDate(start.toLocalDate())} · ${wxClock(start.hour * 60 + start.minute, is24h)} – ${wxClock(end.hour * 60 + end.minute, is24h)}"
 
     WxPage(
-        title = wxSportName(w.sport),
+        title = wxWorkoutTitle(w),
         subtitle = subtitle,
         onBack = onBack,
         action = { IconButton(onClick = onEdit) { Icon(Icons.Filled.Edit, uiString(R.string.wx_manage_workouts), tint = Wx.textMuted) } },
@@ -314,7 +333,7 @@ private fun WxWorkoutDetail(
                     same.forEach { o ->
                         WxActivityRow(
                             accent = Wx.effort,
-                            title = wxSportName(o.sport),
+                            title = wxWorkoutTitle(o),
                             subtitle = wxWorkoutLine(o, is24h),
                             trailing = o.strain?.let { UnitFormatter.effortDisplay(it, effortScale) } ?: "–",
                             onClick = { onOpen(o) },

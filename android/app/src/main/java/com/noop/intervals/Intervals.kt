@@ -64,6 +64,13 @@ class IntervalsClient(private val athleteId: String, private val apiKey: String)
     fun events(oldest: LocalDate, newest: LocalDate) = get("/athlete/$athleteId/events?oldest=$oldest&newest=$newest")
     fun wellness(oldest: LocalDate, newest: LocalDate) = get("/athlete/$athleteId/wellness?oldest=$oldest&newest=$newest")
 
+    /** Power, heart rate, cadence, altitude and time streams of an activity. */
+    fun streams(activityId: String): String = try {
+        get("/activity/$activityId/streams?types=time,watts,heartrate,cadence,altitude")
+    } catch (e: IntervalsException) {
+        if (e.code == 404) get("/activity/$activityId/streams.json?types=time,watts,heartrate,cadence,altitude") else throw e
+    }
+
     /** The activity's GPS stream; tries the two spellings of the streams path. */
     fun latLng(activityId: String): String = try {
         get("/activity/$activityId/streams?types=latlng")
@@ -95,6 +102,17 @@ object IntervalsStore {
         write(ctx, name, json)
         IntervalsParse.latLng(json)
     }
+}
+
+/** The cached power / HR / cadence / altitude streams, fetched once. Empty when there are none. */
+suspend fun IntervalsStore.streams(ctx: Context, activityId: String): Map<String, List<Double?>> = withContext(Dispatchers.IO) {
+    val name = "streams_${activityId.filter { it.isLetterOrDigit() }}.json"
+    read(ctx, name)?.let { return@withContext IntervalsParse.streams(it) }
+    val key = IntervalsKeyStore.apiKey(ctx) ?: return@withContext emptyMap()
+    val json = runCatching { IntervalsClient(IntervalsKeyStore.athleteId(ctx), key).streams(activityId) }.getOrNull()
+        ?: return@withContext emptyMap()
+    write(ctx, name, json)
+    IntervalsParse.streams(json)
 }
 
 /** One sync: activities of the last 180 days, planned workouts two weeks back and four ahead, fitness. */

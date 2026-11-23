@@ -37,6 +37,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.launch
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.io.File
@@ -49,7 +50,8 @@ import kotlin.math.tan
 // MARK: - Route on an OpenStreetMap map (fork)
 //
 // Draws a GPS track over standard OpenStreetMap tiles. Tiles come from tile.openstreetmap.org (the
-// only network request this view makes), are cached in cacheDir/osm and reused, and the map credits
+// only network request this view makes), load in parallel, are kept in cacheDir/osm for a year and
+// reused. No area is downloaded in bulk: the OSM tile policy forbids it. The map credits
 // "© OpenStreetMap contributors" as the tile licence requires. The zoom is the highest at which the
 // whole route fits.
 
@@ -62,7 +64,7 @@ private object OsmTiles {
 
     suspend fun load(ctx: android.content.Context, z: Int, x: Int, y: Int): ImageBitmap? = withContext(Dispatchers.IO) {
         val f = File(ctx.cacheDir, "osm/$z/$x/$y.png")
-        val bytes = if (f.exists() && System.currentTimeMillis() - f.lastModified() < 30L * 86_400_000L) f.readBytes() else runCatching {
+        val bytes = if (f.exists() && System.currentTimeMillis() - f.lastModified() < 365L * 86_400_000L) f.readBytes() else runCatching {
             http.newCall(Request.Builder().url("https://tile.openstreetmap.org/$z/$x/$y.png").header("User-Agent", UA).build())
                 .execute().use { r -> if (r.isSuccessful) r.body?.bytes() else null }
         }.getOrNull()?.also { f.parentFile?.mkdirs(); f.writeBytes(it) }
@@ -107,11 +109,14 @@ internal fun WxRouteMap(points: List<Pair<Double, Double>>, height: Dp = 240.dp,
         val ty0 = floor(top / TILE).toInt(); val ty1 = floor((top + hPx) / TILE).toInt()
         LaunchedEffect(points, zoom, wPx, hPx) {
             val max = 1 shl zoom
-            for (tx in tx0..tx1) for (ty in ty0..ty1) {
-                if (ty !in 0 until max) continue
-                val wx = ((tx % max) + max) % max
-                val key = "$zoom/$tx/$ty"
-                if (key !in tiles) OsmTiles.load(ctx, zoom, wx, ty)?.let { tiles[key] = it }
+            // All tiles of the view at once (a handful), each from the phone's cache when it has it.
+            kotlinx.coroutines.coroutineScope {
+                for (tx in tx0..tx1) for (ty in ty0..ty1) {
+                    if (ty !in 0 until max) continue
+                    val wx = ((tx % max) + max) % max
+                    val key = "$zoom/$tx/$ty"
+                    if (key !in tiles) launch { OsmTiles.load(ctx, zoom, wx, ty)?.let { tiles[key] = it } }
+                }
             }
         }
         Canvas(Modifier.fillMaxSize()) {
