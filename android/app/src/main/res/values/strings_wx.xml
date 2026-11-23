@@ -53,6 +53,7 @@
     <string name="wx_device_heart_rate">Heart rate</string>
     <string name="wx_device_not_connected">Not connected</string>
     <string name="wx_disturbances">Disturbances</string>
+    <string name="wx_dot_effort">bigger dot, higher Effort</string>
     <string name="wx_duration">Duration</string>
     <string name="wx_edit">Edit</string>
     <string name="wx_edit_questions">Edit questions</string>
@@ -66,10 +67,14 @@
     <string name="wx_effort_built_span">from midnight</string>
     <string name="wx_effort_in_range">In today\'s target range.</string>
     <string name="wx_effort_sentence_empty">A target appears once today\'s recovery is scored.</string>
+    <string name="wx_fatigue">Fatigue</string>
+    <string name="wx_fitness">Fitness</string>
     <string name="wx_fitness_age_not_ready">No Fitness Age yet. It needs a few weeks of resting heart rate and activity; see how it\'s calculated below.</string>
     <string name="wx_fitness_age_subtitle">Weekly, compared to your age</string>
     <string name="wx_for_full_sleep">for 100%% · need %1$s</string>
+    <string name="wx_form">Form</string>
     <string name="wx_green_days">%1$d green</string>
+    <string name="wx_hardest">Hardest</string>
     <string name="wx_heart_and_stress">Heart rate &amp; stress</string>
     <string name="wx_heart_chart_a11y">Heart rate through the day with workouts marked and hourly stress below</string>
     <string name="wx_heart_rate">Heart rate</string>
@@ -90,11 +95,13 @@
     <string name="wx_hurts">Hurts</string>
     <string name="wx_hypnogram_a11y">Sleep stages through the night</string>
     <string name="wx_journal">Journal</string>
+    <string name="wx_journal_about">About %1$s and the night into %2$s morning; it counts toward that morning\'s Recovery</string>
     <string name="wx_journal_week_a11y">Journal logged on %1$d of the last 7 days</string>
     <string name="wx_journal_working">Your journal is working</string>
     <string name="wx_keep_logging">Keep logging for a couple of weeks to see what moves your scores.</string>
     <string name="wx_last_30_days">Last 30 days</string>
     <string name="wx_last_5_min">Last 5 minutes</string>
+    <string name="wx_last_5_weeks">Last 5 weeks</string>
     <string name="wx_last_7_days">Last 7 days</string>
     <string name="wx_last_night">last night</string>
     <string name="wx_last_week">Last week</string>
@@ -148,6 +155,7 @@
     <string name="wx_pct_of_max">%% of max HR %1$d</string>
     <string name="wx_pct_of_max_short">%1$d%% of max HR</string>
     <string name="wx_pct_vs_prior">%1$s vs prior %2$s</string>
+    <string name="wx_per_week">Per week</string>
     <string name="wx_period_3_months">3 months</string>
     <string name="wx_period_6_months">6 months</string>
     <string name="wx_period_month">month</string>
@@ -230,6 +238,10 @@
     <string name="wx_time_in_level">Time in each level</string>
     <string name="wx_todays_activities">Today\'s activities</string>
     <string name="wx_tonights_sleep">Tonight\'s sleep</string>
+    <string name="wx_top_sport">Most done</string>
+    <string name="wx_training_load">Fitness and fatigue</string>
+    <string name="wx_training_load_note">Fitness is your daily Effort averaged over about 6 weeks, fatigue over about 1 week; form is the difference. Positive form: fresh. Strongly negative: carrying fatigue.</string>
+    <string name="wx_training_load_unavailable">Needs at least 14 days in a row with an Effort score.</string>
     <string name="wx_trend_above_prev">Your average %1$s over this period (%2$s) was above your previous %3$s average of %4$s.</string>
     <string name="wx_trend_above_range">Your average %1$s during this 7-day period (%2$s) was above its typical range (%3$s – %4$s).</string>
     <string name="wx_trend_below_prev">Your average %1$s over this period (%2$s) was below your previous %3$s average of %4$s.</string>

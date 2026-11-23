@@ -70,6 +70,7 @@ internal object WxWorkoutNav {
 internal fun WxWorkoutsScreen(vm: AppViewModel, onBack: (() -> Unit)?, onOpenFull: () -> Unit, onPop: () -> Unit = {}) {
     val context = LocalContext.current
     val rows by vm.workouts.collectAsStateWithLifecycle()
+    val days by vm.recentDays.collectAsStateWithLifecycle()
     val effortScale = remember { UnitPrefs.effortScale(context) }
     val is24h = remember { android.text.format.DateFormat.is24HourFormat(context) }
     LaunchedEffect(Unit) {
@@ -114,6 +115,8 @@ internal fun WxWorkoutsScreen(vm: AppViewModel, onBack: (() -> Unit)?, onOpenFul
     ) {
         val weekAgo = System.currentTimeMillis() / 1000L - 7 * 86_400L
         val week = sorted.filter { it.startTs >= weekAgo }
+        // Summary: the calendar, the week and the month, then fitness, fatigue and form.
+        WxWorkoutCalendar(sorted, effortScale, onOpen = { selected = it })
         WxCard {
             WxCardHeader(uiString(R.string.wx_last_7_days))
             Spacer(Modifier.height(12.dp))
@@ -128,6 +131,8 @@ internal fun WxWorkoutsScreen(vm: AppViewModel, onBack: (() -> Unit)?, onOpenFul
                 )
             }
         }
+        WxWorkoutTotals(sorted, effortScale)
+        WxTrainingLoadCard(days)
         WxButton(uiString(R.string.wx_start_workout), onClick = { showStart = true })
         if (sorted.isEmpty()) {
             WxCard { Text(uiString(R.string.wx_no_workouts), style = WxType.body, color = Wx.textSoft) }

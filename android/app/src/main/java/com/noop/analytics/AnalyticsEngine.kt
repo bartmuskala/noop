@@ -50,6 +50,15 @@ object AnalyticsEngine {
     @Volatile
     var wholeNightMeanRHR: Boolean = false
 
+    /**
+     * Fork: per-wearer scale factors that line NOOP's nightly HRV and respiratory rate up with the
+     * wearer's own WHOOP history (fitted once in the app, see AppViewModel.fitVitalScales). 1.0 is
+     * NOOP's own value, which every test uses. Applied to the stored daily value and to the input of
+     * Recovery alike, so baselines and scores stay on one scale.
+     */
+    @Volatile var hrvScale: Double = 1.0
+    @Volatile var respScale: Double = 1.0
+
 
     /**
      * Skip the redundant calendar-day re-read in [IntelligenceEngine.analyzeRecent]'s per-day scan
@@ -859,7 +868,7 @@ object AnalyticsEngine {
 
         // ── Recovery / Charge ─────────────────────────────────────────────────
         var recovery: Double? = null
-        val hrvVal = avgHRVDaily
+        val hrvVal = avgHRVDaily?.times(hrvScale)
         val rhrVal = restingHRDaily
         val hrvBase = baselines.hrv
         if (hrvVal != null && rhrVal != null && hrvBase != null) {
@@ -868,7 +877,7 @@ object AnalyticsEngine {
             recovery = RecoveryScorer.recovery(
                 hrv = hrvVal,
                 rhr = rhrVal.toDouble(),
-                resp = respRateDaily, // term drops + renormalizes when null / no baseline
+                resp = respRateDaily?.times(respScale), // term drops + renormalizes when null / no baseline
                 hrvBaseline = hrvBase,
                 rhrBaseline = baselines.restingHR,
                 respBaseline = baselines.resp,
@@ -1021,7 +1030,7 @@ object AnalyticsEngine {
             lightMin = if (matched.isEmpty()) null else lightS / 60.0,
             disturbances = if (matched.isEmpty()) null else disturbances,
             restingHr = restingHRDaily,
-            avgHrv = avgHRVDaily,
+            avgHrv = avgHRVDaily?.times(hrvScale),
             // "Every session this day was staged from heart rate alone."
             //
             // #1884: read from the SESSIONS' own marker, NOT from `physiologySessions.isEmpty()`. Those
@@ -1036,7 +1045,7 @@ object AnalyticsEngine {
             exerciseCount = workouts.size,
             spo2Pct = null,
             skinTempDevC = skinTempDevC,
-            respRateBpm = respRateDaily,
+            respRateBpm = respRateDaily?.times(respScale),
             steps = stepsTotal,
             activeKcalEst = activeKcalEst,
             spo2Red = nightlySpo2Raw?.first,

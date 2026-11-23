@@ -53,6 +53,7 @@
     <string name="wx_device_heart_rate">Fréquence cardiaque</string>
     <string name="wx_device_not_connected">Non connecté</string>
     <string name="wx_disturbances">Perturbations</string>
+    <string name="wx_dot_effort">point plus grand, effort plus élevé</string>
     <string name="wx_duration">Durée</string>
     <string name="wx_edit">Modifier</string>
     <string name="wx_edit_questions">Modifier les questions</string>
@@ -66,10 +67,14 @@
     <string name="wx_effort_built_span">depuis minuit</string>
     <string name="wx_effort_in_range">Dans la plage cible du jour.</string>
     <string name="wx_effort_sentence_empty">Un objectif apparaît une fois la récupération calculée.</string>
+    <string name="wx_fatigue">Fatigue</string>
+    <string name="wx_fitness">Condition</string>
     <string name="wx_fitness_age_not_ready">Pas encore d\'âge physique. Il faut quelques semaines de FC au repos et d\'activité ; voir le calcul ci-dessous.</string>
     <string name="wx_fitness_age_subtitle">Hebdomadaire, comparé à ton âge</string>
     <string name="wx_for_full_sleep">pour 100%% · besoin %1$s</string>
+    <string name="wx_form">Fraîcheur</string>
     <string name="wx_green_days">%1$d verts</string>
+    <string name="wx_hardest">La plus dure</string>
     <string name="wx_heart_and_stress">Fréquence cardiaque et stress</string>
     <string name="wx_heart_chart_a11y">Fréquence cardiaque de la journée avec séances marquées et stress horaire dessous</string>
     <string name="wx_heart_rate">Fréquence cardiaque</string>
@@ -90,11 +95,13 @@
     <string name="wx_hurts">Nuit</string>
     <string name="wx_hypnogram_a11y">Phases de sommeil au fil de la nuit</string>
     <string name="wx_journal">Journal</string>
+    <string name="wx_journal_about">Concerne %1$s et la nuit jusqu\'à %2$s matin ; compte pour la récupération de ce matin-là</string>
     <string name="wx_journal_week_a11y">Journal rempli %1$d des 7 derniers jours</string>
     <string name="wx_journal_working">Votre journal porte ses fruits</string>
     <string name="wx_keep_logging">Continuez quelques semaines pour voir ce qui fait bouger vos scores.</string>
     <string name="wx_last_30_days">30 derniers jours</string>
     <string name="wx_last_5_min">5 dernières minutes</string>
+    <string name="wx_last_5_weeks">5 dernières semaines</string>
     <string name="wx_last_7_days">7 derniers jours</string>
     <string name="wx_last_night">la nuit dernière</string>
     <string name="wx_last_week">Semaine dernière</string>
@@ -148,6 +155,7 @@
     <string name="wx_pct_of_max">%% de la FC max %1$d</string>
     <string name="wx_pct_of_max_short">%1$d%% de la FC max</string>
     <string name="wx_pct_vs_prior">%1$s vs %2$s précédent(e)</string>
+    <string name="wx_per_week">Par semaine</string>
     <string name="wx_period_3_months">3 mois</string>
     <string name="wx_period_6_months">6 mois</string>
     <string name="wx_period_month">mois</string>
@@ -230,6 +238,10 @@
     <string name="wx_time_in_level">Temps par niveau</string>
     <string name="wx_todays_activities">Activités du jour</string>
     <string name="wx_tonights_sleep">Sommeil de cette nuit</string>
+    <string name="wx_top_sport">Le plus fréquent</string>
+    <string name="wx_training_load">Forme et fatigue</string>
+    <string name="wx_training_load_note">La condition est ton effort quotidien moyenné sur environ 6 semaines, la fatigue sur 1 semaine ; la fraîcheur est la différence. Positive : frais. Très négative : fatigué.</string>
+    <string name="wx_training_load_unavailable">Il faut au moins 14 jours d\'affilée avec un score d\'effort.</string>
     <string name="wx_trend_above_prev">Votre moyenne de %1$s sur cette période (%2$s) était au-dessus de celle de la %3$s précédente (%4$s).</string>
     <string name="wx_trend_above_range">Votre moyenne de %1$s sur ces 7 jours (%2$s) était au-dessus de sa plage habituelle (%3$s – %4$s).</string>
     <string name="wx_trend_below_prev">Votre moyenne de %1$s sur cette période (%2$s) était en dessous de celle de la %3$s précédente (%4$s).</string>

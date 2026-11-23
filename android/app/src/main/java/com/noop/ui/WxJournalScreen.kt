@@ -218,6 +218,14 @@ internal fun WxJournalScreen(vm: AppViewModel, onOpenMoves: () -> Unit, onEditQu
             (if (dayOffset == 0L) uiString(R.string.nav_today) + " · " else "") + wxShortDate(selDate),
             Modifier.padding(start = 4.dp, top = 8.dp),
         )
+        // What a day's answers are about: the day before and the night into this morning, which is what
+        // that morning's Recovery reflects (the same attribution the classic journal states).
+        Text(
+            uiString(R.string.wx_journal_about,
+                selDate.minusDays(1).dayOfWeek.getDisplayName(java.time.format.TextStyle.FULL, java.util.Locale.getDefault()),
+                selDate.dayOfWeek.getDisplayName(java.time.format.TextStyle.FULL, java.util.Locale.getDefault())),
+            style = WxType.caption, color = Wx.textMuted, modifier = Modifier.padding(start = 4.dp),
+        )
         val items = resolveJournalItems(history?.importedQuestions.orEmpty(), catalog, includeHidden = false)
             .sortedWith(compareBy({ JournalGroup.displayOrder.indexOf(it.group) }, { it.sortIndex }, { it.display }))
         WxCard(padding = 0.dp) {

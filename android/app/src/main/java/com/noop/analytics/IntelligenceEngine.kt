@@ -2134,7 +2134,8 @@ object IntelligenceEngine {
         for (d in faPriorDaily) faGateByDay[d.day] = d
         for (d in dailies) faGateByDay[d.day] = d
         val faGate7 = faGateByDay.values.sortedBy { it.day }.takeLast(7)
-        val faPts = fitnessAgeRows(faGate7, profile, computedId, saturdayKeyOnOrBefore(newestDay))
+        val faPts = fitnessAgeRows(faGate7, profile, computedId, saturdayKeyOnOrBefore(newestDay),
+            activityDays = faGateByDay.values.sortedBy { it.day }.takeLast(28))
         // Strap-log proof: the RHR-night count the engine sees for the gate , should equal the "N of last 7
         // nights" the readiness card shows; `computed` says whether the value was (re)written this pass.
         diag("fitnessAge gate day=$newestDay rhrNights=${faGate7.mapNotNull { it.restingHr }.size} activityDays=${faGate7.mapNotNull { it.strain }.size} computed=${faPts.isNotEmpty()}")
@@ -2712,10 +2713,17 @@ object IntelligenceEngine {
      *  Fitness Age" button so the two can never drift. */
     fun fitnessAgeRows(
         gateDays: List<DailyMetric>, profile: UserProfile, computedId: String, satKey: String,
+        // Fork: the activity behind the PA-index over a longer window (the last 28 days), averaged per
+        // week. HUNT's index describes habitual exercise; read from one week it swung the Fitness Age by
+        // ten years after a single quiet week. Null keeps the shipped seven-day read.
+        activityDays: List<DailyMetric>? = null,
     ): List<MetricSeriesRow> {
         val rhrs = gateDays.mapNotNull { it.restingHr }.map { it.toDouble() }
-        val strains = gateDays.mapNotNull { it.strain }.filter { it >= 30.0 }
+        val paDays = activityDays ?: gateDays
+        val weeks = (paDays.size / 7.0).coerceAtLeast(1.0)
+        val strains = paDays.mapNotNull { it.strain }.filter { it >= 30.0 }
         val meanStrain = if (strains.isEmpty()) 0.0 else strains.average()
+        val activePerWeek = kotlin.math.round(strains.size / weeks).toInt()
         val waist = if (profile.waistCm > 0) profile.waistCm else null
         val ready = FitnessAgeEngine.assessReadiness(
             hasAge = profile.age > 0, hasSex = profile.sex.isNotEmpty(),
@@ -2725,7 +2733,7 @@ object IntelligenceEngine {
         val res = FitnessAgeEngine.compute(
             age = profile.age, sex = profile.sex,
             restingHR = medianOfDoubles(rhrs),
-            paIndex = FitnessAgeEngine.physicalActivityIndexFromStrain(strains.size, meanStrain),
+            paIndex = FitnessAgeEngine.physicalActivityIndexFromStrain(activePerWeek, meanStrain),
             waistCm = waist) ?: return emptyList()
         val rows = mutableListOf(MetricSeriesRow(deviceId = computedId, day = satKey, key = "fitness_age", value = res.fitnessAge))
         // #1391: offer a VO₂max even without a waist. res.vo2max is the Nes 2011 waist-based estimate (null
@@ -2772,9 +2780,10 @@ object IntelligenceEngine {
         val nowLocalMidnight = midnightLocal(nowSeconds, tzOffsetSeconds)
         val newestDay = AnalyticsEngine.dayString(nowLocalMidnight, tzOffsetSeconds)
         val oldestDay = AnalyticsEngine.dayString(nowLocalMidnight - (maxDays - 1) * SECONDS_PER_DAY, tzOffsetSeconds)
-        val gate7 = repo.daysMerged(importedDeviceId)
-            .filter { it.day in oldestDay..newestDay }.sortedBy { it.day }.takeLast(7)
-        val rows = fitnessAgeRows(gate7, profile, computedId, saturdayKeyOnOrBefore(newestDay))
+        val merged = repo.daysMerged(importedDeviceId).filter { it.day <= newestDay }.sortedBy { it.day }
+        val gate7 = merged.filter { it.day >= oldestDay }.takeLast(7)
+        val rows = fitnessAgeRows(gate7, profile, computedId, saturdayKeyOnOrBefore(newestDay),
+            activityDays = merged.takeLast(28))
         if (rows.isNotEmpty()) {
             repo.upsertMetricSeriesWithProvenance(
                 rows = rows,

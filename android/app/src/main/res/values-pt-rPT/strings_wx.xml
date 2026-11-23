@@ -53,6 +53,7 @@
     <string name="wx_device_heart_rate">Frequência cardíaca</string>
     <string name="wx_device_not_connected">Não ligado</string>
     <string name="wx_disturbances">Perturbações</string>
+    <string name="wx_dot_effort">ponto maior, mais esforço</string>
     <string name="wx_duration">Duração</string>
     <string name="wx_edit">Editar</string>
     <string name="wx_edit_questions">Editar perguntas</string>
@@ -66,10 +67,14 @@
     <string name="wx_effort_built_span">desde a meia-noite</string>
     <string name="wx_effort_in_range">Dentro do intervalo alvo de hoje.</string>
     <string name="wx_effort_sentence_empty">Um objetivo aparece quando a recuperação for calculada.</string>
+    <string name="wx_fatigue">Fadiga</string>
+    <string name="wx_fitness">Condição</string>
     <string name="wx_fitness_age_not_ready">Ainda sem idade física. Precisa de algumas semanas de FC em repouso e atividade; veja abaixo como é calculada.</string>
     <string name="wx_fitness_age_subtitle">Semanal, comparada com a tua idade</string>
     <string name="wx_for_full_sleep">para 100%% · precisas %1$s</string>
+    <string name="wx_form">Frescura</string>
     <string name="wx_green_days">%1$d verdes</string>
+    <string name="wx_hardest">Mais dura</string>
     <string name="wx_heart_and_stress">Frequência cardíaca e stress</string>
     <string name="wx_heart_chart_a11y">Frequência cardíaca do dia com treinos marcados e stress horário por baixo</string>
     <string name="wx_heart_rate">Frequência cardíaca</string>
@@ -90,11 +95,13 @@
     <string name="wx_hurts">Prejudica</string>
     <string name="wx_hypnogram_a11y">Fases do sono ao longo da noite</string>
     <string name="wx_journal">Diário</string>
+    <string name="wx_journal_about">Sobre %1$s e a noite até %2$s de manhã; conta para a recuperação dessa manhã</string>
     <string name="wx_journal_week_a11y">Diário registado em %1$d dos últimos 7 dias</string>
     <string name="wx_journal_working">O seu diário está a resultar</string>
     <string name="wx_keep_logging">Continue a registar algumas semanas para ver o que mexe com os seus valores.</string>
     <string name="wx_last_30_days">Últimos 30 dias</string>
     <string name="wx_last_5_min">Últimos 5 minutos</string>
+    <string name="wx_last_5_weeks">Últimas 5 semanas</string>
     <string name="wx_last_7_days">Últimos 7 dias</string>
     <string name="wx_last_night">ontem à noite</string>
     <string name="wx_last_week">Semana passada</string>
@@ -148,6 +155,7 @@
     <string name="wx_pct_of_max">%% da FC máx. %1$d</string>
     <string name="wx_pct_of_max_short">%1$d%% da FC máx.</string>
     <string name="wx_pct_vs_prior">%1$s vs %2$s anterior</string>
+    <string name="wx_per_week">Por semana</string>
     <string name="wx_period_3_months">3 meses</string>
     <string name="wx_period_6_months">6 meses</string>
     <string name="wx_period_month">mês</string>
@@ -230,6 +238,10 @@
     <string name="wx_time_in_level">Tempo em cada nível</string>
     <string name="wx_todays_activities">Atividades de hoje</string>
     <string name="wx_tonights_sleep">Sono desta noite</string>
+    <string name="wx_top_sport">Mais frequente</string>
+    <string name="wx_training_load">Forma e fadiga</string>
+    <string name="wx_training_load_note">A condição é o teu esforço diário em média de cerca de 6 semanas, a fadiga de 1 semana; a frescura é a diferença. Positiva: fresco. Muito negativa: cansado.</string>
+    <string name="wx_training_load_unavailable">Precisa de pelo menos 14 dias seguidos com pontuação de esforço.</string>
     <string name="wx_trend_above_prev">A sua média de %1$s neste período (%2$s) foi superior à do(a) %3$s anterior (%4$s).</string>
     <string name="wx_trend_above_range">A sua média de %1$s nestes 7 dias (%2$s) ficou acima do intervalo habitual (%3$s – %4$s).</string>
     <string name="wx_trend_below_prev">A sua média de %1$s neste período (%2$s) foi inferior à do(a) %3$s anterior (%4$s).</string>

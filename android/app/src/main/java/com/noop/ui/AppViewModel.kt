@@ -2078,6 +2078,15 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     private suspend fun forkScoringUpgrade() {
         val prefs = NoopPrefs.of(appContext)
         com.noop.analytics.AnalyticsEngine.wholeNightMeanRHR = prefs.getBoolean(KEY_WHOLE_NIGHT_RHR, true)
+        if (!prefs.getBoolean(FORK_VITALS_KEY, false)) {
+            val line = runCatching { fitVitalScales() }.getOrElse { "Vitals vs WHOOP: failed (${it.javaClass.simpleName})" }
+            prefs.edit().putBoolean(FORK_VITALS_KEY, true).apply()
+            ble.externalLog(line)
+        }
+        com.noop.analytics.AnalyticsEngine.hrvScale =
+            prefs.getFloat("wx.vitals.hrvScale", -1f).takeIf { it > 0 }?.toDouble() ?: 1.0
+        com.noop.analytics.AnalyticsEngine.respScale =
+            prefs.getFloat("wx.vitals.respScale", -1f).takeIf { it > 0 }?.toDouble() ?: 1.0
         if (!prefs.getBoolean(FORK_CALIBRATED_KEY, false)) {
             // Measurement only: how the Effort curve compares with WHOOP's own Effort on days that hold
             // both. Logged, never applied (the wearer judges NOOP's low-effort days the more honest).
@@ -2094,6 +2103,52 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             // Re-arm the shared full-history repair; the flag above is set once it completes.
             prefs.edit().putBoolean(NoopPrefs.KEY_EFFORT_RESCORE_DONE, false).apply()
         }
+    }
+
+    /**
+     * Fork: one scale each for nightly HRV and respiratory rate that lines NOOP's own values up with
+     * the wearer's WHOOP history, so the two eras read on one scale (and Recovery's baselines, which mix
+     * them, stop seeing a step). Nights holding both values decide it (median of WHOOP ÷ NOOP, at least
+     * 5 nights). Without such nights it falls back to the 30 WHOOP nights just before NOOP's first
+     * night against NOOP's first 30 (at least 14 each side, median ÷ median), which assumes the body did
+     * not change across that boundary; the log line says which was used. A scale outside 0.7–1.5 is
+     * treated as a mismatch, not a calibration, and nothing is applied. Must run on NOOP's unscaled
+     * values, so it runs once, before the history rescore that applies it.
+     */
+    private suspend fun fitVitalScales(): String {
+        val whoop = repository.dailyMetrics(deviceId, "2000-01-01", "2100-01-01").associateBy { it.day }
+        val noop = repository.dailyMetrics("$deviceId-noop", "2000-01-01", "2100-01-01").associateBy { it.day }
+        fun median(xs: List<Double>): Double? = xs.sorted().let { if (it.isEmpty()) null else it[it.size / 2] }
+        fun fit(name: String, get: (com.noop.data.DailyMetric) -> Double?): Pair<Double?, String> {
+            val pairs = noop.keys.mapNotNull { d ->
+                val w = whoop[d]?.let(get) ?: return@mapNotNull null
+                val n = noop[d]?.let(get)?.takeIf { it > 0 } ?: return@mapNotNull null
+                w / n
+            }
+            val (ratio, how) = if (pairs.size >= 5) {
+                median(pairs) to "${pairs.size} shared nights"
+            } else {
+                val firstNoop = noop.filterValues { get(it) != null }.keys.minOrNull()
+                    ?: return null to "$name: no NOOP nights"
+                val before = whoop.filter { it.key < firstNoop }.toSortedMap().values.mapNotNull(get).takeLast(30)
+                val after = noop.toSortedMap().values.mapNotNull(get).take(30)
+                if (before.size < 14 || after.size < 14) return null to "$name: too few nights to compare (${before.size} WHOOP / ${after.size} NOOP)"
+                (median(before)!! / median(after)!!) to "last ${before.size} WHOOP vs first ${after.size} NOOP nights"
+            }
+            if (ratio == null || ratio !in 0.7..1.5) return null to "$name: ratio ${ratio?.let { "%.2f".format(java.util.Locale.US, it) }} from $how, outside 0.7–1.5, not applied"
+            return ratio to "$name x%.3f from %s".format(java.util.Locale.US, ratio, how)
+        }
+        val (hrv, hrvLine) = fit("HRV") { it.avgHrv }
+        val (resp, respLine) = fit("resp") { it.respRateBpm }
+        NoopPrefs.of(appContext).edit().apply {
+            hrv?.let { putFloat("wx.vitals.hrvScale", it.toFloat()) }
+            resp?.let { putFloat("wx.vitals.respScale", it.toFloat()) }
+        }.apply()
+        if (hrv != null || resp != null) {
+            // The scales change stored values: rescore the whole history once more.
+            NoopPrefs.of(appContext).edit().putBoolean(FORK_RESCORE_KEY, false).apply()
+        }
+        return "Vitals vs WHOOP: $hrvLine; $respLine"
     }
 
     /** Days with WHOOP's imported Effort and at least 18 h of strap heart rate, fitted (fork). */
@@ -3534,3 +3589,4 @@ internal fun resolveSelectedModel(recorded: WhoopModel?, remembered: WhoopModel?
 internal const val KEY_WHOLE_NIGHT_RHR = "wx.rhr.wholeNightMean"
 private const val FORK_CALIBRATED_KEY = "wx.effort.calibrated.v1"
 private const val FORK_RESCORE_KEY = "wx.history.rescored.v1"
+private const val FORK_VITALS_KEY = "wx.vitals.calibrated.v1"
