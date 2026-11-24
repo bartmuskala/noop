@@ -46,8 +46,13 @@ class MoreNavigationContractTest {
             "Every generated More row must keep using the shared navigation callback",
             source.contains("MoreRow(dest = dest, onClick = { onNavigate(dest.route) })"),
         )
+        // Fork: a bottom-bar tap always opens that tab's own page (no state restore), by the owner's choice.
         assertTrue(
-            "Bottom-tab selections must retain top-level state save/restore",
+            "Bottom-tab selections must open the tab's own page through navigateTab",
+            source.contains("onTabSelected = { dest -> nav.navigateTab(dest.route) }"),
+        )
+        assertFalse(
+            "Bottom-tab selections must not restore a page clicked through to earlier",
             source.contains("if (dest.route != currentRoute) nav.navigateTopLevel(dest.route)"),
         )
     }
