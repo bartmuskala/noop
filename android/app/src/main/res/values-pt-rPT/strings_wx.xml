@@ -153,6 +153,7 @@
     <string name="wx_last_5_weeks">Últimas 5 semanas</string>
     <string name="wx_last_7_days">Últimos 7 dias</string>
     <string name="wx_last_night">ontem à noite</string>
+    <string name="wx_last_updated">Última atualização %1$s</string>
     <string name="wx_last_week">Semana passada</string>
     <string name="wx_latest_estimate">Última estimativa</string>
     <string name="wx_light">Leve</string>

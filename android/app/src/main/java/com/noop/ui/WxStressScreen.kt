@@ -204,16 +204,22 @@ internal fun WxStressScreen(vm: AppViewModel, onBack: () -> Unit, onBreathe: () 
 private fun WxStressCurve(hours: List<DaytimeStress.HourPoint>, description: String) {
     val measurer = rememberTextMeasurer()
     Canvas(Modifier.fillMaxWidth().height(170.dp).semantics { contentDescription = description }) {
+        val axisStyle = TextStyle(fontSize = 10.sp, color = Wx.textDim, fontFeatureSettings = "tnum")
+        val topPad = 6.dp.toPx()
         val plotH = size.height - 20.dp.toPx()
+        val axisW = 26.dp.toPx()
         val w = size.width
-        val band = plotH / 3f
-        drawRect(Wx.stressHigh.copy(alpha = 0.07f), Offset(0f, 0f), Size(w, band))
-        drawRect(Wx.stressMid.copy(alpha = 0.06f), Offset(0f, band), Size(w, band))
-        drawRect(Wx.stressLow.copy(alpha = 0.07f), Offset(0f, band * 2), Size(w, band))
         val first = hours.first().hour
         val last = hours.last().hour.coerceAtLeast(first + 1)
-        fun x(h: Int) = w * (h - first).toFloat() / (last - first)
-        fun y(v: Double) = (plotH - (v / 3.0) * plotH).toFloat()
+        fun x(h: Int) = axisW + (w - axisW) * (h - first).toFloat() / (last - first)
+        fun y(v: Double) = (topPad + (plotH - topPad) * (1 - v / 3.0)).toFloat()
+        // Level axis 0–3 with a grid line per step.
+        for (k in 0..3) {
+            val gy = y(k.toDouble())
+            drawLine(Wx.line, Offset(axisW, gy), Offset(w, gy), 1f)
+            val t = measurer.measure(String.format(Locale.getDefault(), "%.1f", k.toDouble()), axisStyle)
+            drawText(t, topLeft = Offset(0f, gy - t.size.height / 2f))
+        }
         val scoredHours = hours.filter { it.level != null }
         val pts = scoredHours.map { Offset(x(it.hour), y(it.level!!)) }
         if (pts.size >= 2) {
@@ -247,12 +253,14 @@ private fun WxStressCurve(hours: List<DaytimeStress.HourPoint>, description: Str
         } else if (pts.size == 1) {
             drawCircle(Wx.stressColor(scoredHours[0].level), 4.dp.toPx(), pts[0])
         }
-        val step = if (last - first > 12) 3 else 2
-        var h = first
-        while (h <= last) {
-            val t = measurer.measure(String.format(Locale.US, "%02d", h), TextStyle(fontSize = 10.sp, color = Wx.textDim))
-            drawText(t, topLeft = Offset((x(h) - t.size.width / 2f).coerceIn(0f, w - t.size.width), size.height - t.size.height))
-            h += step
+        // Clock axis: the first hour, 08:00 and 16:00 when in range, and the last hour bright.
+        val ticks = (listOf(first) + listOf(8, 16).filter { it > first + 1 && it < last - 1 } + listOf(last)).distinct()
+        ticks.forEach { hh ->
+            val bright = hh == last
+            val t = measurer.measure(String.format(Locale.US, "%02d:00", hh),
+                if (bright) axisStyle.copy(color = Wx.text, fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold) else axisStyle)
+            drawText(t, topLeft = Offset((x(hh) - t.size.width / 2f).coerceIn(axisW, w - t.size.width), size.height - t.size.height))
+            if (hh != first && hh != last) drawLine(Wx.line, Offset(x(hh), topPad), Offset(x(hh), plotH), 1f)
         }
     }
 }

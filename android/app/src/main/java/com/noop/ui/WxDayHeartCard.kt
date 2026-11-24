@@ -26,6 +26,7 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
@@ -97,6 +98,19 @@ internal fun WxDayHeartCard(
     val dayFrom = date.atStartOfDay(zone).toEpochSecond()
     val dayTo = date.plusDays(1).atStartOfDay(zone).toEpochSecond()
     val dayWorkouts = workouts.filter { it.endTs > dayFrom && it.startTs < dayTo }.sortedBy { it.startTs }
+    // Sleep inside the day (the night into it, naps, the start of tonight), marked on the chart.
+    var sleeps by remember(date) { mutableStateOf<List<Pair<Long, Long>>>(emptyList()) }
+    LaunchedEffect(date) {
+        sleeps = withContext(Dispatchers.IO) {
+            runCatching {
+                vm.repo.sleepSessionsMerged(vm.deviceId, dayFrom - 86_400L, dayTo, 50)
+                    .map { it.effectiveStartTs to it.endTs }
+                    .filter { (a, b) -> b > dayFrom && a < dayTo && b - a >= 15 * 60 }
+                    .map { (a, b) -> maxOf(a, dayFrom) to minOf(b, dayTo) }
+                    .distinct()
+            }.getOrDefault(emptyList())
+        }
+    }
     val scored = data?.stressHours?.mapNotNull { it.level }.orEmpty()
     val stressNow = data?.stressHours?.lastOrNull { it.level != null }?.level
 
@@ -110,6 +124,13 @@ internal fun WxDayHeartCard(
                 else -> null
             },
         )
+        // When the line was last fed, for today.
+        val lastTs = data?.points?.lastOrNull()?.first
+        if (date == LocalDate.now() && lastTs != null) {
+            val t = Instant.ofEpochSecond(lastTs).atZone(zone)
+            Text(uiString(R.string.wx_last_updated, String.format(Locale.US, "%02d:%02d", t.hour, t.minute)),
+                style = WxType.caption, color = Wx.textMuted, modifier = Modifier.padding(top = 4.dp))
+        }
         Spacer(Modifier.height(10.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(14.dp), verticalAlignment = Alignment.CenterVertically) {
             WxLegend(Wx.stressLow, uiString(R.string.wx_heart_rate_by_stress), "")
@@ -130,14 +151,30 @@ internal fun WxDayHeartCard(
                 Text(uiString(R.string.wx_no_hr_day), style = WxType.caption, color = Wx.textMuted)
             }
         } else {
-            WxDayHeartChart(d, dayWorkouts, uiString(R.string.wx_heart_chart_a11y), hrMax)
+            WxDayHeartChart(d, dayWorkouts, sleeps, date == LocalDate.now(), uiString(R.string.wx_heart_chart_a11y), hrMax)
         }
     }
 }
 
 @Composable
-private fun WxDayHeartChart(d: WxDayHeart, workouts: List<WorkoutRow>, description: String, hrMax: Double?) {
+private fun WxDayHeartChart(
+    d: WxDayHeart, workouts: List<WorkoutRow>, sleeps: List<Pair<Long, Long>>, isToday: Boolean,
+    description: String, hrMax: Double?,
+) {
     val measurer = rememberTextMeasurer()
+    val moon = androidx.compose.ui.graphics.vector.rememberVectorPainter(androidx.compose.material.icons.Icons.Filled.Bedtime)
+    val bike = androidx.compose.ui.graphics.vector.rememberVectorPainter(androidx.compose.material.icons.Icons.Filled.DirectionsBike)
+    val run = androidx.compose.ui.graphics.vector.rememberVectorPainter(androidx.compose.material.icons.Icons.Filled.DirectionsRun)
+    val swim = androidx.compose.ui.graphics.vector.rememberVectorPainter(androidx.compose.material.icons.Icons.Filled.Pool)
+    val gym = androidx.compose.ui.graphics.vector.rememberVectorPainter(androidx.compose.material.icons.Icons.Filled.FitnessCenter)
+    fun sportPainter(sport: String) = sport.lowercase(Locale.US).let { sp ->
+        when {
+            "ride" in sp || "cycl" in sp || "bike" in sp -> bike
+            "run" in sp || "walk" in sp || "hik" in sp -> run
+            "swim" in sp -> swim
+            else -> gym
+        }
+    }
     // Touch readout: the x position under the finger, null when nothing is touched.
     var touchX by remember(d) { mutableStateOf<Float?>(null) }
     val zone = ZoneId.systemDefault()
@@ -165,7 +202,10 @@ private fun WxDayHeartChart(d: WxDayHeart, workouts: List<WorkoutRow>, descripti
         val axisH = 18.dp.toPx()
         val stripH = 10.dp.toPx()
         val gap = 6.dp.toPx()
-        val topPad = 14.dp.toPx()
+        // Icon row on top: a moon over each sleep, the sport over each workout, with a bar under it.
+        val iconSz = 14.dp.toPx()
+        val barY = iconSz + 3.dp.toPx()
+        val topPad = barY + 6.dp.toPx()
         val plotL = yAxisW
         val plotW = size.width - yAxisW
         val plotH = size.height - axisH - stripH - gap
@@ -192,15 +232,30 @@ private fun WxDayHeartChart(d: WxDayHeart, workouts: List<WorkoutRow>, descripti
         // The design: heart-rate zone bands behind the line.
         hrMax?.let { drawWxZoneBands(it, lo, hi, plotL, size.width, ::y, measurer) }
 
-        // Workout bands with their sport name, drawn first so the line sits on top.
+        // Clock grid at 08:00 and 16:00.
+        for (hh in listOf(8, 16)) {
+            val gx = plotL + plotW * hh / 24f
+            drawLine(Wx.line, Offset(gx, topPad), Offset(gx, plotH), 1f)
+        }
+        fun iconAt(p: androidx.compose.ui.graphics.painter.Painter, cx: Float, tint: androidx.compose.ui.graphics.Color) {
+            val left = (cx - iconSz / 2).coerceIn(plotL, size.width - iconSz)
+            translate(left = left, top = 0f) {
+                with(p) { draw(Size(iconSz, iconSz), colorFilter = androidx.compose.ui.graphics.ColorFilter.tint(tint)) }
+            }
+        }
+        // Sleep: a shaded band, a bar and a moon.
+        sleeps.forEach { (a, b) ->
+            val x0 = x(a); val x1 = x(b).coerceAtLeast(x0 + 3f)
+            drawRect(Wx.sleep.copy(alpha = 0.10f), Offset(x0, barY), Size(x1 - x0, plotH - barY))
+            drawLine(Wx.sleepSoft, Offset(x0, barY), Offset(x1, barY), 2.5.dp.toPx(), StrokeCap.Round)
+            iconAt(moon, (x0 + x1) / 2, Wx.sleepSoft)
+        }
+        // Workouts: the same, in the Effort blue with the sport's icon; drawn before the line.
         workouts.forEach { w ->
             val x0 = x(w.startTs); val x1 = x(w.endTs).coerceAtLeast(x0 + 3f)
-            drawRect(Wx.effort.copy(alpha = 0.22f), Offset(x0, topPad), Size(x1 - x0, plotH - topPad))
-            drawLine(Wx.effort, Offset(x0, topPad), Offset(x0, plotH), 1.5f)
-            val label = measurer.measure(wxSportName(w.sport), TextStyle(fontSize = 10.sp, color = Wx.effort))
-            if (x1 - x0 > 8f || workouts.size < 4) {
-                drawText(label, topLeft = Offset((x0 + 3f).coerceAtMost(size.width - label.size.width), topPad))
-            }
+            drawRect(Wx.effort.copy(alpha = 0.16f), Offset(x0, barY), Size(x1 - x0, plotH - barY))
+            drawLine(Wx.effort, Offset(x0, barY), Offset(x1, barY), 2.5.dp.toPx(), StrokeCap.Round)
+            iconAt(sportPainter(w.sport), (x0 + x1) / 2, Wx.text)
         }
         // Heart rate line, each stretch coloured by that hour's stress level (grey where the hour was not
         // scored); a gap of more than 20 minutes breaks it.
@@ -222,11 +277,30 @@ private fun WxDayHeartChart(d: WxDayHeart, workouts: List<WorkoutRow>, descripti
             drawRoundRect(Wx.stressColor(lvl).copy(alpha = if (h.maskedForActivity) 0.45f else 1f), Offset(x0 + 1f, stripTop), Size((x1 - x0 - 2f).coerceAtLeast(2f), stripH),
                 androidx.compose.ui.geometry.CornerRadius(2.dp.toPx()))
         }
-        // X axis: clock time every 6 hours.
-        for (hh in listOf(0, 6, 12, 18, 24)) {
-            val t = measurer.measure(String.format(Locale.US, "%02d:00", hh % 24), axisStyle)
-            val xx = (plotL + plotW * hh / 24f - t.size.width / 2f).coerceIn(plotL, size.width - t.size.width)
-            drawText(t, topLeft = Offset(xx, size.height - t.size.height))
+        // X axis: first reading, 08:00, 16:00 and the last reading (bright); a clock label is dropped
+        // when it would crowd an end label.
+        fun clock(ts: Long) = Instant.ofEpochSecond(ts).atZone(zone).let { String.format(Locale.US, "%02d:%02d", it.hour, it.minute) }
+        val firstTs = d.points.first().first; val lastTs = d.points.last().first
+        val endStyle = axisStyle.copy(color = Wx.text, fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold)
+        val tFirst = measurer.measure(clock(firstTs), axisStyle)
+        val tLast = measurer.measure(clock(lastTs), endStyle)
+        val xFirst = (x(firstTs) - tFirst.size.width / 2f).coerceIn(plotL, size.width - tFirst.size.width)
+        val xLast = (x(lastTs) - tLast.size.width / 2f).coerceIn(plotL, size.width - tLast.size.width)
+        val axisY = size.height - tFirst.size.height
+        drawText(tFirst, topLeft = Offset(xFirst, axisY))
+        drawText(tLast, topLeft = Offset(xLast, axisY))
+        for (hh in listOf(8, 16)) {
+            val t = measurer.measure(String.format(Locale.US, "%02d:00", hh), axisStyle)
+            val xx = plotL + plotW * hh / 24f - t.size.width / 2f
+            val clear = xx > xFirst + tFirst.size.width + 6.dp.toPx() && xx + t.size.width < xLast - 6.dp.toPx()
+            if (clear) drawText(t, topLeft = Offset(xx, axisY))
+        }
+        // Today: a dashed line down from the latest reading to a dot on the axis.
+        if (isToday) {
+            val lx = x(lastTs)
+            drawLine(Wx.textSoft, Offset(lx, topPad), Offset(lx, plotH), 1.2.dp.toPx(),
+                pathEffect = androidx.compose.ui.graphics.PathEffect.dashPathEffect(floatArrayOf(6f, 6f)))
+            drawCircle(Wx.text, 3.dp.toPx(), Offset(lx, plotH))
         }
 
         // Touch readout: nearest 5-minute point, a vertical guide, a dot and "HH:mm · N bpm".

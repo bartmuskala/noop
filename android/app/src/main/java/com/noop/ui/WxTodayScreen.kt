@@ -413,6 +413,8 @@ internal fun WxTodayScreen(vm: AppViewModel, onOpen: (WxTodayTarget) -> Unit) {
                     b = WxSeries(effSeries, Wx.effort, 0.0, effMax, format = { String.format(Locale.US, "%.1f", it) }),
                     dayLabels = week.map { wxWeekdayShort(it) },
                     description = uiString(R.string.wx_effort_and_recovery_a11y),
+                    axes = true,
+                    dayNumbers = week.map { it.dayOfMonth },
                 )
             }
 

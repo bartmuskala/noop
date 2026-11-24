@@ -207,9 +207,12 @@ internal data class WxSeries(val values: List<Double?>, val color: Color, val mi
                             val format: (Double) -> String, val pointColor: ((Double) -> Color)? = null)
 
 /**
- * Two lines over the same days in a squared, gridded box, each point labelled with its value. The
- * label goes above the point when its line is the upper one at that day, below otherwise, so labels of
- * the two lines never collide. The last point is drawn hollow (today).
+ * Two lines over the same days, each point a ring labelled with its value. With [axes] on, [b]'s scale
+ * is printed on the left in its colour and [a]'s on the right, each tick in the colour its value
+ * takes (so Recovery's 0/33/66/100 % read red, amber, green); the grid lines sit at those four ticks.
+ * The label goes above the point when its line is the upper one at that day, below otherwise, so labels
+ * of the two lines never collide. The last day is the selected one: a raised column behind it, its
+ * weekday and date drawn bright. [dayNumbers], when given, prints the date under each weekday.
  */
 @Composable
 internal fun WxTwoLineChart(
@@ -219,70 +222,74 @@ internal fun WxTwoLineChart(
     description: String,
     modifier: Modifier = Modifier,
     height: Dp = 310.dp,
+    axes: Boolean = false,
+    dayNumbers: List<Int>? = null,
 ) {
     val measurer = rememberTextMeasurer()
-    val valueStyle = TextStyle(fontSize = 13.sp, fontFeatureSettings = "tnum")
+    val valueStyle = TextStyle(fontSize = 13.sp, fontFeatureSettings = "tnum", fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold)
     val dayStyle = TextStyle(fontSize = 11.sp, color = Wx.textMuted, textAlign = TextAlign.Center)
+    val axisStyle = TextStyle(fontSize = 10.sp, fontFeatureSettings = "tnum", fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold)
+    val footer = if (dayNumbers != null) 40.dp else 24.dp
     Canvas(
         modifier
             .fillMaxWidth()
-            .height(height + 24.dp)
+            .height(height + footer)
             .semantics { contentDescription = description },
     ) {
         val plotH = height.toPx()
-        val w = size.width
+        val leftW = if (axes) 26.dp.toPx() else 0f
+        val rightW = if (axes) 34.dp.toPx() else 0f
+        val w = size.width - leftW - rightW
         val n = dayLabels.size.coerceAtLeast(1)
         val step = w / n
         val padY = 22.dp.toPx()
-        fun x(i: Int) = step * i + step / 2
-        fun y(v: Double, s: WxSeries): Float {
-            val t = ((v - s.min) / (s.max - s.min)).coerceIn(0.0, 1.0)
-            return (plotH - padY - t * (plotH - padY * 2)).toFloat()
-        }
-        drawRoundRect(Wx.inset, size = Size(w, plotH), cornerRadius = androidx.compose.ui.geometry.CornerRadius(4.dp.toPx()))
-        for (k in 1..2) {
-            val gy = plotH * k / 3f
-            drawLine(Wx.line, Offset(0f, gy), Offset(w, gy), 1f)
-        }
-        for (i in 1 until n) drawLine(Wx.line.copy(alpha = 0.5f), Offset(step * i, 0f), Offset(step * i, plotH), 1f)
-        listOf(a, b).forEach { s ->
-            val pc = s.pointColor
-            if (pc == null) {
-                val path = Path()
-                var started = false
-                s.values.forEachIndexed { i, v ->
-                    if (v == null) { started = false; return@forEachIndexed }
-                    if (!started) path.moveTo(x(i), y(v, s)) else path.lineTo(x(i), y(v, s))
-                    started = true
-                }
-                drawPath(path, s.color, style = Stroke(2.5.dp.toPx(), cap = StrokeCap.Round))
-            } else {
-                // Each segment fades from the colour of its start point to the colour of its end point.
-                for (i in 1 until s.values.size) {
-                    val v0 = s.values[i - 1] ?: continue
-                    val v1 = s.values[i] ?: continue
-                    val p0 = Offset(x(i - 1), y(v0, s)); val p1 = Offset(x(i), y(v1, s))
-                    drawLine(androidx.compose.ui.graphics.Brush.linearGradient(listOf(pc(v0), pc(v1)), p0, p1), p0, p1,
-                        2.5.dp.toPx(), StrokeCap.Round)
-                }
+        fun x(i: Int) = leftW + step * i + step / 2
+        fun frac(v: Double, s: WxSeries) = ((v - s.min) / (s.max - s.min)).coerceIn(0.0, 1.0)
+        fun yFrac(t: Double) = (plotH - padY - t * (plotH - padY * 2)).toFloat()
+        fun y(v: Double, s: WxSeries) = yFrac(frac(v, s))
+        val last = n - 1
+        // The selected (last) day: a raised column behind its points and labels.
+        drawRoundRect(Wx.cardRaised.copy(alpha = 0.7f), Offset(x(last) - step * 0.4f, 0f), Size(step * 0.8f, size.height),
+            androidx.compose.ui.geometry.CornerRadius(6.dp.toPx()))
+        // Grid at a third of the scale, with both scales printed when asked.
+        for (k in 0..3) {
+            val t = k / 3.0
+            val gy = yFrac(t)
+            drawLine(Wx.line, Offset(leftW, gy), Offset(leftW + w, gy), 1f)
+            if (axes) {
+                val bv = b.min + (b.max - b.min) * t
+                val lt = measurer.measure(b.format(bv).substringBefore('.').substringBefore(','), axisStyle.copy(color = b.color))
+                drawText(lt, topLeft = Offset(0f, gy - lt.size.height / 2f))
+                val av = a.min + (a.max - a.min) * t
+                val ac = a.pointColor?.invoke(av) ?: a.color
+                val rt = measurer.measure(a.format(av) + "%", axisStyle.copy(color = ac))
+                drawText(rt, topLeft = Offset(size.width - rt.size.width, gy - rt.size.height / 2f))
             }
         }
-        val last = n - 1
+        listOf(a, b).forEach { s ->
+            // A coloured-point series gets a neutral line, so the colour lives in its points.
+            val lineColor = if (s.pointColor != null) Wx.textMuted else s.color
+            val path = Path()
+            var started = false
+            s.values.forEachIndexed { i, v ->
+                if (v == null) { started = false; return@forEachIndexed }
+                if (!started) path.moveTo(x(i), y(v, s)) else path.lineTo(x(i), y(v, s))
+                started = true
+            }
+            drawPath(path, lineColor, style = Stroke(2.dp.toPx(), cap = StrokeCap.Round))
+        }
         listOf(a to b, b to a).forEach { (s, other) ->
             s.values.forEachIndexed { i, v ->
                 if (v == null) return@forEachIndexed
                 val px = x(i); val py = y(v, s)
                 val c = s.pointColor?.invoke(v) ?: s.color
-                if (i == last) {
-                    drawCircle(Wx.inset, 5.dp.toPx(), Offset(px, py))
-                    drawCircle(c, 5.dp.toPx(), Offset(px, py), style = Stroke(2.5.dp.toPx()))
-                } else {
-                    drawCircle(c, 3.5.dp.toPx(), Offset(px, py))
-                }
+                // Ring points on the card colour.
+                drawCircle(if (i == last) Wx.cardRaised else Wx.card, 5.dp.toPx(), Offset(px, py))
+                drawCircle(c, 5.dp.toPx(), Offset(px, py), style = Stroke(2.2.dp.toPx()))
                 val ov = other.values.getOrNull(i)
                 val above = ov == null || py <= y(ov, other)
-                val layout = measurer.measure(s.format(v), valueStyle.copy(color = c))
-                val ty = if (above) py - 8.dp.toPx() - layout.size.height else py + 8.dp.toPx()
+                val layout = measurer.measure(s.format(v) + (if (s === a && axes) "%" else ""), valueStyle.copy(color = c))
+                val ty = if (above) py - 9.dp.toPx() - layout.size.height else py + 9.dp.toPx()
                 drawText(layout, topLeft = Offset(px - layout.size.width / 2f, ty))
             }
         }
@@ -290,6 +297,10 @@ internal fun WxTwoLineChart(
             val styled = if (i == last) dayStyle.copy(color = Wx.text) else dayStyle
             val layout = measurer.measure(d, styled)
             drawText(layout, topLeft = Offset(x(i) - layout.size.width / 2f, plotH + 6.dp.toPx()))
+            dayNumbers?.getOrNull(i)?.let { dn ->
+                val l2 = measurer.measure("$dn", styled.copy(fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold))
+                drawText(l2, topLeft = Offset(x(i) - l2.size.width / 2f, plotH + 6.dp.toPx() + layout.size.height + 2.dp.toPx()))
+            }
         }
     }
 }
