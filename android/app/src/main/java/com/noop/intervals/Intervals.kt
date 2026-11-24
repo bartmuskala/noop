@@ -161,7 +161,18 @@ object IntervalsSync {
 
     suspend fun sync(ctx: Context): Boolean = withContext(Dispatchers.IO) {
         val key = IntervalsKeyStore.apiKey(ctx) ?: return@withContext false
-        if (_status.value.running) return@withContext false
+        // One sync at a time; the lock is released however this ends, so a cancelled sync can't
+        // leave "running" set and silently skip every later one.
+        if (!lock.tryLock()) return@withContext false
+        try { syncLocked(ctx, key) } finally {
+            if (_status.value.running) _status.value = _status.value.copy(running = false)
+            lock.unlock()
+        }
+    }
+
+    private val lock = kotlinx.coroutines.sync.Mutex()
+
+    private fun syncLocked(ctx: Context, key: String): Boolean {
         _status.value = _status.value.copy(running = true, error = null)
         val client = IntervalsClient(IntervalsKeyStore.athleteId(ctx), key)
         val today = LocalDate.now()
@@ -183,6 +194,6 @@ object IntervalsSync {
         }
         _status.value = Status(running = false, error = err, lastSync = IntervalsStore.lastSync(ctx),
             activities = IntervalsStore.activities(ctx).size, planned = IntervalsStore.events(ctx).count { it.isWorkout })
-        err == null
+        return err == null
     }
 }

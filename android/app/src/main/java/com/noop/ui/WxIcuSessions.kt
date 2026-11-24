@@ -2,6 +2,9 @@ package com.noop.ui
 
 import android.content.Context
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -15,6 +18,7 @@ import com.noop.intervals.IntervalsStore
 import com.noop.intervals.IntervalsSync
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import java.time.Instant
@@ -93,9 +97,15 @@ internal fun icuActivityFor(ctx: Context, row: WorkoutRow): IntervalsParse.Activ
 /** Whether the intervals.icu list replaces NOOP's own workout list. */
 internal fun icuIsWorkoutSource(ctx: Context): Boolean = IntervalsKeyStore.enabled(ctx) && IntervalsKeyStore.hasKey(ctx)
 
+/** Process-wide scope for the open-triggered syncs. */
+private val IcuSyncScope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.SupervisorJob() + Dispatchers.IO)
+
+/** Minimum gap between two open-triggered syncs. */
+private const val OPEN_SYNC_GAP_MS = 2 * 60_000L
+
 /**
  * The workout list every Wx surface shows: intervals.icu's when connected, NOOP's otherwise. Starts the
- * hourly sync and the Effort scoring of new rides in the background.
+ * sync on every app open and the Effort scoring of new rides in the background.
  */
 @Composable
 internal fun rememberWxSessions(vm: AppViewModel): List<WorkoutRow> {
@@ -105,13 +115,28 @@ internal fun rememberWxSessions(vm: AppViewModel): List<WorkoutRow> {
     val efforts by IcuEfforts.flow.collectAsStateWithLifecycle()
     val on = remember(status.lastSync) { icuIsWorkoutSource(ctx) }
     val acts = remember(status.lastSync, on) { if (on) IntervalsStore.activities(ctx) else emptyList() }
-    LaunchedEffect(on, status.lastSync) {
+    // Every return to the app counts as an open: a resume from the background recomposes nothing,
+    // so without this the sync only ran on a cold start.
+    var resumes by remember { mutableIntStateOf(0) }
+    val owner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+    DisposableEffect(owner) {
+        val obs = androidx.lifecycle.LifecycleEventObserver { _, e ->
+            if (e == androidx.lifecycle.Lifecycle.Event.ON_RESUME) resumes++
+        }
+        owner.lifecycle.addObserver(obs)
+        onDispose { owner.lifecycle.removeObserver(obs) }
+    }
+    LaunchedEffect(on, status.lastSync, resumes) {
         if (!on) return@LaunchedEffect
         IcuEfforts.load(ctx)
-        // TrainingPeaks plan → intervals.icu first (when set up), so the sync below picks it up.
-        com.noop.intervals.TpSync.runIfStale(ctx)
-        IntervalsSync.syncIfStale(ctx)
-        IcuEfforts.compute(vm, ctx, IntervalsStore.activities(ctx))
+        // On the app's own scope: leaving this screen mid-sync must not cancel the sync halfway.
+        IcuSyncScope.launch {
+            // TrainingPeaks plan → intervals.icu first (when set up), so the sync below picks it up.
+            // Short gates: each open syncs, a quick tab switch or screen rotation does not.
+            com.noop.intervals.TpSync.runIfStale(ctx.applicationContext, OPEN_SYNC_GAP_MS)
+            IntervalsSync.syncIfStale(ctx.applicationContext, OPEN_SYNC_GAP_MS)
+            IcuEfforts.compute(vm, ctx.applicationContext, IntervalsStore.activities(ctx.applicationContext))
+        }
     }
     return remember(on, acts, efforts, noop) { if (on) icuRows(acts, efforts) else noop }
 }

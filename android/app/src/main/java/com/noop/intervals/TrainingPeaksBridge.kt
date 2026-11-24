@@ -132,7 +132,17 @@ object TpSync {
     suspend fun run(ctx: Context, days: Long = 14): Boolean = withContext(Dispatchers.IO) {
         val cookie = TpKeyStore.cookie(ctx) ?: return@withContext false
         val key = IntervalsKeyStore.apiKey(ctx) ?: return@withContext false
-        if (_status.value.running) return@withContext false
+        // Released however this ends, so a cancelled run can't block every later one.
+        if (!lock.tryLock()) return@withContext false
+        try { runLocked(ctx, cookie, key, days) } finally {
+            if (_status.value.running) _status.value = _status.value.copy(running = false)
+            lock.unlock()
+        }
+    }
+
+    private val lock = kotlinx.coroutines.sync.Mutex()
+
+    private suspend fun runLocked(ctx: Context, cookie: String, key: String, days: Long): Boolean {
         _status.value = Status(running = true)
         var created = 0; var updated = 0; var deleted = 0; var unchanged = 0; val errors = ArrayList<String>()
         val result = runCatching {
@@ -173,6 +183,6 @@ object TpSync {
         _status.value = Status(running = false, line = line, error = !ok)
         // Pull the updated calendar into the phone's cache.
         if (result.isSuccess && (created + updated + deleted) > 0) IntervalsSync.sync(ctx)
-        ok
+        return ok
     }
 }
