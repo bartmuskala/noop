@@ -130,13 +130,6 @@ internal fun WxDayHeartCard(
                 else -> null
             },
         )
-        // When the line was last fed, for today.
-        val lastTs = data?.points?.lastOrNull()?.first
-        if (date == LocalDate.now() && lastTs != null) {
-            val t = Instant.ofEpochSecond(lastTs).atZone(zone)
-            Text(uiString(R.string.wx_last_updated, String.format(Locale.US, "%02d:%02d", t.hour, t.minute)),
-                style = WxType.caption, color = Wx.textMuted, modifier = Modifier.padding(top = 4.dp))
-        }
         Spacer(Modifier.height(10.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(14.dp), verticalAlignment = Alignment.CenterVertically) {
             WxLegend(Wx.stressLine(0.5), uiString(R.string.wx_heart_rate), "")
