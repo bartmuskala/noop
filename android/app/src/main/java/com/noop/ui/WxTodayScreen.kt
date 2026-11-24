@@ -94,6 +94,7 @@ internal sealed interface WxTodayTarget {
     data object Live : WxTodayTarget
     data object Devices : WxTodayTarget
     data object FitnessAge : WxTodayTarget
+    data object Moves : WxTodayTarget
 }
 
 /** The day window every Today average uses, persisted per install. */
@@ -141,7 +142,8 @@ internal fun WxTodayScreen(vm: AppViewModel, onOpen: (WxTodayTarget) -> Unit) {
     var loggedDays by remember { mutableStateOf<Set<String>>(emptySet()) }
     LaunchedEffect(selectedKey) {
         val from = selectedDate.minusDays(6).toString()
-        loggedDays = runCatching { vm.repo.journal(JOURNAL_DEVICE_ID, from, selectedKey) }
+        // Through tomorrow: from 22:00 tomorrow's entry (about today) can already be logged.
+        loggedDays = runCatching { vm.repo.journal(JOURNAL_DEVICE_ID, from, selectedDate.plusDays(1).toString()) }
             .getOrDefault(emptyList()).map { it.day }.toSet()
     }
     // Stress: the stored daily 0–3 value for the selected day.
@@ -334,39 +336,25 @@ internal fun WxTodayScreen(vm: AppViewModel, onOpen: (WxTodayTarget) -> Unit) {
                 }
             }
 
-            // Journal week.
-            val journalWeek = (6 downTo 0).map { selectedDate.minusDays(it.toLong()) }.map {
+            // Journal week: tap a day to log it. From 22:00 on today, tomorrow's entry (about today and
+            // tonight) joins the row, for logging the day before bed.
+            val evening = selectedDate == java.time.LocalDate.now() && wxJournalEveningOpen()
+            val journalDates = (6 downTo (if (evening) -1 else 0)).map { selectedDate.minusDays(it.toLong()) }
+            val journalWeek = journalDates.map {
                 WxJournalDay(wxWeekdayShort(it), it.dayOfMonth, it.toString() in loggedDays, it == selectedDate)
             }
             val loggedCount = journalWeek.count { it.logged }
             WxCard(onClick = { onOpen(WxTodayTarget.Journal) }) {
                 WxCardHeader(uiString(R.string.today_section_journal), uiString(R.string.wx_days_logged, loggedCount))
                 Spacer(Modifier.height(14.dp))
-                WxJournalWeek(journalWeek, uiString(R.string.wx_journal_week_a11y, loggedCount))
-                Spacer(Modifier.height(14.dp))
-                Box(
-                    Modifier.fillMaxWidth().height(44.dp).clip(RoundedCornerShape(12.dp)).background(Wx.cardRaised),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text(uiString(R.string.wx_log_today), style = WxType.bodyStrong.copy(fontSize = 14.sp), color = Wx.text)
-                }
+                WxJournalWeek(journalWeek, uiString(R.string.wx_journal_week_a11y, loggedCount), onSelect = { i ->
+                    val back = java.time.temporal.ChronoUnit.DAYS.between(journalDates[i], java.time.LocalDate.now())
+                    vm.requestJournalDay(back)
+                    onOpen(WxTodayTarget.Journal)
+                })
+                Spacer(Modifier.height(6.dp))
+                WxLinkRow(uiString(R.string.wx_what_moves_you)) { onOpen(WxTodayTarget.Moves) }
             }
-            // Tonight's sleep: recommended bedtime on the left, the alarm on the right.
-            // The next alarm that will actually fire, from the one resolver the Alarms screen shares.
-            val alarmMin: Int? = nextWake?.minuteOfDay
-            // Tonight's plan from the adaptive target (same resolver as the Alarms screen); the fixed
-            // need when it is switched off or still loading.
-            val sleepPlan = rememberWxSleepPlan(vm, logicalDayNow(), alarmMin ?: WX_DEFAULT_WAKE_MIN)
-            val needMin = sleepPlan?.plan?.needMin ?: sleepNeedForDay(row, history.takeLast(30), emptyMap())
-            val bedMin = sleepPlan?.plan?.bedMinute ?: wxBedtimeMinutes(needMin, alarmMin ?: WX_DEFAULT_WAKE_MIN)
-            WxTonightCard(
-                bedtime = wxClock(bedMin, is24h),
-                need = wxHoursMinutes(needMin),
-                alarm = alarmMin?.let { wxClock(it, is24h) },
-                onAlarm = { onOpen(WxTodayTarget.Alarms) },
-                details = sleepPlan?.let { wxPlanLines(it, is24h) }.orEmpty(),
-            )
-
             // Metric tiles: today's value, change vs the N-day average, and the average itself.
             val window = history.takeLast(avgDays)
             val avgLabel = uiString(R.string.wx_n_day_avg, avgDays)
@@ -427,6 +415,22 @@ internal fun WxTodayScreen(vm: AppViewModel, onOpen: (WxTodayTarget) -> Unit) {
                     description = uiString(R.string.wx_effort_and_recovery_a11y),
                 )
             }
+
+            // Tonight's sleep: recommended bedtime on the left, the alarm on the right.
+            // The next alarm that will actually fire, from the one resolver the Alarms screen shares.
+            val alarmMin: Int? = nextWake?.minuteOfDay
+            // Tonight's plan from the adaptive target (same resolver as the Alarms screen); the fixed
+            // need when it is switched off or still loading.
+            val sleepPlan = rememberWxSleepPlan(vm, logicalDayNow(), alarmMin ?: WX_DEFAULT_WAKE_MIN)
+            val needMin = sleepPlan?.plan?.needMin ?: sleepNeedForDay(row, history.takeLast(30), emptyMap())
+            val bedMin = sleepPlan?.plan?.bedMinute ?: wxBedtimeMinutes(needMin, alarmMin ?: WX_DEFAULT_WAKE_MIN)
+            WxTonightCard(
+                bedtime = wxClock(bedMin, is24h),
+                need = wxHoursMinutes(needMin),
+                alarm = alarmMin?.let { wxClock(it, is24h) },
+                onAlarm = { onOpen(WxTodayTarget.Alarms) },
+                details = sleepPlan?.let { wxPlanLines(it, is24h) }.orEmpty(),
+            )
 
         }
     }
@@ -602,7 +606,8 @@ private fun WxTonightCard(bedtime: String, need: String, alarm: String?, onAlarm
                 Text(uiString(R.string.wx_for_full_sleep, need), style = WxType.caption, color = Wx.textMuted)
             }
             Box(Modifier.width(1.dp).height(72.dp).background(Wx.sleepDivider))
-            Column(Modifier.weight(1f).padding(start = 14.dp)) {
+            // Tap the alarm time to open the Alarms screen.
+            Column(Modifier.weight(1f).clip(RoundedCornerShape(8.dp)).clickable(onClick = onAlarm).padding(start = 14.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(Icons.Filled.Alarm, null, tint = Wx.recoveryMid, modifier = Modifier.size(14.dp))
                     Spacer(Modifier.width(6.dp))
@@ -624,16 +629,6 @@ private fun WxTonightCard(bedtime: String, need: String, alarm: String?, onAlarm
                 Text(line, style = WxType.caption.copy(fontSize = if (i == 0) 13.sp else 12.sp),
                     color = if (i == 0) Wx.textSoft else Wx.textMuted)
             }
-        }
-        Spacer(Modifier.height(14.dp))
-        Row(
-            Modifier.fillMaxWidth().height(44.dp).clip(RoundedCornerShape(12.dp)).background(Wx.sleep).clickable(onClick = onAlarm),
-            horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Icon(Icons.Filled.Alarm, null, tint = Wx.canvas, modifier = Modifier.size(16.dp))
-            Spacer(Modifier.width(8.dp))
-            Text(uiString(if (alarm != null) R.string.wx_change_alarm else R.string.wx_set_alarm),
-                style = WxType.bodyStrong.copy(fontSize = 14.sp), color = Wx.canvas)
         }
     }
 }

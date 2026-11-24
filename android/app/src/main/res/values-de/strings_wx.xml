@@ -118,7 +118,7 @@
     <string name="wx_icu_max_power">Max</string>
     <string name="wx_icu_no_planned">Nichts geplant in den nächsten vier Wochen.</string>
     <string name="wx_icu_no_route">Keine GPS-Spur für diese Einheit.</string>
-    <string name="wx_icu_no_strap_hr">Noch keine Herzfrequenz vom Band für diese Einheit, daher keine Belastung.</string>
+    <string name="wx_icu_no_strap_hr">Keine Herzfrequenz für diese Einheit, weder vom Band noch von intervals.icu, daher keine Belastung.</string>
     <string name="wx_icu_not_ridden">Noch nicht gefahren</string>
     <string name="wx_icu_notes">Notizen</string>
     <string name="wx_icu_np">Normalisiert</string>
@@ -136,6 +136,7 @@
     <string name="wx_icu_rides">Von intervals.icu</string>
     <string name="wx_icu_route">Route</string>
     <string name="wx_icu_status">Letzte Synchronisierung %1$s · %2$d Fahrten · %3$d geplant</string>
+    <string name="wx_icu_strava_hidden">Diese Aktivität kam über Strava zu intervals.icu, und Strava erlaubt nicht, ihre Daten an andere Apps weiterzugeben: Herzfrequenz, Leistung und Strecke bleiben auf der Website. Lädst du die Datei zu intervals.icu hoch oder verbindest Garmin, Wahoo oder die Trainer-App direkt, sind sie hier verfügbar.</string>
     <string name="wx_icu_sync_now">Jetzt synchronisieren</string>
     <string name="wx_icu_syncing">Synchronisiere…</string>
     <string name="wx_icu_today_plan">Heutiger Plan</string>
@@ -143,6 +144,7 @@
     <string name="wx_intervals_icu">intervals.icu</string>
     <string name="wx_journal">Journal</string>
     <string name="wx_journal_about">Über %1$s und die Nacht bis %2$s früh; zählt für die Erholung an diesem Morgen</string>
+    <string name="wx_journal_tonight">Heute Abend</string>
     <string name="wx_journal_week_a11y">Tagebuch an %1$d der letzten 7 Tage geführt</string>
     <string name="wx_journal_working">Dein Journal wirkt</string>
     <string name="wx_keep_logging">Ein paar Wochen weiter eintragen, um zu sehen, was deine Werte bewegt.</string>

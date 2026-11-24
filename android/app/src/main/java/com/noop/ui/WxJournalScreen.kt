@@ -118,28 +118,24 @@ internal fun WxJournalScreen(vm: AppViewModel, onOpenMoves: () -> Unit, onEditQu
     val scope = rememberCoroutineScope()
     val days by vm.recentDays.collectAsStateWithLifecycle()
     var seq by remember { mutableStateOf(0) }
-    var dayOffset by remember { mutableStateOf(0L) }
+    // From 22:00 the journal opens on tomorrow's entry, which is about today and tonight: the day is
+    // logged before bed instead of the morning after.
+    val evening = remember { wxJournalEveningOpen() }
+    val minOffset = if (evening) -1L else 0L
+    var dayOffset by remember { mutableStateOf(minOffset) }
     val pending by vm.pendingJournalDayOffset.collectAsStateWithLifecycle()
-    LaunchedEffect(pending) { pending?.let { dayOffset = it.coerceIn(0L, 6L); vm.requestJournalDay(null) } }
+    LaunchedEffect(pending) { pending?.let { dayOffset = it.coerceIn(minOffset, 6L); vm.requestJournalDay(null) } }
     val catalog = remember { loadJournalCatalogItems(ctx) }
     var history by remember { mutableStateOf<WxJournalHistory?>(null) }
     var answers by remember { mutableStateOf<Map<String, Boolean>>(emptyMap()) }
     var numeric by remember { mutableStateOf<Map<String, Double>>(emptyMap()) }
 
     LaunchedEffect(seq, dayOffset) {
-        var h = wxLoadJournalHistory(vm)
+        val h = wxLoadJournalHistory(vm)
         val key = journalDayKey(dayOffset)
-        var a = h.native.filter { it.day == key }.associate { it.question to it.answeredYes }
-        // Same as the classic journal: opening an empty today carries last night's answers over as real
-        // rows, so a recurring pattern is one tap to confirm and the day counts as logged.
-        if (a.isEmpty() && dayOffset == 0L) {
-            val y = h.native.filter { it.day == journalDayKey(1L) }.associate { it.question to it.answeredYes }
-            if (y.isNotEmpty()) {
-                vm.repo.upsertJournal(y.map { (q, v) -> JournalEntry(JOURNAL_DEVICE_ID, key, q, v) })
-                h = wxLoadJournalHistory(vm)
-                a = y
-            }
-        }
+        // Fork: no carry-over of the previous day's answers. Opening an empty day used to copy them in as
+        // real rows, which marked the day logged before anything was answered.
+        val a = h.native.filter { it.day == key }.associate { it.question to it.answeredYes }
         history = h
         answers = a
         numeric = h.native.filter { it.day == key && it.numericValue != null }.associate { it.question to it.numericValue!! }
@@ -175,7 +171,7 @@ internal fun WxJournalScreen(vm: AppViewModel, onOpenMoves: () -> Unit, onEditQu
     ) {
         // This week: seven days ending today; tap a day to log it.
         Row(Modifier.fillMaxWidth().padding(top = 4.dp), horizontalArrangement = Arrangement.SpaceBetween) {
-            for (back in 6 downTo 0) {
+            for (back in 6 downTo minOffset.toInt()) {
                 val d = today.minusDays(back.toLong())
                 val done = d.toString() in logged
                 val selected = back.toLong() == dayOffset
@@ -187,7 +183,7 @@ internal fun WxJournalScreen(vm: AppViewModel, onOpenMoves: () -> Unit, onEditQu
                     Text(wxWeekdayShort(d), style = WxType.caption.copy(fontSize = 11.sp), color = Wx.textMuted)
                     val ring = if (selected) Wx.effort else if (done) Color.Transparent else Wx.lineStrong
                     Box(
-                        Modifier.size(40.dp).clip(CircleShape)
+                        Modifier.size(if (minOffset < 0) 34.dp else 40.dp).clip(CircleShape)
                             .background(if (done) Wx.recoveryHigh else Color.Transparent)
                             .border(2.dp, ring, CircleShape),
                         contentAlignment = Alignment.Center,
@@ -215,7 +211,7 @@ internal fun WxJournalScreen(vm: AppViewModel, onOpenMoves: () -> Unit, onEditQu
 
         val selDate = today.minusDays(dayOffset)
         WxLabel(
-            (if (dayOffset == 0L) uiString(R.string.nav_today) + " · " else "") + wxShortDate(selDate),
+            (when (dayOffset) { 0L -> uiString(R.string.nav_today) + " · "; -1L -> uiString(R.string.wx_journal_tonight) + " · "; else -> "" }) + wxShortDate(selDate),
             Modifier.padding(start = 4.dp, top = 8.dp),
         )
         // What a day's answers are about: the day before and the night into this morning, which is what

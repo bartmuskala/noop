@@ -16,6 +16,7 @@ import com.noop.intervals.IntervalsKeyStore
 import com.noop.intervals.IntervalsParse
 import com.noop.intervals.IntervalsStore
 import com.noop.intervals.IntervalsSync
+import com.noop.intervals.streams
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
@@ -48,31 +49,71 @@ internal object IcuEfforts {
         flow.value = o.keys().asSequence().associateWith { o.getDouble(it) }
     }
 
-    /** Score the activities that have none yet and whose window has strap heart rate. */
+    private val lock = kotlinx.coroutines.sync.Mutex()
+    private const val NO_HR_FILE = "efforts_nohr.json"
+
+    /**
+     * Score every activity that has no Effort yet, the whole synced history. Heart rate comes from the
+     * strap when it covers the session, otherwise from the activity's own heart-rate stream on
+     * intervals.icu (a chest strap or watch); the fuller of the two is used. Activities with neither are
+     * remembered so their stream is not asked for again on every open.
+     */
     suspend fun compute(vm: AppViewModel, ctx: Context, acts: List<IntervalsParse.Activity>) = withContext(Dispatchers.IO) {
+        if (!lock.tryLock()) return@withContext
+        try { computeLocked(vm, ctx, acts) } finally { lock.unlock() }
+    }
+
+    private suspend fun computeLocked(vm: AppViewModel, ctx: Context, acts: List<IntervalsParse.Activity>) {
         load(ctx)
         val have = flow.value.toMutableMap()
+        val noHr = IntervalsStore.read(ctx, NO_HR_FILE)
+            ?.let { t -> runCatching { org.json.JSONArray(t) }.getOrNull() }
+            ?.let { arr -> (0 until arr.length()).map { arr.optString(it) }.toMutableSet() } ?: mutableSetOf()
+        val todo = acts.filter { it.id !in have }
+        if (todo.isEmpty()) return
         val profile = ProfileStore.from(ctx)
         val hrMax = StrainScorer.effortHRmax(profile.hrMaxOverride.takeIf { it > 0 }?.toDouble(), profile.age.toDouble()).first
-        val restByDay = vm.recentDays.value.associate { it.day to it.restingHr }
+        // That day's resting HR across the whole history: WHOOP's imported days, NOOP's own on top.
+        val restByDay = HashMap<String, Int>()
+        runCatching {
+            vm.repo.dailyMetrics(vm.deviceId, "2000-01-01", "2100-01-01").forEach { d -> d.restingHr?.let { restByDay[d.day] = it } }
+            vm.repo.dailyMetrics("${vm.deviceId}-noop", "2000-01-01", "2100-01-01").forEach { d -> d.restingHr?.let { restByDay[d.day] = it } }
+        }
         val fallbackRest = vm.recentDays.value.lastOrNull { it.restingHr != null }?.restingHr?.toDouble() ?: StrainScorer.defaultRestingHR
         val now = System.currentTimeMillis() / 1000
-        var changed = false
-        for (a in acts) {
-            if (a.id in have) continue
+        var changed = 0
+        for (a in todo.sortedByDescending { it.startLocal }) {
             val start = icuEpoch(a.startLocal) ?: continue
-            val end = start + (a.elapsedS ?: a.movingS ?: continue).toLong()
+            val dur = (a.elapsedS ?: a.movingS ?: continue).toLong()
+            val end = start + dur
             if (end > now - 1800) continue // let the strap's heart rate arrive first
-            val hr = runCatching { vm.repo.hrSamplesUnion(vm.activeStrapId, start, end, 50_000) }.getOrDefault(emptyList())
+            val strap = runCatching { vm.repo.hrSamplesUnion(vm.activeStrapId, start, end, 50_000) }.getOrDefault(emptyList())
+            var hr = strap
+            // The strap missed (most of) it: the session's own heart-rate stream, when it has one.
+            if (strap.size < dur / 2 && a.id !in noHr) {
+                val st = runCatching { IntervalsStore.streams(ctx, a.id) }.getOrDefault(emptyMap())
+                val bpm = st["heartrate"].orEmpty()
+                val t = st["time"].orEmpty()
+                val fromStream = bpm.indices.mapNotNull { i ->
+                    val b = bpm[i]?.takeIf { it in 30.0..240.0 } ?: return@mapNotNull null
+                    val sec = t.getOrNull(i) ?: i.toDouble()
+                    com.noop.data.HrSample(deviceId = ICU_SOURCE, ts = start + sec.toLong(), bpm = b.toInt())
+                }
+                if (fromStream.size > strap.size) hr = fromStream
+                if (fromStream.isEmpty() && strap.isEmpty()) noHr += a.id
+            }
             if (hr.isEmpty()) continue
             val rest = restByDay[a.day]?.toDouble() ?: fallbackRest
             val e = StrainScorer.strain(hr, maxHR = hrMax, restingHR = rest, method = StrainScorer.Method.FITTED, sex = profile.sex) ?: continue
-            have[a.id] = e; changed = true
+            have[a.id] = e; changed++
+            // Show progress while a long history scores.
+            if (changed % 10 == 0) flow.value = have.toMap()
         }
-        if (changed) {
+        if (changed > 0) {
             flow.value = have.toMap()
             IntervalsStore.write(ctx, FILE, JSONObject(have as Map<*, *>).toString())
         }
+        IntervalsStore.write(ctx, NO_HR_FILE, org.json.JSONArray(noHr.toList()).toString())
     }
 }
 

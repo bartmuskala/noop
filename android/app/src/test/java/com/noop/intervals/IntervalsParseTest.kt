@@ -95,4 +95,13 @@ class IntervalsParseTest {
         val z = IntervalsParse.hrZoneSeconds(listOf(90.0, 110.0, 150.0, 195.0), listOf(0.0, 1.0, 2.0, 3.0), 200.0)!!
         assertEquals(listOf(1.0, 0.0, 1.0, 0.0, 1.0), z)
     }
+
+    @Test
+    fun stravaSourceAndNoteAreKept() {
+        val a = IntervalsParse.activities("""[{"id":"i9","start_date_local":"2026-11-20T09:30:00","source":"STRAVA","_note":"STRAVA activities are not available via the API"},
+            {"id":"i10","start_date_local":"2026-11-21T09:30:00","source":"GARMIN_CONNECT"}]""")
+        assertEquals(true, a[0].stravaOnly)
+        assertEquals("STRAVA activities are not available via the API", a[0].note)
+        assertEquals(false, a[1].stravaOnly)
+    }
 }

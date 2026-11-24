@@ -118,7 +118,7 @@
     <string name="wx_icu_max_power">Max</string>
     <string name="wx_icu_no_planned">Rien de planifié dans les quatre prochaines semaines.</string>
     <string name="wx_icu_no_route">Pas de trace GPS pour cette séance.</string>
-    <string name="wx_icu_no_strap_hr">Pas encore de fréquence cardiaque du bracelet pour cette séance, donc pas d\'effort.</string>
+    <string name="wx_icu_no_strap_hr">Aucune fréquence cardiaque pour cette séance, ni du bracelet ni d\'intervals.icu, donc pas d\'effort.</string>
     <string name="wx_icu_not_ridden">Pas encore roulé</string>
     <string name="wx_icu_notes">Notes</string>
     <string name="wx_icu_np">Normalisée</string>
@@ -136,6 +136,7 @@
     <string name="wx_icu_rides">Depuis intervals.icu</string>
     <string name="wx_icu_route">Trace</string>
     <string name="wx_icu_status">Dernière synchro %1$s · %2$d sorties · %3$d planifiées</string>
+    <string name="wx_icu_strava_hidden">Cette activité est arrivée sur intervals.icu depuis Strava, et Strava n\'autorise pas intervals.icu à transmettre ses données à d\'autres apps : fréquence cardiaque, puissance et parcours restent sur le site. Envoyer le fichier sur intervals.icu, ou connecter Garmin, Wahoo ou l\'app du home-trainer directement, les rend disponibles ici.</string>
     <string name="wx_icu_sync_now">Synchroniser</string>
     <string name="wx_icu_syncing">Synchronisation…</string>
     <string name="wx_icu_today_plan">Plan du jour</string>
@@ -143,6 +144,7 @@
     <string name="wx_intervals_icu">intervals.icu</string>
     <string name="wx_journal">Journal</string>
     <string name="wx_journal_about">Concerne %1$s et la nuit jusqu\'à %2$s matin ; compte pour la récupération de ce matin-là</string>
+    <string name="wx_journal_tonight">Ce soir</string>
     <string name="wx_journal_week_a11y">Journal rempli %1$d des 7 derniers jours</string>
     <string name="wx_journal_working">Votre journal porte ses fruits</string>
     <string name="wx_keep_logging">Continuez quelques semaines pour voir ce qui fait bouger vos scores.</string>

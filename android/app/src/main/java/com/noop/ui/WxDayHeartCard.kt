@@ -37,6 +37,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import kotlin.math.abs
+import kotlinx.coroutines.launch
 import com.noop.R
 import com.noop.analytics.StrainScorer
 import com.noop.analytics.DaytimeStress
@@ -80,26 +81,17 @@ internal fun WxDayHeartCard(
         StrainScorer.effortHRmax(p.hrMaxOverride.takeIf { it > 0 }?.toDouble(), p.age.toDouble()).first
             ?: StrainScorer.defaultMaxHR().toDouble()
     }
+    // The last 15 days are drawn once in the background and kept on the phone, so opening one is instant.
+    LaunchedEffect(Unit) { WxDayHeartCache.prefill(vm, ctx.applicationContext, personal) }
     LaunchedEffect(date) {
-        val zone = ZoneId.systemDefault()
-        val from = date.atStartOfDay(zone).toEpochSecond()
-        val end = date.plusDays(1).atStartOfDay(zone).toEpochSecond()
-        val cached = WxDayHeartCache.get(date)
-        if (cached != null && date != LocalDate.now()) return@LaunchedEffect
-        val buckets = withContext(Dispatchers.Default) {
-            runCatching {
-                val now = System.currentTimeMillis() / 1000L
-                val hr = vm.repo.hrSamplesUnion(vm.activeStrapId, from, minOf(end, now), limit = 200_000)
-                // 5-minute means keep the line readable and the draw cheap.
-                hr.groupBy { (it.ts - from) / 300L }.toSortedMap()
-                    .map { (b, xs) -> (from + b * 300L + 150L) to xs.map { it.bpm }.average() }
-            }.getOrNull()
-        } ?: return@LaunchedEffect
-        data = WxDayHeart(buckets, cached?.stressHours.orEmpty(), from, end)
-        val stress = withContext(Dispatchers.Default) {
-            runCatching { wxStressHours(vm, date, personal) }.getOrDefault(emptyList())
-        }
-        data = WxDayHeart(buckets, stress, from, end).also { WxDayHeartCache.put(date, it) }
+        WxDayHeartCache.attach(ctx.applicationContext)
+        // Memory, then the phone's copy; a finished day kept after it ended is final.
+        val stored = WxDayHeartCache.load(date)
+        if (stored != null) data = stored.first
+        if (stored != null && stored.second) return@LaunchedEffect
+        val fresh = wxComputeDayHeart(vm, date, personal) { partial -> data = partial } ?: return@LaunchedEffect
+        data = fresh
+        withContext(Dispatchers.IO) { WxDayHeartCache.put(date, fresh) }
     }
     val zone = ZoneId.systemDefault()
     val dayFrom = date.atStartOfDay(zone).toEpochSecond()
@@ -263,8 +255,103 @@ private fun WxDayHeartChart(d: WxDayHeart, workouts: List<WorkoutRow>, descripti
 /** The last drawn day per date, so the card opens with its content (fork). */
 internal object WxDayHeartCache {
     private val map = object : LinkedHashMap<LocalDate, WxDayHeart>(16, 0.75f, true) {
-        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<LocalDate, WxDayHeart>?) = size > 14
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<LocalDate, WxDayHeart>?) = size > 40
     }
+    @Volatile private var dir: java.io.File? = null
+    @Volatile private var prefilled = false
+
+    fun attach(ctx: android.content.Context) {
+        if (dir == null) dir = java.io.File(ctx.filesDir, "wx_dayheart").apply { mkdirs() }
+    }
+
     @Synchronized fun get(d: LocalDate): WxDayHeart? = map[d]
-    @Synchronized fun put(d: LocalDate, v: WxDayHeart) { map[d] = v }
+
+    /**
+     * The day from memory or the phone's copy, with whether it is final: a past day written at least
+     * 12 hours after it ended (late strap offloads have landed by then). Today is never final.
+     */
+    suspend fun load(d: LocalDate): Pair<WxDayHeart, Boolean>? = withContext(Dispatchers.IO) {
+        val f = dir?.let { java.io.File(it, "$d.json") }
+        val text = f?.takeIf { it.exists() }?.let { runCatching { it.readText() }.getOrNull() }
+        val parsed = text?.let { runCatching { decode(it) }.getOrNull() }
+        val mem = get(d)
+        val v = mem ?: parsed?.first ?: return@withContext null
+        if (mem == null) synchronized(this@WxDayHeartCache) { map[d] = v }
+        val final = d != LocalDate.now() && parsed != null && parsed.second >= v.to + 12 * 3600L
+        v to final
+    }
+
+    fun put(d: LocalDate, v: WxDayHeart) {
+        synchronized(this) { map[d] = v }
+        val f = dir?.let { java.io.File(it, "$d.json") } ?: return
+        runCatching { f.writeText(encode(v, System.currentTimeMillis() / 1000L)) }
+    }
+
+    /** Draws the last 15 finished days that are not kept yet, once per app run, in the background. */
+    fun prefill(vm: AppViewModel, ctx: android.content.Context, personal: Boolean) {
+        if (prefilled) return
+        prefilled = true
+        attach(ctx)
+        kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.SupervisorJob() + Dispatchers.Default).launch {
+            val today = LocalDate.now()
+            for (back in 1..15) {
+                val d = today.minusDays(back.toLong())
+                if (load(d)?.second == true) continue
+                val v = runCatching { wxComputeDayHeart(vm, d, personal) }.getOrNull() ?: continue
+                put(d, v)
+            }
+        }
+    }
+
+    private fun encode(v: WxDayHeart, writtenAt: Long): String {
+        val o = org.json.JSONObject()
+        o.put("f", v.from); o.put("t", v.to); o.put("w", writtenAt)
+        o.put("p", org.json.JSONArray().apply { v.points.forEach { (ts, b) -> put(org.json.JSONArray().put(ts).put(b)) } })
+        o.put("s", org.json.JSONArray().apply {
+            v.stressHours.forEach { h ->
+                put(org.json.JSONObject().put("h", h.hour).put("ts", h.startTs)
+                    .put("l", h.level ?: org.json.JSONObject.NULL).put("m", h.meanHr ?: org.json.JSONObject.NULL)
+                    .put("a", h.maskedForActivity))
+            }
+        })
+        return o.toString()
+    }
+
+    private fun decode(text: String): Pair<WxDayHeart, Long> {
+        val o = org.json.JSONObject(text)
+        val p = o.getJSONArray("p")
+        val points = (0 until p.length()).map { i -> p.getJSONArray(i).let { it.getLong(0) to it.getDouble(1) } }
+        val s = o.getJSONArray("s")
+        val hours = (0 until s.length()).map { i ->
+            val h = s.getJSONObject(i)
+            DaytimeStress.HourPoint(h.getInt("h"), h.getLong("ts"),
+                if (h.isNull("l")) null else h.getDouble("l"), if (h.isNull("m")) null else h.getDouble("m"),
+                null, h.optBoolean("a", false))
+        }
+        return WxDayHeart(points, hours, o.getLong("f"), o.getLong("t")) to o.optLong("w", 0L)
+    }
+}
+
+/** One day's 5-minute heart rate and hourly stress; [onPartial] gets the heart rate before stress is in. */
+internal suspend fun wxComputeDayHeart(
+    vm: AppViewModel, date: LocalDate, personal: Boolean, onPartial: (WxDayHeart) -> Unit = {},
+): WxDayHeart? {
+    val zone = ZoneId.systemDefault()
+    val from = date.atStartOfDay(zone).toEpochSecond()
+    val end = date.plusDays(1).atStartOfDay(zone).toEpochSecond()
+    val buckets = withContext(Dispatchers.Default) {
+        runCatching {
+            val now = System.currentTimeMillis() / 1000L
+            val hr = vm.repo.hrSamplesUnion(vm.activeStrapId, from, minOf(end, now), limit = 200_000)
+            // 5-minute means keep the line readable and the draw cheap.
+            hr.groupBy { (it.ts - from) / 300L }.toSortedMap()
+                .map { (b, xs) -> (from + b * 300L + 150L) to xs.map { it.bpm }.average() }
+        }.getOrNull()
+    } ?: return null
+    val prev = WxDayHeartCache.get(date)
+    onPartial(WxDayHeart(buckets, prev?.stressHours.orEmpty(), from, end))
+    val stress = withContext(Dispatchers.Default) {
+        runCatching { wxStressHours(vm, date, personal) }.getOrDefault(emptyList())
+    }
+    return WxDayHeart(buckets, stress, from, end)
 }

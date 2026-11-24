@@ -118,7 +118,7 @@
     <string name="wx_icu_max_power">Máx.</string>
     <string name="wx_icu_no_planned">Nada planificado en las próximas cuatro semanas.</string>
     <string name="wx_icu_no_route">Sin traza GPS para esta sesión.</string>
-    <string name="wx_icu_no_strap_hr">Aún no hay frecuencia cardiaca de la banda para esta sesión, así que no hay esfuerzo.</string>
+    <string name="wx_icu_no_strap_hr">No hay frecuencia cardiaca de esta sesión ni de la banda ni de intervals.icu, así que no hay esfuerzo.</string>
     <string name="wx_icu_not_ridden">Aún no realizado</string>
     <string name="wx_icu_notes">Notas</string>
     <string name="wx_icu_np">Normalizada</string>
@@ -136,6 +136,7 @@
     <string name="wx_icu_rides">De intervals.icu</string>
     <string name="wx_icu_route">Ruta</string>
     <string name="wx_icu_status">Última sincronización %1$s · %2$d salidas · %3$d planificados</string>
+    <string name="wx_icu_strava_hidden">Esta actividad llegó a intervals.icu desde Strava, y Strava no permite que intervals.icu pase sus datos a otras apps: frecuencia cardiaca, potencia y ruta se quedan en la web. Subir el archivo a intervals.icu, o conectar Garmin, Wahoo o la app del rodillo directamente, los hace disponibles aquí.</string>
     <string name="wx_icu_sync_now">Sincronizar ahora</string>
     <string name="wx_icu_syncing">Sincronizando…</string>
     <string name="wx_icu_today_plan">Plan de hoy</string>
@@ -143,6 +144,7 @@
     <string name="wx_intervals_icu">intervals.icu</string>
     <string name="wx_journal">Diario</string>
     <string name="wx_journal_about">Sobre el %1$s y la noche hasta el %2$s por la mañana; cuenta para la recuperación de esa mañana</string>
+    <string name="wx_journal_tonight">Esta noche</string>
     <string name="wx_journal_week_a11y">Diario registrado %1$d de los últimos 7 días</string>
     <string name="wx_journal_working">Tu diario funciona</string>
     <string name="wx_keep_logging">Sigue registrando un par de semanas para ver qué mueve tus valores.</string>

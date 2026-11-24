@@ -25,6 +25,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -106,6 +108,19 @@ internal fun WxWorkoutCalendar(
                     textAlign = TextAlign.Center, modifier = Modifier.weight(1f))
             }
         }
+        // Swipe right for earlier weeks, left for later ones (the arrows do the same).
+        val swipe = with(androidx.compose.ui.platform.LocalDensity.current) { 56.dp.toPx() }
+        Column(Modifier.fillMaxWidth().pointerInput(canBack, page) {
+            var dx = 0f
+            detectHorizontalDragGestures(
+                onDragStart = { dx = 0f },
+                onDragEnd = {
+                    if (dx > swipe && canBack) page++
+                    else if (dx < -swipe && page > 0) page--
+                },
+                onHorizontalDrag = { change, amount -> dx += amount; change.consume() },
+            )
+        }) {
         for (w in 0 until weeks) {
             Row(Modifier.fillMaxWidth()) {
                 for (i in 0 until 7) {
@@ -145,6 +160,7 @@ internal fun WxWorkoutCalendar(
                     }
                 }
             }
+        }
         }
         if (planned.isNotEmpty()) {
             Spacer(Modifier.height(6.dp))

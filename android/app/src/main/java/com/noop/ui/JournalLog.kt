@@ -128,6 +128,9 @@ internal fun mergeJournalEntries(
     return byKey.values.sortedWith(compareBy({ it.day }, { it.question }))
 }
 
+/** Fork: from 22:00 tomorrow's journal entry (about today and tonight) can be logged before bed. */
+internal fun wxJournalEveningOpen(now: java.time.LocalTime = java.time.LocalTime.now()): Boolean = now.hour >= 22
+
 /** Importer convention (WhoopCsvImporter.parseJournal): journal day = the wake/cycle day whose
  *  morning recovery the previous ~24 h affected. "Log today" = answers about yesterday / last
  *  night, attributed to TODAY's local day key; daysBack=1 edits yesterday; daysBack=-1 logs ahead

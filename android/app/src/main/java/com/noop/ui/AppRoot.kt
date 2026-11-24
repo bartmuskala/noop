@@ -650,6 +650,7 @@ fun AppRoot(viewModel: AppViewModel = viewModel()) {
                             WxTodayTarget.Live -> nav.navigate(Destination.Live.route)
                             WxTodayTarget.Devices -> nav.navigate(Destination.Devices.route)
                             WxTodayTarget.FitnessAge -> nav.navigate(Destination.FitnessAge.route)
+                            WxTodayTarget.Moves -> nav.navigate(Destination.InsightsHub.route)
                         }
                     }
                 }

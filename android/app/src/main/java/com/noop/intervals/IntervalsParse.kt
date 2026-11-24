@@ -32,8 +32,14 @@ object IntervalsParse {
         val intensity: Double? = null,
         val avgCadence: Double? = null,
         val pairedEventId: String? = null,
+        /** Where intervals.icu got the activity ("STRAVA", "GARMIN_CONNECT", "OAUTH_CLIENT", …). */
+        val source: String? = null,
+        /** intervals.icu's own remark, e.g. that a Strava activity is not available through the API. */
+        val note: String? = null,
     ) {
         val day: String get() = startLocal.take(10)
+        /** A Strava-imported activity whose data intervals.icu may not hand out through its API. */
+        val stravaOnly: Boolean get() = source.equals("STRAVA", ignoreCase = true)
         /** Intensity factor as a fraction (0.75), whether intervals.icu sent 75 or 0.75. */
         val intensityFactor: Double? get() = intensity?.let { if (it > 3.0) it / 100.0 else it }
     }
@@ -185,6 +191,8 @@ object IntervalsParse {
                 intensity = o.num("icu_intensity"),
                 avgCadence = o.num("average_cadence"),
                 pairedEventId = o.str("paired_event_id"),
+                source = o.str("source"),
+                note = o.str("_note"),
             )
         }
     }

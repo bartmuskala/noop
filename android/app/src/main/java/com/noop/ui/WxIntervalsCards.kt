@@ -168,7 +168,12 @@ internal fun WxIcuActivityDetail(vm: AppViewModel, a: IntervalsParse.Activity, r
                 }
             }
         }
-        if (effort == null) Text(uiString(R.string.wx_icu_no_strap_hr), style = WxType.caption, color = Wx.textMuted)
+        val noData = streams?.isEmpty() == true
+        when {
+            // Strava keeps its data from other apps: say why the page is thin, and how to fix it.
+            a.stravaOnly && noData -> WxCard { Text(uiString(R.string.wx_icu_strava_hidden), style = WxType.caption, color = Wx.textSoft) }
+            effort == null && streams != null -> Text(uiString(R.string.wx_icu_no_strap_hr), style = WxType.caption, color = Wx.textMuted)
+        }
         WxIcuRouteCard(a.id)
         val st = streams
         val watts = st?.get("watts")?.takeIf { w -> w.count { it != null && it > 0 } > 30 }

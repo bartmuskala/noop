@@ -118,7 +118,7 @@
     <string name="wx_icu_max_power">Máx.</string>
     <string name="wx_icu_no_planned">Nada planeado nas próximas quatro semanas.</string>
     <string name="wx_icu_no_route">Sem percurso GPS para esta sessão.</string>
-    <string name="wx_icu_no_strap_hr">Ainda sem frequência cardíaca da pulseira para esta sessão, por isso sem esforço.</string>
+    <string name="wx_icu_no_strap_hr">Sem frequência cardíaca desta sessão, nem da pulseira nem do intervals.icu, por isso sem esforço.</string>
     <string name="wx_icu_not_ridden">Ainda não feito</string>
     <string name="wx_icu_notes">Notas</string>
     <string name="wx_icu_np">Normalizada</string>
@@ -136,6 +136,7 @@
     <string name="wx_icu_rides">Do intervals.icu</string>
     <string name="wx_icu_route">Percurso</string>
     <string name="wx_icu_status">Última sincronização %1$s · %2$d saídas · %3$d planeados</string>
+    <string name="wx_icu_strava_hidden">Esta atividade chegou ao intervals.icu a partir do Strava, e o Strava não permite que o intervals.icu passe os seus dados a outras apps: frequência cardíaca, potência e percurso ficam no site. Carregar o ficheiro no intervals.icu, ou ligar Garmin, Wahoo ou a app do rolo diretamente, torna-os disponíveis aqui.</string>
     <string name="wx_icu_sync_now">Sincronizar agora</string>
     <string name="wx_icu_syncing">A sincronizar…</string>
     <string name="wx_icu_today_plan">Plano de hoje</string>
@@ -143,6 +144,7 @@
     <string name="wx_intervals_icu">intervals.icu</string>
     <string name="wx_journal">Diário</string>
     <string name="wx_journal_about">Sobre %1$s e a noite até %2$s de manhã; conta para a recuperação dessa manhã</string>
+    <string name="wx_journal_tonight">Esta noite</string>
     <string name="wx_journal_week_a11y">Diário registado em %1$d dos últimos 7 dias</string>
     <string name="wx_journal_working">O seu diário está a resultar</string>
     <string name="wx_keep_logging">Continue a registar algumas semanas para ver o que mexe com os seus valores.</string>
