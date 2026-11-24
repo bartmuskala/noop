@@ -16,6 +16,9 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -87,11 +90,11 @@ internal fun WxWorkoutCalendar(
                 Text(uiString(R.string.wx_dot_effort), style = WxType.caption.copy(fontSize = 11.sp), color = Wx.textMuted)
             }
             androidx.compose.material3.IconButton(onClick = { page++ }, enabled = canBack) {
-                androidx.compose.material3.Icon(androidx.compose.material.icons.Icons.AutoMirrored.Filled.KeyboardArrowLeft,
+                androidx.compose.material3.Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft,
                     uiString(R.string.wx_cal_earlier), tint = if (canBack) Wx.text else Wx.lineStrong)
             }
             androidx.compose.material3.IconButton(onClick = { if (page > 0) page-- }, enabled = page > 0) {
-                androidx.compose.material3.Icon(androidx.compose.material.icons.Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                androidx.compose.material3.Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight,
                     uiString(R.string.wx_cal_later), tint = if (page > 0) Wx.text else Wx.lineStrong)
             }
         }
