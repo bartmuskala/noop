@@ -11,6 +11,12 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Bedtime
+import androidx.compose.material.icons.filled.DirectionsBike
+import androidx.compose.material.icons.automirrored.filled.DirectionsRun
+import androidx.compose.material.icons.filled.Pool
+import androidx.compose.material.icons.filled.FitnessCenter
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -162,11 +168,11 @@ private fun WxDayHeartChart(
     description: String, hrMax: Double?,
 ) {
     val measurer = rememberTextMeasurer()
-    val moon = androidx.compose.ui.graphics.vector.rememberVectorPainter(androidx.compose.material.icons.Icons.Filled.Bedtime)
-    val bike = androidx.compose.ui.graphics.vector.rememberVectorPainter(androidx.compose.material.icons.Icons.Filled.DirectionsBike)
-    val run = androidx.compose.ui.graphics.vector.rememberVectorPainter(androidx.compose.material.icons.Icons.Filled.DirectionsRun)
-    val swim = androidx.compose.ui.graphics.vector.rememberVectorPainter(androidx.compose.material.icons.Icons.Filled.Pool)
-    val gym = androidx.compose.ui.graphics.vector.rememberVectorPainter(androidx.compose.material.icons.Icons.Filled.FitnessCenter)
+    val moon = androidx.compose.ui.graphics.vector.rememberVectorPainter(Icons.Filled.Bedtime)
+    val bike = androidx.compose.ui.graphics.vector.rememberVectorPainter(Icons.Filled.DirectionsBike)
+    val run = androidx.compose.ui.graphics.vector.rememberVectorPainter(Icons.AutoMirrored.Filled.DirectionsRun)
+    val swim = androidx.compose.ui.graphics.vector.rememberVectorPainter(Icons.Filled.Pool)
+    val gym = androidx.compose.ui.graphics.vector.rememberVectorPainter(Icons.Filled.FitnessCenter)
     fun sportPainter(sport: String) = sport.lowercase(Locale.US).let { sp ->
         when {
             "ride" in sp || "cycl" in sp || "bike" in sp -> bike
