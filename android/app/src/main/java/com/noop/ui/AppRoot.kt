@@ -596,9 +596,7 @@ fun AppRoot(viewModel: AppViewModel = viewModel()) {
                 if (!BottomBarStyleStore.overlay) {
                     GlassBottomBar(
                         current = current,
-                        onTabSelected = { dest ->
-                            if (dest.route != currentRoute) nav.navigateTopLevel(dest.route)
-                        },
+                        onTabSelected = { dest -> nav.navigateTab(dest.route) },
                     )
                 }
             },
@@ -974,9 +972,7 @@ fun AppRoot(viewModel: AppViewModel = viewModel()) {
         // it reserves no space, so composing or not composing it never reflows content.
         if (BottomBarStyleStore.overlay && barPresent) GlassBottomBar(
             current = current,
-            onTabSelected = { dest ->
-                if (dest.route != currentRoute) nav.navigateTopLevel(dest.route)
-            },
+            onTabSelected = { dest -> nav.navigateTab(dest.route) },
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .graphicsLayer {
@@ -1340,6 +1336,17 @@ internal fun BrandMark(size: Dp = 22.dp) {
         // Solid WHITE "on-device core" dot at the centre (green ring + white core — iOS parity, no gold).
         drawCircle(color = Color.White, radius = stroke * 0.62f, center = center)
     }
+}
+
+/**
+ * Fork: a bottom-bar tap always lands on that tab's own page. Unlike [navigateTopLevel] it neither saves
+ * nor restores the tab's back stack, so a page clicked through to earlier (a workout opened from a day,
+ * a Recovery detail) is dropped instead of coming back, and tapping the tab you are on resets it too.
+ */
+private fun NavHostController.navigateTab(route: String) {
+    val start = graph.findStartDestination().id
+    popBackStack(start, inclusive = false)
+    if (graph.findStartDestination().route != route) navigate(route) { launchSingleTop = true }
 }
 
 /** Navigate to a top-level destination with single-top + state save/restore. */
