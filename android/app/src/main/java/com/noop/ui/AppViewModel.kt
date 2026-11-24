@@ -2901,6 +2901,18 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
      * is unavailable or its read permissions aren't granted (the UI requests them when enabling).
      */
     fun syncHealthConnectIfStale(force: Boolean = false) {
+        // Fork: with intervals.icu connected, rides come from there, so the Health Connect auto-sync is
+        // switched off once (the Data Sources toggle can turn it back on for other data).
+        if (_hcAutoSync.value && com.noop.intervals.IntervalsKeyStore.enabled(appContext) &&
+            com.noop.intervals.IntervalsKeyStore.hasKey(appContext)) {
+            val prefs = NoopPrefs.of(appContext)
+            if (!prefs.getBoolean(KEY_HC_OFF_FOR_ICU, false)) {
+                prefs.edit().putBoolean(KEY_HC_OFF_FOR_ICU, true).apply()
+                _hcAutoSync.value = false
+                NoopPrefs.setHcAutoSync(appContext, false)
+                return
+            }
+        }
         if (!_hcAutoSync.value) return
         val intervalMs = _hcSyncHours.value.toLong() * 60 * 60 * 1000
         val last = _hcLastSync.value
@@ -3667,6 +3679,7 @@ internal fun resolveSelectedModel(recorded: WhoopModel?, remembered: WhoopModel?
 /** Fork preference: daily resting HR as the main night's mean HR (default on). */
 internal const val KEY_WHOLE_NIGHT_RHR = "wx.rhr.wholeNightMean"
 private const val FORK_CALIBRATED_KEY = "wx.effort.calibrated.v1"
+private const val KEY_HC_OFF_FOR_ICU = "wx.hc.offForIntervals.v1"
 private const val FORK_RESCORE_KEY = "wx.history.rescored.v1"
 private const val FORK_VITALS_KEY = "wx.vitals.calibrated.v1"
 private const val FORK_FA_BACKFILL_KEY = "wx.fitnessAge.backfilled.v2"

@@ -34,6 +34,8 @@
     <string name="wx_by_month">By month</string>
     <string name="wx_by_week">By week</string>
     <string name="wx_by_weekday">By weekday</string>
+    <string name="wx_cal_earlier">Earlier weeks</string>
+    <string name="wx_cal_later">Later weeks</string>
     <string name="wx_cal_legend">Dashed ring: planned, not ridden yet</string>
     <string name="wx_calculating">Calculating…</string>
     <string name="wx_calendar_age">Calendar age</string>

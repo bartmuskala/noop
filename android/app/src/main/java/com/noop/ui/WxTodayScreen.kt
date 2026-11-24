@@ -111,7 +111,6 @@ internal object WxAveragePrefs {
 @Composable
 internal fun WxTodayScreen(vm: AppViewModel, onOpen: (WxTodayTarget) -> Unit) {
     val context = LocalContext.current
-    val scope = rememberCoroutineScope()
     val days by vm.recentDays.collectAsStateWithLifecycle()
     // Fork: intervals.icu's activities when connected, NOOP's workouts otherwise (one list everywhere).
     val workouts = rememberWxSessions(vm)
@@ -332,35 +331,6 @@ internal fun WxTodayScreen(vm: AppViewModel, onOpen: (WxTodayTarget) -> Unit) {
                             onClick = { WxWorkoutNav.pending = "plan:${e.id}"; onOpen(WxTodayTarget.Workouts) },
                         )
                     }
-                }
-                Spacer(Modifier.height(8.dp))
-                var syncing by remember { mutableStateOf(false) }
-                Row(
-                    Modifier
-                        .fillMaxWidth()
-                        .height(48.dp)
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(Wx.cardRaised)
-                        .clickable(enabled = !syncing) {
-                            syncing = true
-                            scope.launch {
-                                val outcome = wxSyncHealthConnect(context, vm)
-                                syncing = false
-                                when (outcome) {
-                                    null -> onOpen(WxTodayTarget.DataSources)
-                                    else -> Toast.makeText(context, outcome, Toast.LENGTH_LONG).show()
-                                }
-                            }
-                        },
-                    horizontalArrangement = Arrangement.Center,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Icon(Icons.Filled.Sync, contentDescription = null, tint = Wx.recoveryHigh, modifier = Modifier.size(18.dp))
-                    Spacer(Modifier.width(10.dp))
-                    Text(
-                        uiString(if (syncing) R.string.wx_syncing else R.string.wx_sync_health_connect),
-                        style = WxType.bodyStrong.copy(fontSize = 14.sp), color = Wx.text,
-                    )
                 }
             }
 
@@ -735,26 +705,6 @@ private fun wxTiles(row: DailyMetric?, night: DailyMetric?, window: List<DailyMe
 
 // MARK: - Health Connect
 
-/**
- * Runs the same Health Connect import the Data Sources screen runs, when access is already granted
- * and nothing new needs asking. Returns the result message to show, or null when the permission flow
- * is needed, in which case the caller opens Data Sources, which owns that flow.
- */
-private suspend fun wxSyncHealthConnect(context: android.content.Context, vm: AppViewModel): String? {
-    if (HealthConnectImporter.sdkStatus(context) != androidx.health.connect.client.HealthConnectClient.SDK_AVAILABLE) return null
-    val granted = runCatching {
-        HealthConnectImporter.client(context).permissionController.getGrantedPermissions()
-    }.getOrDefault(emptySet())
-    HealthConnectImporter.migrateSelectionFromGrants(context, granted)
-    val categories = HealthConnectImporter.selectedCategories(context)
-    val selected = HealthConnectImporter.permissionsFor(categories)
-    if (granted.none { it in selected } || HealthConnectImporter.hasUnaskedPermissions(context, categories)) return null
-    val summary = withContext(Dispatchers.IO) {
-        runCatching { HealthConnectImporter.import(context, vm.repo, ProfileStore.from(context).heightCm) }.getOrNull()
-    }
-    vm.loadWorkouts()
-    return summary?.message ?: context.getString(R.string.wx_sync_failed)
-}
 
 // MARK: - Formatting
 

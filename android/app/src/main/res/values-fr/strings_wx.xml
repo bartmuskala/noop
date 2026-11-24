@@ -34,6 +34,8 @@
     <string name="wx_by_month">Par mois</string>
     <string name="wx_by_week">Par semaine</string>
     <string name="wx_by_weekday">Par jour de semaine</string>
+    <string name="wx_cal_earlier">Semaines précédentes</string>
+    <string name="wx_cal_later">Semaines suivantes</string>
     <string name="wx_cal_legend">Anneau pointillé : planifié, pas encore roulé</string>
     <string name="wx_calculating">Calcul…</string>
     <string name="wx_calendar_age">Âge civil</string>

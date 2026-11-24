@@ -18,6 +18,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -65,14 +67,35 @@ internal fun WxWorkoutCalendar(
 ) {
     val zone = ZoneId.systemDefault()
     val today = LocalDate.now()
-    val firstMonday = today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)).minusWeeks(4)
-    // Next week as an extra row only when something is planned in it.
+    // How many five-week pages back in time; 0 is the page ending with this week.
+    var page by androidx.compose.runtime.saveable.rememberSaveable { androidx.compose.runtime.mutableIntStateOf(0) }
+    val firstMonday = today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)).minusWeeks(4L + 5L * page)
+    // Next week as an extra row only when something is planned in it (current page only).
     val nextMonday = firstMonday.plusWeeks(5)
-    val weeks = if (planned.keys.any { it >= nextMonday.toString() && it < nextMonday.plusWeeks(1).toString() }) 6 else 5
-    val byDay = rows.groupBy { Instant.ofEpochSecond(it.startTs).atZone(zone).toLocalDate() }
+    val weeks = if (page == 0 && planned.keys.any { it >= nextMonday.toString() && it < nextMonday.plusWeeks(1).toString() }) 6 else 5
+    val byDay = androidx.compose.runtime.remember(rows) { rows.groupBy { Instant.ofEpochSecond(it.startTs).atZone(zone).toLocalDate() } }
+    val oldest = androidx.compose.runtime.remember(byDay) { byDay.keys.minOrNull() }
+    val canBack = oldest != null && oldest < firstMonday
     WxCard(padding = 16.dp) {
-        WxCardHeader(uiString(R.string.wx_last_5_weeks), uiString(R.string.wx_dot_effort))
-        Spacer(Modifier.height(10.dp))
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                WxLabel(if (page == 0) uiString(R.string.wx_last_5_weeks) else {
+                    val f = java.time.format.DateTimeFormatter.ofPattern("d MMM", Locale.getDefault())
+                    val end = firstMonday.plusWeeks(5).minusDays(1)
+                    "${firstMonday.format(f)} – ${end.format(f)} ${end.year}"
+                })
+                Text(uiString(R.string.wx_dot_effort), style = WxType.caption.copy(fontSize = 11.sp), color = Wx.textMuted)
+            }
+            androidx.compose.material3.IconButton(onClick = { page++ }, enabled = canBack) {
+                androidx.compose.material3.Icon(androidx.compose.material.icons.Icons.AutoMirrored.Filled.KeyboardArrowLeft,
+                    uiString(R.string.wx_cal_earlier), tint = if (canBack) Wx.text else Wx.lineStrong)
+            }
+            androidx.compose.material3.IconButton(onClick = { if (page > 0) page-- }, enabled = page > 0) {
+                androidx.compose.material3.Icon(androidx.compose.material.icons.Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                    uiString(R.string.wx_cal_later), tint = if (page > 0) Wx.text else Wx.lineStrong)
+            }
+        }
+        Spacer(Modifier.height(6.dp))
         Row(Modifier.fillMaxWidth()) {
             for (i in 0 until 7) {
                 Text(DayOfWeek.of(i + 1).getDisplayName(JTextStyle.NARROW, Locale.getDefault()),
@@ -93,6 +116,8 @@ internal fun WxWorkoutCalendar(
                             .then(if (top != null) Modifier.clip(CircleShape).clickable { onOpen(top) } else Modifier),
                         contentAlignment = Alignment.Center,
                     ) {
+                        // Today: a ring around the cell, whatever it holds.
+                        if (d == today) Box(Modifier.matchParentSize().padding(2.dp).border(1.5.dp, Wx.text, CircleShape))
                         when {
                             top != null -> {
                                 // Area grows with Effort: 10 dp at the bottom of the scale, 34 dp at 21.

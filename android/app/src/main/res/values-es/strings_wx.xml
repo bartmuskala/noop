@@ -34,6 +34,8 @@
     <string name="wx_by_month">Por mes</string>
     <string name="wx_by_week">Por semana</string>
     <string name="wx_by_weekday">Por día de la semana</string>
+    <string name="wx_cal_earlier">Semanas anteriores</string>
+    <string name="wx_cal_later">Semanas posteriores</string>
     <string name="wx_cal_legend">Anillo discontinuo: planificado, aún no realizado</string>
     <string name="wx_calculating">Calculando…</string>
     <string name="wx_calendar_age">Edad real</string>
