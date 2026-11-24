@@ -210,6 +210,7 @@ internal data class WxSeries(val values: List<Double?>, val color: Color, val mi
  * Two lines over the same days, each point a ring labelled with its value. With [axes] on, [b]'s scale
  * is printed on the left in its colour and [a]'s on the right, each tick in the colour its value
  * takes (so Recovery's 0/33/66/100 % read red, amber, green); the grid lines sit at those four ticks.
+ * A series with point colours fades segment by segment from one point's colour to the next.
  * The label goes above the point when its line is the upper one at that day, below otherwise, so labels
  * of the two lines never collide. The last day is the selected one: a raised column behind it, its
  * weekday and date drawn bright. [dayNumbers], when given, prints the date under each weekday.
@@ -267,16 +268,26 @@ internal fun WxTwoLineChart(
             }
         }
         listOf(a, b).forEach { s ->
-            // A coloured-point series gets a neutral line, so the colour lives in its points.
-            val lineColor = if (s.pointColor != null) Wx.textMuted else s.color
-            val path = Path()
-            var started = false
-            s.values.forEachIndexed { i, v ->
-                if (v == null) { started = false; return@forEachIndexed }
-                if (!started) path.moveTo(x(i), y(v, s)) else path.lineTo(x(i), y(v, s))
-                started = true
+            val pc = s.pointColor
+            if (pc == null) {
+                val path = Path()
+                var started = false
+                s.values.forEachIndexed { i, v ->
+                    if (v == null) { started = false; return@forEachIndexed }
+                    if (!started) path.moveTo(x(i), y(v, s)) else path.lineTo(x(i), y(v, s))
+                    started = true
+                }
+                drawPath(path, s.color, style = Stroke(2.5.dp.toPx(), cap = StrokeCap.Round))
+            } else {
+                // Each segment fades from the colour of its start point to the colour of its end point.
+                for (i in 1 until s.values.size) {
+                    val v0 = s.values[i - 1] ?: continue
+                    val v1 = s.values[i] ?: continue
+                    val p0 = Offset(x(i - 1), y(v0, s)); val p1 = Offset(x(i), y(v1, s))
+                    drawLine(androidx.compose.ui.graphics.Brush.linearGradient(listOf(pc(v0), pc(v1)), p0, p1), p0, p1,
+                        2.5.dp.toPx(), StrokeCap.Round)
+                }
             }
-            drawPath(path, lineColor, style = Stroke(2.dp.toPx(), cap = StrokeCap.Round))
         }
         listOf(a to b, b to a).forEach { (s, other) ->
             s.values.forEachIndexed { i, v ->

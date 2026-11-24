@@ -139,10 +139,10 @@ internal fun WxDayHeartCard(
         }
         Spacer(Modifier.height(10.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(14.dp), verticalAlignment = Alignment.CenterVertically) {
-            WxLegend(Wx.stressLow, uiString(R.string.wx_heart_rate_by_stress), "")
+            WxLegend(Wx.stressLine(0.5), uiString(R.string.wx_heart_rate), "")
             if (dayWorkouts.isNotEmpty()) WxLegend(Wx.effort, uiString(R.string.wx_workouts), "${dayWorkouts.size}")
             if (stressNow != null || scored.isNotEmpty()) {
-                WxLegend(Wx.stressColor(stressNow), uiString(R.string.wx_stress_monitor),
+                WxLegend(Wx.stressLine(stressNow ?: scored.average()), uiString(R.string.wx_stress_monitor),
                     (stressNow ?: scored.average()).let { String.format(Locale.US, "%.1f", it) })
             }
         }
@@ -236,7 +236,7 @@ private fun WxDayHeartChart(
         val unit = measurer.measure("bpm", axisStyle)
         drawText(unit, topLeft = Offset(0f, 0f))
         // The design: heart-rate zone bands behind the line.
-        hrMax?.let { drawWxZoneBands(it, lo, hi, plotL, size.width, ::y, measurer) }
+        // No heart-rate zone bands here (they stay on the other charts): the stress colours carry this one.
 
         // Clock grid at 08:00 and 16:00.
         for (hh in listOf(8, 16)) {
@@ -252,9 +252,9 @@ private fun WxDayHeartChart(
         // Sleep: a shaded band, a bar and a moon.
         sleeps.forEach { (a, b) ->
             val x0 = x(a); val x1 = x(b).coerceAtLeast(x0 + 3f)
-            drawRect(Wx.sleep.copy(alpha = 0.10f), Offset(x0, barY), Size(x1 - x0, plotH - barY))
-            drawLine(Wx.sleepSoft, Offset(x0, barY), Offset(x1, barY), 2.5.dp.toPx(), StrokeCap.Round)
-            iconAt(moon, (x0 + x1) / 2, Wx.sleepSoft)
+            drawRect(Wx.nightBand.copy(alpha = 0.16f), Offset(x0, barY), Size(x1 - x0, plotH - barY))
+            drawLine(Wx.nightBand, Offset(x0, barY), Offset(x1, barY), 2.5.dp.toPx(), StrokeCap.Round)
+            iconAt(moon, (x0 + x1) / 2, Wx.text)
         }
         // Workouts: the same, in the Effort blue with the sport's icon; drawn before the line.
         workouts.forEach { w ->
@@ -265,14 +265,25 @@ private fun WxDayHeartChart(
         }
         // Heart rate line, each stretch coloured by that hour's stress level (grey where the hour was not
         // scored); a gap of more than 20 minutes breaks it.
-        fun colorAt(ts: Long): androidx.compose.ui.graphics.Color {
-            val h = d.stressHours.lastOrNull { it.startTs <= ts && ts < it.startTs + 3600L }
-            return h?.level?.let { Wx.stressColor(it) } ?: Wx.textMuted
+        // Stress level along the day, interpolated between hour centres, so the colour flows.
+        val scoredHrs = d.stressHours.filter { it.level != null }.sortedBy { it.startTs }
+        fun levelAt(ts: Long): Double? {
+            if (scoredHrs.isEmpty()) return null
+            val c = scoredHrs.map { it.startTs + 1800L to it.level!! }
+            if (ts <= c.first().first) return c.first().second.takeIf { c.first().first - ts < 5400 }
+            if (ts >= c.last().first) return c.last().second.takeIf { ts - c.last().first < 5400 }
+            val i = c.indexOfFirst { it.first >= ts }
+            val (t0, v0) = c[i - 1]; val (t1, v1) = c[i]
+            if (t1 - t0 > 3 * 3600L) return null
+            return v0 + (v1 - v0) * (ts - t0).toDouble() / (t1 - t0)
         }
         for (i in 1 until d.points.size) {
             val (t0, v0) = d.points[i - 1]; val (t1, v1) = d.points[i]
             if (t1 - t0 > 1200L) continue
-            drawLine(colorAt(t1), Offset(x(t0), y(v0)), Offset(x(t1), y(v1)), 1.8.dp.toPx(), StrokeCap.Round)
+            val p0 = Offset(x(t0), y(v0)); val p1 = Offset(x(t1), y(v1))
+            val c0 = levelAt(t0)?.let { Wx.stressLine(it) } ?: Wx.textMuted
+            val c1 = levelAt(t1)?.let { Wx.stressLine(it) } ?: Wx.textMuted
+            drawLine(androidx.compose.ui.graphics.Brush.linearGradient(listOf(c0, c1), p0, p1), p0, p1, 2.dp.toPx(), StrokeCap.Round)
         }
 
         // Hourly stress strip.
@@ -280,7 +291,7 @@ private fun WxDayHeartChart(
         d.stressHours.forEach { h ->
             val lvl = h.level ?: return@forEach
             val x0 = x(h.startTs); val x1 = x(h.startTs + 3600L)
-            drawRoundRect(Wx.stressColor(lvl).copy(alpha = if (h.maskedForActivity) 0.45f else 1f), Offset(x0 + 1f, stripTop), Size((x1 - x0 - 2f).coerceAtLeast(2f), stripH),
+            drawRoundRect(Wx.stressLine(lvl).copy(alpha = if (h.maskedForActivity) 0.45f else 1f), Offset(x0 + 1f, stripTop), Size((x1 - x0 - 2f).coerceAtLeast(2f), stripH),
                 androidx.compose.ui.geometry.CornerRadius(2.dp.toPx()))
         }
         // X axis: first reading, 08:00, 16:00 and the last reading (bright); a clock label is dropped

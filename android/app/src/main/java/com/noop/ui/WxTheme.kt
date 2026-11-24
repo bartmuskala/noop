@@ -65,6 +65,21 @@ internal object Wx {
         else -> recoveryLow
     }
 
+    /** Night/sleep marker on the day charts: a muted blue-grey. */
+    val nightBand = Color(0xFF6B8FB5)
+
+    /**
+     * The day-chart stress colour, continuous over 0–3: cyan-teal when calm, mint, a yellow-green at 2,
+     * and amber at the top, so a line through the day flows from one into the next.
+     */
+    fun stressLine(level: Double): Color {
+        val stops = listOf(0.0 to Color(0xFF2EC4D6), 1.0 to Color(0xFF26E0A0), 2.0 to Color(0xFFA6D84A), 3.0 to Color(0xFFF2B53A))
+        val v = level.coerceIn(0.0, 3.0)
+        val k = stops.indexOfFirst { it.first >= v }.coerceAtLeast(1)
+        val (a, ca) = stops[k - 1]; val (b, cb) = stops[k]
+        return androidx.compose.ui.graphics.lerp(ca, cb, ((v - a) / (b - a)).toFloat())
+    }
+
     /** Stress band colour on the 0–3 scale. */
     fun stressColor(level: Double?): Color = when {
         level == null -> textDim

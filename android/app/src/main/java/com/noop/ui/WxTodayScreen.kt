@@ -352,8 +352,14 @@ internal fun WxTodayScreen(vm: AppViewModel, onOpen: (WxTodayTarget) -> Unit) {
                     vm.requestJournalDay(back)
                     onOpen(WxTodayTarget.Journal)
                 })
-                Spacer(Modifier.height(6.dp))
-                WxLinkRow(uiString(R.string.wx_what_moves_you)) { onOpen(WxTodayTarget.Moves) }
+                Spacer(Modifier.height(14.dp))
+                Box(
+                    Modifier.fillMaxWidth().height(44.dp).clip(RoundedCornerShape(12.dp)).background(Wx.cardRaised)
+                        .clickable { onOpen(WxTodayTarget.Moves) },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(uiString(R.string.wx_what_moves_you), style = WxType.bodyStrong.copy(fontSize = 14.sp), color = Wx.text)
+                }
             }
             // Metric tiles: today's value, change vs the N-day average, and the average itself.
             val window = history.takeLast(avgDays)
@@ -398,7 +404,7 @@ internal fun WxTodayScreen(vm: AppViewModel, onOpen: (WxTodayTarget) -> Unit) {
             val recSeries = week.map { byKey[it.toString()]?.recovery }
             val effSeries = week.map { d -> byKey[d.toString()]?.strain?.let { UnitFormatter.effortValue(it, effortScale) } }
             val effMax = UnitFormatter.effortValue(100.0, effortScale)
-            WxCard(radius = Wx.chartRadius) {
+            WxCard {
                 WxCardHeader(uiString(R.string.wx_effort_and_recovery), uiString(R.string.wx_last_7_days))
                 Spacer(Modifier.height(10.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -591,10 +597,11 @@ private fun WxTonightCard(bedtime: String, need: String, alarm: String?, onAlarm
                     .then(if (details.isNotEmpty()) Modifier.clickable { expanded = !expanded } else Modifier)
                     .padding(end = 14.dp),
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Filled.Bedtime, null, tint = Wx.sleepSoft, modifier = Modifier.size(14.dp))
-                    Spacer(Modifier.width(6.dp))
+                // Label starts on the same edge as the time under it; the icon follows the text.
+                Row(Modifier.height(18.dp), verticalAlignment = Alignment.CenterVertically) {
                     Text(uiString(R.string.wx_recommended_bedtime), style = WxType.caption, color = Wx.textSoft)
+                    Spacer(Modifier.width(6.dp))
+                    Icon(Icons.Filled.Bedtime, null, tint = Wx.sleepSoft, modifier = Modifier.size(14.dp))
                     if (details.isNotEmpty()) {
                         Spacer(Modifier.width(4.dp))
                         Icon(
@@ -610,10 +617,10 @@ private fun WxTonightCard(bedtime: String, need: String, alarm: String?, onAlarm
             Box(Modifier.width(1.dp).height(72.dp).background(Wx.sleepDivider))
             // Tap the alarm time to open the Alarms screen.
             Column(Modifier.weight(1f).clip(RoundedCornerShape(8.dp)).clickable(onClick = onAlarm).padding(start = 14.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Filled.Alarm, null, tint = Wx.recoveryMid, modifier = Modifier.size(14.dp))
-                    Spacer(Modifier.width(6.dp))
+                Row(Modifier.height(18.dp), verticalAlignment = Alignment.CenterVertically) {
                     Text(uiString(R.string.wx_alarm), style = WxType.caption, color = Wx.textSoft)
+                    Spacer(Modifier.width(6.dp))
+                    Icon(Icons.Filled.Alarm, null, tint = Wx.recoveryMid, modifier = Modifier.size(14.dp))
                 }
                 Text(alarm ?: uiString(R.string.wx_off), style = WxType.number.copy(fontSize = 36.sp),
                     color = if (alarm != null) Wx.text else Wx.textDim)
