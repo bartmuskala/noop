@@ -144,6 +144,7 @@
     <string name="wx_intervals_icu">intervals.icu</string>
     <string name="wx_journal">Diario</string>
     <string name="wx_journal_about">Sobre el %1$s y la noche hasta el %2$s por la mañana; cuenta para la recuperación de esa mañana</string>
+    <string name="wx_journal_opens_22">Completa tu día a partir de las 22:00.</string>
     <string name="wx_journal_tonight">Esta noche</string>
     <string name="wx_journal_week_a11y">Diario registrado %1$d de los últimos 7 días</string>
     <string name="wx_journal_working">Tu diario funciona</string>

@@ -183,7 +183,11 @@ internal fun WxJournalScreen(vm: AppViewModel, onOpenMoves: () -> Unit, onEditQu
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(6.dp),
-                    modifier = Modifier.clip(RoundedCornerShape(12.dp)).clickable(enabled = open) { dayOffset = keyOffset }.padding(2.dp),
+                    modifier = Modifier.clip(RoundedCornerShape(12.dp)).clickable {
+                        // Today's own day opens at 22:00; before that a tap says so instead of doing nothing.
+                        if (open) dayOffset = keyOffset
+                        else android.widget.Toast.makeText(ctx, uiString(R.string.wx_journal_opens_22), android.widget.Toast.LENGTH_SHORT).show()
+                    }.padding(2.dp),
                 ) {
                     Text(wxWeekdayShort(lived), style = WxType.caption.copy(fontSize = 11.sp),
                         color = if (lived == today) Wx.text else Wx.textMuted)

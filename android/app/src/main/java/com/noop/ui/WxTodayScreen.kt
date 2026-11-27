@@ -350,7 +350,10 @@ internal fun WxTodayScreen(vm: AppViewModel, onOpen: (WxTodayTarget) -> Unit) {
                 WxCardHeader(uiString(R.string.today_section_journal), uiString(R.string.wx_days_logged, loggedCount))
                 Spacer(Modifier.height(14.dp))
                 WxJournalWeek(journalWeek, uiString(R.string.wx_journal_week_a11y, loggedCount), onSelect = { i ->
-                    if (!journalWeek[i].open) return@WxJournalWeek
+                    if (!journalWeek[i].open) {
+                        android.widget.Toast.makeText(context, uiString(R.string.wx_journal_opens_22), android.widget.Toast.LENGTH_SHORT).show()
+                        return@WxJournalWeek
+                    }
                     // The entry for a lived day is keyed on the morning after.
                     val back = java.time.temporal.ChronoUnit.DAYS.between(journalDates[i].plusDays(1), java.time.LocalDate.now())
                     vm.requestJournalDay(back)
