@@ -141,7 +141,7 @@ internal fun WxTodayScreen(vm: AppViewModel, onOpen: (WxTodayTarget) -> Unit) {
     // Journal: which of the seven days ending on the selected day have at least one native answer.
     var loggedDays by remember { mutableStateOf<Set<String>>(emptySet()) }
     LaunchedEffect(selectedKey) {
-        val from = selectedDate.minusDays(6).toString()
+        val from = selectedDate.minusDays(5).toString()
         // Through tomorrow: from 22:00 tomorrow's entry (about today) can already be logged.
         loggedDays = runCatching { vm.repo.journal(JOURNAL_DEVICE_ID, from, selectedDate.plusDays(1).toString()) }
             .getOrDefault(emptyList()).map { it.day }.toSet()
@@ -336,19 +336,23 @@ internal fun WxTodayScreen(vm: AppViewModel, onOpen: (WxTodayTarget) -> Unit) {
                 }
             }
 
-            // Journal week: tap a day to log it. From 22:00 on today, tomorrow's entry (about today and
-            // tonight) joins the row, for logging the day before bed.
+            // Journal week, as lived days ending on the selected day: a circle is green when that day's
+            // entry (stored under the morning after) was answered. The selected day itself opens at
+            // 22:00, to be logged before bed; tap an open day to log it.
             val evening = selectedDate == java.time.LocalDate.now() && wxJournalEveningOpen()
-            val journalDates = (6 downTo (if (evening) -1 else 0)).map { selectedDate.minusDays(it.toLong()) }
+            val journalDates = (6 downTo 0).map { selectedDate.minusDays(it.toLong()) }
             val journalWeek = journalDates.map {
-                WxJournalDay(wxWeekdayShort(it), it.dayOfMonth, it.toString() in loggedDays, it == selectedDate)
+                WxJournalDay(wxWeekdayShort(it), it.dayOfMonth, it.plusDays(1).toString() in loggedDays, it == selectedDate,
+                    open = it != selectedDate || evening || selectedDate != java.time.LocalDate.now())
             }
             val loggedCount = journalWeek.count { it.logged }
             WxCard(onClick = { onOpen(WxTodayTarget.Journal) }) {
                 WxCardHeader(uiString(R.string.today_section_journal), uiString(R.string.wx_days_logged, loggedCount))
                 Spacer(Modifier.height(14.dp))
                 WxJournalWeek(journalWeek, uiString(R.string.wx_journal_week_a11y, loggedCount), onSelect = { i ->
-                    val back = java.time.temporal.ChronoUnit.DAYS.between(journalDates[i], java.time.LocalDate.now())
+                    if (!journalWeek[i].open) return@WxJournalWeek
+                    // The entry for a lived day is keyed on the morning after.
+                    val back = java.time.temporal.ChronoUnit.DAYS.between(journalDates[i].plusDays(1), java.time.LocalDate.now())
                     vm.requestJournalDay(back)
                     onOpen(WxTodayTarget.Journal)
                 })

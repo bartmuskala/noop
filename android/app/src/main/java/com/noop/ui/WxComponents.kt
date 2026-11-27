@@ -329,7 +329,7 @@ internal fun WxLegend(color: Color, name: String, value: String) {
 }
 
 /** One day in the journal week strip. */
-internal data class WxJournalDay(val weekday: String, val dayOfMonth: Int, val logged: Boolean, val isToday: Boolean)
+internal data class WxJournalDay(val weekday: String, val dayOfMonth: Int, val logged: Boolean, val isToday: Boolean, val open: Boolean = true)
 
 /**
  * Seven circles, oldest first, ending today: a logged day is a filled green check, an open day an
@@ -360,10 +360,10 @@ internal fun WxJournalWeek(
                         Icon(Icons.Filled.Check, contentDescription = null, tint = Wx.canvas, modifier = Modifier.size(dot * 0.5f))
                     }
                     else -> Box(
-                        base.border(2.dp, if (d.isToday) Wx.effort else Wx.lineStrong, CircleShape),
+                        base.border(2.dp, if (!d.open) Wx.line else if (d.isToday) Wx.effort else Wx.lineStrong, CircleShape),
                         contentAlignment = Alignment.Center,
                     ) {
-                        Text("${d.dayOfMonth}", style = WxType.caption, color = Wx.textSoft)
+                        Text("${d.dayOfMonth}", style = WxType.caption, color = if (d.open) Wx.textSoft else Wx.textDim)
                     }
                 }
                 Spacer(Modifier.height(6.dp))

@@ -335,6 +335,7 @@
     <string name="wx_yellow_days">%1$d gelb</string>
     <string name="wx_yes">Ja</string>
     <string name="wx_yes_no_counts">%1$d ja · %2$d nein</string>
+    <string name="wx_yesterday">Gestern</string>
     <string name="wx_your_behaviours">Dein Verhalten</string>
     <string name="wx_zone_n">Zone %1$d</string>
     <string name="wx_zones">Zonen</string>

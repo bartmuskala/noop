@@ -248,7 +248,8 @@ fun InsightsScreen(vm: AppViewModel, onOpenInsightsHub: () -> Unit = {}) {
             .associate { it.question to it.numericValue!! }
         // Pre-fill from last night when opening today's journal with no entries yet, makes
         // recurring patterns (e.g. no alcohol, read before bed) one tap to confirm instead of re-enter.
-        if (answers.isEmpty() && dayOffset == 0L) {
+        // Fork: no carry-over (it marked a day logged before anything was answered).
+        if (false && answers.isEmpty() && dayOffset == 0L) {
             val yesterdayAnswers = native
                 .filter { it.day == journalDayKey(1L) }
                 .associate { it.question to it.answeredYes }

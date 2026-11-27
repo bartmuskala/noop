@@ -118,8 +118,8 @@ internal fun WxJournalScreen(vm: AppViewModel, onOpenMoves: () -> Unit, onEditQu
     val scope = rememberCoroutineScope()
     val days by vm.recentDays.collectAsStateWithLifecycle()
     var seq by remember { mutableStateOf(0) }
-    // From 22:00 the journal opens on tomorrow's entry, which is about today and tonight: the day is
-    // logged before bed instead of the morning after.
+    // From 22:00 the journal opens on today's own day (stored under tomorrow's entry), logged before
+    // bed; earlier it opens on yesterday, the latest finished day.
     val evening = remember { wxJournalEveningOpen() }
     val minOffset = if (evening) -1L else 0L
     var dayOffset by remember { mutableStateOf(minOffset) }
@@ -169,56 +169,70 @@ internal fun WxJournalScreen(vm: AppViewModel, onOpenMoves: () -> Unit, onEditQu
             }
         },
     ) {
-        // This week: seven days ending today; tap a day to log it.
+        // Fork: the strip shows days as LIVED. An entry is stored under the morning after (it counts
+        // toward that morning's Recovery) but is about the day before, so each circle is the day the
+        // answers are about: yesterday is the latest one open during the day, and today's own day
+        // opens at 22:00, to be logged before bed. Nothing turns green until it was answered.
         Row(Modifier.fillMaxWidth().padding(top = 4.dp), horizontalArrangement = Arrangement.SpaceBetween) {
-            for (back in 6 downTo minOffset.toInt()) {
-                val d = today.minusDays(back.toLong())
-                val done = d.toString() in logged
-                val selected = back.toLong() == dayOffset
+            for (back in 6 downTo 0) {
+                val lived = today.minusDays(back.toLong())
+                val keyOffset = back - 1L
+                val open = keyOffset >= minOffset
+                val done = lived.plusDays(1).toString() in logged
+                val selected = keyOffset == dayOffset
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(6.dp),
-                    modifier = Modifier.clip(RoundedCornerShape(12.dp)).clickable { dayOffset = back.toLong() }.padding(2.dp),
+                    modifier = Modifier.clip(RoundedCornerShape(12.dp)).clickable(enabled = open) { dayOffset = keyOffset }.padding(2.dp),
                 ) {
-                    Text(wxWeekdayShort(d), style = WxType.caption.copy(fontSize = 11.sp), color = Wx.textMuted)
-                    val ring = if (selected) Wx.effort else if (done) Color.Transparent else Wx.lineStrong
+                    Text(wxWeekdayShort(lived), style = WxType.caption.copy(fontSize = 11.sp),
+                        color = if (lived == today) Wx.text else Wx.textMuted)
+                    val ring = if (selected) Wx.effort else if (done) Color.Transparent else if (open) Wx.lineStrong else Wx.line
                     Box(
-                        Modifier.size(if (minOffset < 0) 34.dp else 40.dp).clip(CircleShape)
+                        Modifier.size(40.dp).clip(CircleShape)
                             .background(if (done) Wx.recoveryHigh else Color.Transparent)
                             .border(2.dp, ring, CircleShape),
                         contentAlignment = Alignment.Center,
                     ) {
                         if (done) Icon(Icons.Filled.Check, null, tint = Wx.canvas, modifier = Modifier.size(20.dp))
-                        else Text("${d.dayOfMonth}", style = WxType.caption.copy(fontSize = 13.sp), color = Wx.textSoft)
+                        else Text("${lived.dayOfMonth}", style = WxType.caption.copy(fontSize = 13.sp),
+                            color = if (open) Wx.textSoft else Wx.textDim)
                     }
                 }
             }
         }
+        // Streak over consecutive logged days, counted from the latest day that is open.
+        val latestKey = today.minusDays(minOffset)
         val streak = run {
             var n = 0
-            var d = if (today.toString() in logged) today else today.minusDays(1)
+            var d = if (latestKey.toString() in logged) latestKey else latestKey.minusDays(1)
             while (d.toString() in logged) { n++; d = d.minusDays(1) }
             n
         }
         Text(
             buildString {
                 append(uiString(R.string.wx_streak_days, streak))
-                if (today.toString() !in logged) append(" · ").append(uiString(R.string.wx_log_today_to_keep))
+                if (latestKey.toString() !in logged) append(" · ").append(uiString(R.string.wx_log_today_to_keep))
             },
             style = WxType.caption.copy(fontSize = 13.sp), color = Wx.textMuted,
             textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth(),
         )
 
         val selDate = today.minusDays(dayOffset)
+        val livedSel = selDate.minusDays(1)
         WxLabel(
-            (when (dayOffset) { 0L -> uiString(R.string.nav_today) + " · "; -1L -> uiString(R.string.wx_journal_tonight) + " · "; else -> "" }) + wxShortDate(selDate),
+            (when (livedSel) {
+                today -> uiString(R.string.wx_journal_tonight) + " · "
+                today.minusDays(1) -> uiString(R.string.wx_yesterday) + " · "
+                else -> ""
+            }) + wxShortDate(livedSel),
             Modifier.padding(start = 4.dp, top = 8.dp),
         )
         // What a day's answers are about: the day before and the night into this morning, which is what
         // that morning's Recovery reflects (the same attribution the classic journal states).
         Text(
             uiString(R.string.wx_journal_about,
-                selDate.minusDays(1).dayOfWeek.getDisplayName(java.time.format.TextStyle.FULL, java.util.Locale.getDefault()),
+                livedSel.dayOfWeek.getDisplayName(java.time.format.TextStyle.FULL, java.util.Locale.getDefault()),
                 selDate.dayOfWeek.getDisplayName(java.time.format.TextStyle.FULL, java.util.Locale.getDefault())),
             style = WxType.caption, color = Wx.textMuted, modifier = Modifier.padding(start = 4.dp),
         )

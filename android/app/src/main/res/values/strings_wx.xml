@@ -335,6 +335,7 @@
     <string name="wx_yellow_days">%1$d yellow</string>
     <string name="wx_yes">Yes</string>
     <string name="wx_yes_no_counts">%1$d yes · %2$d no</string>
+    <string name="wx_yesterday">Yesterday</string>
     <string name="wx_your_behaviours">Your behaviours</string>
     <string name="wx_zone_n">Zone %1$d</string>
     <string name="wx_zones">Zones</string>

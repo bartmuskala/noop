@@ -335,6 +335,7 @@
     <string name="wx_yellow_days">%1$d jaunes</string>
     <string name="wx_yes">Oui</string>
     <string name="wx_yes_no_counts">%1$d oui · %2$d non</string>
+    <string name="wx_yesterday">Hier</string>
     <string name="wx_your_behaviours">Vos habitudes</string>
     <string name="wx_zone_n">Zone %1$d</string>
     <string name="wx_zones">Zones</string>

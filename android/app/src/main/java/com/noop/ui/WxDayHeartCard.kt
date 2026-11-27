@@ -90,7 +90,22 @@ internal fun WxDayHeartCard(
     }
     // The last 15 days are drawn once in the background and kept on the phone, so opening one is instant.
     LaunchedEffect(Unit) { WxDayHeartCache.prefill(vm, ctx.applicationContext, personal) }
-    LaunchedEffect(date) {
+    // Re-read on every return to the app (a resume recomposes nothing on its own), and every three
+    // minutes while today is on screen, so newly offloaded heart rate shows without leaving the page.
+    var refresh by remember { androidx.compose.runtime.mutableIntStateOf(0) }
+    val owner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+    androidx.compose.runtime.DisposableEffect(owner) {
+        val obs = androidx.lifecycle.LifecycleEventObserver { _, e ->
+            if (e == androidx.lifecycle.Lifecycle.Event.ON_RESUME) refresh++
+        }
+        owner.lifecycle.addObserver(obs)
+        onDispose { owner.lifecycle.removeObserver(obs) }
+    }
+    val live = date >= LocalDate.now().minusDays(1)
+    LaunchedEffect(date, live) {
+        while (live) { kotlinx.coroutines.delay(3 * 60_000L); refresh++ }
+    }
+    LaunchedEffect(date, refresh) {
         WxDayHeartCache.attach(ctx.applicationContext)
         // Memory, then the phone's copy; a finished day kept after it ended is final.
         val stored = WxDayHeartCache.load(date)

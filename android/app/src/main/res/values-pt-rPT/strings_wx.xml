@@ -335,6 +335,7 @@
     <string name="wx_yellow_days">%1$d amarelos</string>
     <string name="wx_yes">Sim</string>
     <string name="wx_yes_no_counts">%1$d sim · %2$d não</string>
+    <string name="wx_yesterday">Ontem</string>
     <string name="wx_your_behaviours">Os seus hábitos</string>
     <string name="wx_zone_n">Zona %1$d</string>
     <string name="wx_zones">Zonas</string>

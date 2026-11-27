@@ -16,10 +16,13 @@ import java.time.ZoneId
 internal suspend fun wxStressHours(vm: AppViewModel, date: LocalDate, personalBaseline: Boolean): List<DaytimeStress.HourPoint> {
     val key = "$date|$personalBaseline|${vm.activeStrapId}"
     val now = System.currentTimeMillis()
-    val isToday = date == LocalDate.now()
+    // A day is final once read at least 12 h after it ended (late strap offloads have landed by then);
+    // until then (today, and a yesterday first read while it was still today) it is reused for a few
+    // minutes only. Before this a day read in the afternoon kept its half-scored hours after midnight.
+    val dayEndMs = date.plusDays(1).atStartOfDay(java.time.ZoneId.systemDefault()).toEpochSecond() * 1000L
     WxStressCache.get(key)?.let { (at, hours) ->
-        // Past days do not change; today is reused for a few minutes.
-        if (!isToday || now - at < WxStressCache.TODAY_TTL_MS) return hours
+        val final = at >= dayEndMs + 12 * 3_600_000L
+        if (final || now - at < WxStressCache.TODAY_TTL_MS) return hours
     }
     return computeWxStressHours(vm, date, personalBaseline).also { WxStressCache.put(key, now, it) }
 }
